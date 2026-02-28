@@ -14,7 +14,7 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            app:navigationIcon="@drawable/ic_arrow_back"
+			android:theme="@style/ThemeOverlay.AppCompat.ActionBar"
             app:title="Плеер" />
 
     </com.google.android.material.appbar.AppBarLayout>
