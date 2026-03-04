@@ -12,6 +12,7 @@ import com.squareup.picasso.Picasso;
 
 import org.nikanikoo.flux.data.models.Conversation;
 import org.nikanikoo.flux.R;
+import org.nikanikoo.flux.utils.ValidationUtils;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -49,7 +50,7 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
         Conversation conversation = conversations.get(position);
         
         holder.titleText.setText(conversation.getTitle());
-        holder.lastMessageText.setText(conversation.getLastMessage());
+        holder.lastMessageText.setText(ValidationUtils.SanitizeText(conversation.getLastMessage()));
         
         // Форматирование времени
         if (conversation.getLastMessageDate() > 0) {

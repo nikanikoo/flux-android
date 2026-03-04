@@ -164,7 +164,7 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         // Показываем текст репоста (если есть)
         String repostText = post.getRepostText();
         if (ValidationUtils.isValidPostText(repostText)) {
-            holder.content.setText(ValidationUtils.sanitizePostText(repostText));
+            holder.content.setText(ValidationUtils.SanitizeText(repostText));
             holder.content.setVisibility(View.VISIBLE);
         } else {
             holder.content.setVisibility(View.GONE);
@@ -182,7 +182,7 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         // Заполняем данные оригинального поста
         holder.originalPostAuthorName.setText(ValidationUtils.sanitizeUserInput(originalPost.getAuthorName()));
         holder.originalPostTimestamp.setText(originalPost.getTimestamp());
-        holder.originalPostContent.setText(ValidationUtils.sanitizePostText(originalPost.getContent()));
+        holder.originalPostContent.setText(ValidationUtils.SanitizeText(originalPost.getContent()));
         
         // Отображение галочки верификации автора оригинального поста
         if (holder.originalPostAuthorVerified != null) {
@@ -257,8 +257,8 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
      */
     private void handleRegularPost(@NonNull PostViewHolder holder, Post post) {
         
-        // Устанавливаем текст поста - sanitizePostText обрабатывает переносы
-        holder.content.setText(ValidationUtils.sanitizePostText(post.getContent()));
+        // Устанавливаем текст поста - sanitizeText обрабатывает переносы
+        holder.content.setText(ValidationUtils.SanitizeText(post.getContent()));
         holder.content.setVisibility(View.VISIBLE);
         
         // Скрываем контейнер оригинального поста
@@ -338,7 +338,7 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private void handleOriginalPostUnsupportedElements(@NonNull PostViewHolder holder, Post originalPost) {
         String unsupportedText = originalPost.getUnsupportedElementsText();
         if (ValidationUtils.isValidPostText(unsupportedText)) {
-            holder.originalPostUnsupportedElements.setText(ValidationUtils.sanitizePostText(unsupportedText));
+            holder.originalPostUnsupportedElements.setText(ValidationUtils.SanitizeText(unsupportedText));
             holder.originalPostUnsupportedElements.setVisibility(View.VISIBLE);
         } else {
             holder.originalPostUnsupportedElements.setVisibility(View.GONE);
@@ -397,7 +397,7 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private void handleUnsupportedElements(@NonNull PostViewHolder holder, Post post) {
         String unsupportedText = post.getUnsupportedElementsText();
         if (ValidationUtils.isValidPostText(unsupportedText)) {
-            holder.unsupportedElements.setText(ValidationUtils.sanitizePostText(unsupportedText));
+            holder.unsupportedElements.setText(ValidationUtils.SanitizeText(unsupportedText));
             holder.unsupportedElements.setVisibility(View.VISIBLE);
         } else {
             holder.unsupportedElements.setVisibility(View.GONE);

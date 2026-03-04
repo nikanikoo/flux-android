@@ -86,7 +86,7 @@ public class ValidationUtils {
         return decoded.trim();
     }
 
-    public static String sanitizePostText(String input) {
+    public static String SanitizeText(String input) {
         if (input == null || input.isEmpty()) {
             return "";
         }

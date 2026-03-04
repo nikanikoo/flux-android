@@ -12,6 +12,7 @@ import com.squareup.picasso.Picasso;
 
 import org.nikanikoo.flux.data.models.Message;
 import org.nikanikoo.flux.R;
+import org.nikanikoo.flux.utils.ValidationUtils;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -70,7 +71,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     }
 
     private void bindOutgoingMessage(OutgoingMessageViewHolder holder, Message message) {
-        holder.messageText.setText(message.getText());
+        holder.messageText.setText(ValidationUtils.SanitizeText(message.getText()));
         
         // Форматирование времени
         Date date = new Date(message.getDate() * 1000);
@@ -86,7 +87,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     }
 
     private void bindIncomingMessage(IncomingMessageViewHolder holder, Message message) {
-        holder.messageText.setText(message.getText());
+        holder.messageText.setText(ValidationUtils.SanitizeText(message.getText()));
         
         // Форматирование времени
         Date date = new Date(message.getDate() * 1000);
