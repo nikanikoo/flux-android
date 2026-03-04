@@ -30,6 +30,7 @@ import org.nikanikoo.flux.ui.activities.MainActivity;
 import org.nikanikoo.flux.ui.activities.PhotoViewerActivity;
 import org.nikanikoo.flux.ui.fragments.profile.ProfileFragment;
 import org.nikanikoo.flux.ui.fragments.profile.GroupProfileFragment;
+import org.nikanikoo.flux.utils.ValidationUtils;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -186,7 +187,7 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
     private void displayOriginalPost() {
         originalPostAuthorName.setText(originalPost.getAuthorName());
         originalPostTimestamp.setText(originalPost.getTimestamp());
-        originalPostContent.setText(originalPost.getContent());
+        originalPostContent.setText(ValidationUtils.SanitizeText(originalPost.getContent()));
         originalPostLikeCount.setText(String.valueOf(originalPost.getLikeCount()));
         originalPostCommentCount.setText(String.valueOf(originalPost.getCommentCount()));
         

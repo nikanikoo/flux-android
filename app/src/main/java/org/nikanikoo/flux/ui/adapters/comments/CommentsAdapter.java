@@ -15,6 +15,7 @@ import com.squareup.picasso.Picasso;
 import org.nikanikoo.flux.data.models.Comment;
 import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.ui.views.AudioAttachmentView;
+import org.nikanikoo.flux.utils.ValidationUtils;
 
 import java.util.List;
 
@@ -53,7 +54,7 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
         
         holder.authorName.setText(comment.getAuthorName());
         holder.timestamp.setText(comment.getTimestamp());
-        holder.content.setText(comment.getText());
+        holder.content.setText(ValidationUtils.SanitizeText(comment.getText()));
         holder.likeCount.setText(String.valueOf(comment.getLikesCount()));
         
         // Отображение галочки верификации автора комментария
