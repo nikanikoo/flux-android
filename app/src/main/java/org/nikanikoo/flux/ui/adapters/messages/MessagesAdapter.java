@@ -16,16 +16,18 @@ import org.nikanikoo.flux.utils.ValidationUtils;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
 public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
-    
+
     private static final int TYPE_INCOMING = 0;
     private static final int TYPE_OUTGOING = 1;
-    
-    private List<Message> messages;
+    private static final int TYPE_DATE_HEADER = 2;
+
+    private List<Object> items;
     private Context context;
     private OnMessageClickListener listener;
 
@@ -35,7 +37,10 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
     public MessagesAdapter(Context context, List<Message> messages) {
         this.context = context;
-        this.messages = messages;
+        this.items = new ArrayList<>();
+        if (messages != null) {
+            this.items.addAll(messages);
+        }
     }
 
     public void setOnMessageClickListener(OnMessageClickListener listener) {
@@ -44,7 +49,13 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
     @Override
     public int getItemViewType(int position) {
-        return messages.get(position).isOut() ? TYPE_OUTGOING : TYPE_INCOMING;
+        Object item = items.get(position);
+        if (item instanceof Message) {
+            return ((Message) item).isOut() ? TYPE_OUTGOING : TYPE_INCOMING;
+        } else if (item instanceof DateHeader) {
+            return TYPE_DATE_HEADER;
+        }
+        return TYPE_INCOMING;
     }
 
     @NonNull
@@ -53,20 +64,25 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         if (viewType == TYPE_OUTGOING) {
             View view = LayoutInflater.from(context).inflate(R.layout.item_message_outgoing, parent, false);
             return new OutgoingMessageViewHolder(view);
-        } else {
+        } else if (viewType == TYPE_INCOMING) {
             View view = LayoutInflater.from(context).inflate(R.layout.item_message_incoming, parent, false);
             return new IncomingMessageViewHolder(view);
+        } else {
+            View view = LayoutInflater.from(context).inflate(R.layout.item_date_header, parent, false);
+            return new DateHeaderViewHolder(view);
         }
     }
 
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
-        Message message = messages.get(position);
-        
+        Object item = items.get(position);
+
         if (holder instanceof OutgoingMessageViewHolder) {
-            bindOutgoingMessage((OutgoingMessageViewHolder) holder, message);
+            bindOutgoingMessage((OutgoingMessageViewHolder) holder, (Message) item);
         } else if (holder instanceof IncomingMessageViewHolder) {
-            bindIncomingMessage((IncomingMessageViewHolder) holder, message);
+            bindIncomingMessage((IncomingMessageViewHolder) holder, (Message) item);
+        } else if (holder instanceof DateHeaderViewHolder) {
+            bindDateHeader((DateHeaderViewHolder) holder, (DateHeader) item);
         }
     }
 
@@ -113,31 +129,30 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         });
     }
 
-    @Override
-    public int getItemCount() {
-        return messages.size();
+    private void bindDateHeader(DateHeaderViewHolder holder, DateHeader dateHeader) {
+        holder.dateText.setText(dateHeader.getText());
     }
 
-    public void updateMessages(List<Message> newMessages) {
-        this.messages = newMessages;
-        notifyDataSetChanged();
+    @Override
+    public int getItemCount() {
+        return items.size();
     }
-    
+
     public void setMessages(List<Message> newMessages) {
-        this.messages.clear();
-        this.messages.addAll(newMessages);
+        this.items.clear();
+        this.items.addAll(groupMessagesByDate(newMessages));
         notifyDataSetChanged();
         System.out.println("MessagesAdapter: Set " + newMessages.size() + " messages");
     }
-    
+
     public void addMessagesToTop(List<Message> newMessages) {
         if (newMessages != null && !newMessages.isEmpty()) {
             // Дедупликация по ID сообщения
             List<Message> uniqueMessages = new ArrayList<>();
             for (Message newMsg : newMessages) {
                 boolean isDuplicate = false;
-                for (Message existingMsg : this.messages) {
-                    if (existingMsg.getId() == newMsg.getId()) {
+                for (Object existingMsg : this.items) {
+                    if (existingMsg instanceof Message && ((Message) existingMsg).getId() == newMsg.getId()) {
                         isDuplicate = true;
                         break;
                     }
@@ -146,11 +161,26 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                     uniqueMessages.add(newMsg);
                 }
             }
-            
+
             if (!uniqueMessages.isEmpty()) {
-                this.messages.addAll(0, uniqueMessages);
-                notifyItemRangeInserted(0, uniqueMessages.size());
-                System.out.println("MessagesAdapter: Added " + uniqueMessages.size() + " messages to top");
+                List<Object> itemsToInsert = groupMessagesByDate(uniqueMessages);
+                
+                // Если первый элемент - заголовок даты, и он совпадает с существующим, убираем дубликат
+                if (!itemsToInsert.isEmpty() && itemsToInsert.get(0) instanceof DateHeader) {
+                    if (!items.isEmpty() && items.get(0) instanceof DateHeader) {
+                        DateHeader newHeader = (DateHeader) itemsToInsert.get(0);
+                        DateHeader existingHeader = (DateHeader) items.get(0);
+                        if (newHeader.getText().equals(existingHeader.getText())) {
+                            itemsToInsert.remove(0);
+                        }
+                    }
+                }
+                
+                if (!itemsToInsert.isEmpty()) {
+                    this.items.addAll(0, itemsToInsert);
+                    notifyItemRangeInserted(0, itemsToInsert.size());
+                    System.out.println("MessagesAdapter: Added " + itemsToInsert.size() + " items to top");
+                }
             }
         }
     }
@@ -160,21 +190,98 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         if (message != null) {
             // Проверяем, что сообщение еще не добавлено
             boolean messageExists = false;
-            for (Message existingMessage : this.messages) {
-                if (existingMessage.getId() == message.getId()) {
+            for (Object existingMessage : this.items) {
+                if (existingMessage instanceof Message && ((Message) existingMessage).getId() == message.getId()) {
                     messageExists = true;
                     break;
                 }
             }
-            
+
             if (!messageExists) {
-                this.messages.add(message);
-                notifyItemInserted(this.messages.size() - 1);
+                int position = items.size();
+
+                if (position > 0) {
+                    Object lastItem = items.get(position - 1);
+                    if (lastItem instanceof Message) {
+                        Message lastMessage = (Message) lastItem;
+                        String currentDate = getDateKey(message.getDate());
+                        String lastDate = getDateKey(lastMessage.getDate());
+
+                        if (!currentDate.equals(lastDate)) {
+                            DateHeader header = new DateHeader(getDateHeaderText(message.getDate()));
+                            items.add(header);
+                            notifyItemInserted(position);
+                            position++;
+                        }
+                    }
+                } else {
+                    DateHeader header = new DateHeader(getDateHeaderText(message.getDate()));
+                    items.add(header);
+                    notifyItemInserted(0);
+                    position = 1;
+                }
+
+                this.items.add(message);
+                notifyItemInserted(position);
                 System.out.println("MessagesAdapter: Added single message with ID " + message.getId());
             } else {
                 System.out.println("MessagesAdapter: Message with ID " + message.getId() + " already exists, skipping");
             }
         }
+    }
+
+    private List<Object> groupMessagesByDate(List<Message> messages) {
+        List<Object> result = new ArrayList<>();
+        if (messages == null || messages.isEmpty()) {
+            return result;
+        }
+
+        String lastDateKey = null;
+        for (Message message : messages) {
+            String currentDateKey = getDateKey(message.getDate());
+            if (!currentDateKey.equals(lastDateKey)) {
+                result.add(new DateHeader(getDateHeaderText(message.getDate())));
+                lastDateKey = currentDateKey;
+            }
+            result.add(message);
+        }
+
+        return result;
+    }
+
+    private String getDateKey(long timestamp) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(timestamp * 1000);
+
+        SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy", Locale.getDefault());
+        return sdf.format(calendar.getTime());
+    }
+
+    private String getDateHeaderText(long timestamp) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(timestamp * 1000);
+
+        SimpleDateFormat sdf = new SimpleDateFormat("d MMMM yyyy", Locale.getDefault());
+        return sdf.format(calendar.getTime());
+    }
+
+    public String getCurrentDateHeader(int firstVisiblePosition, int lastVisiblePosition) {
+        if (firstVisiblePosition < 0 || lastVisiblePosition >= items.size() || firstVisiblePosition > lastVisiblePosition) {
+            return null;
+        }
+
+        for (int i = firstVisiblePosition; i <= lastVisiblePosition; i++) {
+            if (items.get(i) instanceof Message) {
+                for (int j = i; j >= 0; j--) {
+                    if (items.get(j) instanceof DateHeader) {
+                        return ((DateHeader) items.get(j)).getText();
+                    }
+                }
+                break;
+            }
+        }
+
+        return null;
     }
 
     static class OutgoingMessageViewHolder extends RecyclerView.ViewHolder {
@@ -200,6 +307,30 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             avatarImage = itemView.findViewById(R.id.avatar_image);
             messageText = itemView.findViewById(R.id.message_text);
             timeText = itemView.findViewById(R.id.time_text);
+        }
+    }
+
+    static class DateHeaderViewHolder extends RecyclerView.ViewHolder {
+        TextView dateText;
+
+        DateHeaderViewHolder(@NonNull View itemView) {
+            super(itemView);
+            dateText = itemView.findViewById(R.id.date_text);
+        }
+    }
+
+    /**
+     * Класс для заголовка даты
+     */
+    private static class DateHeader {
+        private final String text;
+
+        DateHeader(String text) {
+            this.text = text;
+        }
+
+        String getText() {
+            return text;
         }
     }
 }

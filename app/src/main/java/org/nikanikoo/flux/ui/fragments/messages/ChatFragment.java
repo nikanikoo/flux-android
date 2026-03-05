@@ -1,13 +1,18 @@
 package org.nikanikoo.flux.ui.fragments.messages;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.TextView;
 import android.widget.Toast;
+
+import com.google.android.material.card.MaterialCardView;
 
 import org.nikanikoo.flux.ui.custom.EndlessScrollListener;
 import org.nikanikoo.flux.ui.custom.PaginationHelper;
@@ -45,7 +50,14 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     private ImageButton sendButton;
     private MessagesManager messagesManager;
     private List<Message> messages;
-    
+
+    // Для плашки даты
+    private MaterialCardView dateHeaderCard;
+    private TextView dateHeaderText;
+    private Handler hideDateHeaderHandler;
+    private Runnable hideDateHeaderRunnable;
+    private static final long DATE_HEADER_HIDE_DELAY = 2000; // 2 секунды
+
     // Для бесконечного скролла
     private LinearLayoutManager layoutManager;
     private EndlessScrollListener scrollListener;
@@ -112,7 +124,11 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        
+
+        if (hideDateHeaderHandler != null) {
+            hideDateHeaderHandler.removeCallbacksAndMessages(null);
+        }
+
         // Обновляем список чатов при выходе из чата (на фоне)
         refreshConversationsListBackground();
         
@@ -138,9 +154,11 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         swipeRefreshLayout = view.findViewById(R.id.swipe_refresh);
         messageInput = view.findViewById(R.id.message_input);
         sendButton = view.findViewById(R.id.send_button);
+        dateHeaderCard = view.findViewById(R.id.date_header_card);
+        dateHeaderText = view.findViewById(R.id.date_header_text);
         messagesManager = MessagesManager.getInstance(requireContext());
         messages = new ArrayList<>();
-        
+
         swipeRefreshLayout.setOnRefreshListener(() -> {
             scrollListener.resetState();
             loadMessages(true);
@@ -154,6 +172,23 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         layoutManager.setStackFromEnd(true);
         recyclerView.setLayoutManager(layoutManager);
         recyclerView.setAdapter(adapter);
+
+        hideDateHeaderHandler = new Handler(Looper.getMainLooper());
+        hideDateHeaderRunnable = this::hideDateHeader;
+
+        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+
+                int firstVisibleItem = layoutManager.findFirstVisibleItemPosition();
+                int lastVisibleItem = layoutManager.findLastVisibleItemPosition();
+
+                if (firstVisibleItem >= 0 && lastVisibleItem >= 0) {
+                    updateDateHeader(firstVisibleItem, lastVisibleItem);
+                }
+            }
+        });
     }
     
     private void setupEndlessScroll() {
@@ -195,6 +230,45 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         });
         
         recyclerView.addOnScrollListener(scrollListener);
+    }
+
+    /**
+     * Обновление плашки с датой
+     */
+    private void updateDateHeader(int firstVisibleItem, int lastVisibleItem) {
+        String dateText = adapter.getCurrentDateHeader(firstVisibleItem, lastVisibleItem);
+        if (dateText != null) {
+            showDateHeader(dateText);
+        }
+    }
+
+    private void showDateHeader(String text) {
+        if (dateHeaderCard == null || dateHeaderText == null) return;
+
+        hideDateHeaderHandler.removeCallbacks(hideDateHeaderRunnable);
+
+        if (!text.equals(dateHeaderText.getText().toString())) {
+            dateHeaderText.setText(text);
+        }
+
+        if (dateHeaderCard.getVisibility() != View.VISIBLE) {
+            dateHeaderCard.setVisibility(View.VISIBLE);
+            dateHeaderCard.setAlpha(1.0f);
+        }
+
+        hideDateHeaderHandler.postDelayed(hideDateHeaderRunnable, DATE_HEADER_HIDE_DELAY);
+    }
+
+    private void hideDateHeader() {
+        if (dateHeaderCard == null) return;
+
+        dateHeaderCard.animate()
+                .alpha(0.0f)
+                .setDuration(200)
+                .withEndAction(() -> {
+                    dateHeaderCard.setVisibility(View.GONE);
+                    dateHeaderCard.setAlpha(1.0f);
+                });
     }
 
     private void setupSendButton() {
