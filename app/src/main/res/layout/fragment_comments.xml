@@ -200,7 +200,8 @@
         android:orientation="horizontal"
         android:padding="8dp"
         android:background="?attr/colorSurface"
-        android:elevation="4dp">
+        android:elevation="4dp"
+        android:gravity="center_vertical">
 
         <ImageView
             android:id="@+id/btn_attach_image"
@@ -213,18 +214,34 @@
             android:focusable="true"
             android:layout_gravity="bottom" />
 
-        <EditText
-            android:id="@+id/edit_comment"
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:hint="@string/comments_write"
-            android:background="@android:drawable/edit_text"
-            android:padding="12dp"
             android:layout_marginStart="8dp"
             android:layout_marginEnd="8dp"
-            android:maxLines="4"
-            android:inputType="textMultiLine|textCapSentences" />
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+            app:boxCornerRadiusTopStart="24dp"
+            app:boxCornerRadiusTopEnd="24dp"
+            app:boxCornerRadiusBottomStart="24dp"
+            app:boxCornerRadiusBottomEnd="24dp"
+            app:boxCollapsedPaddingTop="0dp"
+            app:hintEnabled="false">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/edit_comment"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/comments_write"
+                android:maxLines="4"
+                android:inputType="textMultiLine|textCapSentences"
+                android:textSize="16sp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp" />
+
+        </com.google.android.material.textfield.TextInputLayout>
 
         <ImageView
             android:id="@+id/btn_send_comment"
