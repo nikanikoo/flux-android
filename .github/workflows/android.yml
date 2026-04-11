@@ -32,12 +32,24 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      - name: Build Release APK
+      - name: Build Debug APK
         run: ./gradlew assembleDebug
 
-      - name: Get commit hash
+      - name: Get commit info
         id: commit
-        run: echo "hash=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        run: |
+          echo "hash=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "title=$(git log -1 --pretty=%s)" >> $GITHUB_OUTPUT
+
+          body=$(git log -1 --pretty=%b)
+
+          if [ -z "$body" ]; then
+            body="No additional details"
+          fi
+
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "$body" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -45,6 +57,12 @@ jobs:
           tag_name: build-${{ steps.commit.outputs.hash }}
           name: Build ${{ steps.commit.outputs.hash }}
           files: app/build/outputs/apk/debug/*.apk
-          body: "APK built from commit: ${{ steps.commit.outputs.hash }}"
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          body: |
+            ## ${{ steps.commit.outputs.title }}
+
+            ${{ steps.commit.outputs.body }}
+
+            ---
+            🔗 Commit: ${{ steps.commit.outputs.hash }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
