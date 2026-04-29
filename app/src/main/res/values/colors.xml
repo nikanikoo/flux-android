@@ -179,4 +179,10 @@
     <color name="md_theme_red_dark_onTertiary">#BF360C</color>
     <color name="md_theme_red_dark_tertiaryContainer">#E64A19</color>
     <color name="md_theme_red_dark_onTertiaryContainer">#FFCCBC</color>
+
+    <color name="colorError">@color/md_theme_light_error</color>
+    <color name="colorBackground">@color/md_theme_light_background</color>
+    <color name="colorTextPrimary">@color/md_theme_light_onBackground</color>
+    <color name="colorTextSecondary">@color/md_theme_light_onSurfaceVariant</color>
+    <color name="colorPrimary">@color/md_theme_light_primary</color>
 </resources>

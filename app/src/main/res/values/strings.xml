@@ -536,4 +536,11 @@
     <string name="error_unauthorized_title">Требуется авторизация</string>
     <string name="error_unauthorized_message">Сессия истекла. Войдите в аккаунт заново</string>
 
+    <!-- Custom instance addition -->
+    <string name="add_instance">Добавить инстанс</string>
+    <string name="instance_url">URL инстанса</string>
+    <string name="instance_url_empty">Введите URL инстанса</string>
+    <string name="instance_added">Инстанс добавлен</string>
+    <string name="add">Добавить</string>
+
 </resources>

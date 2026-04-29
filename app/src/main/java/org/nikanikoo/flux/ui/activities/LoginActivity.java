@@ -2,22 +2,26 @@ package org.nikanikoo.flux.ui.activities;
 
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.AutoCompleteTextView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.color.DynamicColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
@@ -27,18 +31,30 @@ import org.nikanikoo.flux.data.managers.ProfileManager;
 import org.nikanikoo.flux.data.models.UserProfile;
 import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.security.AccountManager;
+import org.nikanikoo.flux.ui.adapters.InstancesAdapter;
 import org.nikanikoo.flux.utils.LocaleManager;
 import org.nikanikoo.flux.utils.ThemeManager;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class LoginActivity extends AppCompatActivity {
 
-    private AutoCompleteTextView spinnerInstance;
-    private TextInputLayout layoutCustomInstance;
+    private TextInputLayout emailLayout;
     private TextInputLayout inputPassword;
-    private TextInputEditText editCustomInstance;
     private TextInputEditText editLogin;
     private TextInputEditText editPassword;
     private MaterialButton btnLogin;
+    private CoordinatorLayout coordinatorLayout;
+    private View dimOverlay;
+    private LinearLayout bottomSheet;
+    private BottomSheetBehavior<LinearLayout> bottomSheetBehavior;
+    private RecyclerView recyclerViewInstances;
+    private InstancesAdapter instancesAdapter;
+    private TextView selectedInstanceName;
+    private TextView selectedInstanceUrl;
+    private TextView selectedInstancePing;
+    private TextView textAddInstance;
 
     private static final String[] INSTANCE_URLS = {
         "https://api.openvk.org",
@@ -47,9 +63,24 @@ public class LoginActivity extends AppCompatActivity {
         "https://vepurovk.xyz"
     };
     
-    private String[] INSTANCE_DISPLAY_NAMES;
+    private static final String[] INSTANCE_DISPLAY_NAMES = {
+        "api.openvk.org",
+        "openvk.xyz",
+        "api.vepurovk.fun",
+        "vepurovk.xyz"
+    };
     
-    private String CUSTOM_OPTION;
+    private static final String[] INSTANCE_PINGS = {
+        "?ms",
+        "?ms",
+        "?ms",
+        "?ms"
+    };
+    
+    private final List<String> instanceUrlsList = new ArrayList<>();
+    private final List<String> instanceDisplayNamesList = new ArrayList<>();
+    private final List<String> instancePingsList = new ArrayList<>();
+    
     private int selectedInstanceIndex = 0;
 
     @Override
@@ -65,16 +96,6 @@ public class LoginActivity extends AppCompatActivity {
         themeManager.applyThemeToActivity(this);
         super.onCreate(savedInstanceState);
 
-        INSTANCE_DISPLAY_NAMES = new String[] {
-                "api.openvk.org",
-                "openvk.xyz",
-                "api.vepurovk.fun",
-                "vepurovk.xyz",
-                getString(R.string.instance_display_names_custom)
-        };
-
-        CUSTOM_OPTION = getString(R.string.instance_display_names_custom);
-        
         setContentView(R.layout.activity_login);
         
         ThemeManager.applySystemBarsAppearance(this);
@@ -87,86 +108,131 @@ public class LoginActivity extends AppCompatActivity {
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
 
-        spinnerInstance = findViewById(R.id.spinner_instance);
-        layoutCustomInstance = findViewById(R.id.layout_custom_instance);
-        editCustomInstance = findViewById(R.id.edit_custom_instance);
+        coordinatorLayout = findViewById(R.id.coordinatorLayout);
+        dimOverlay = findViewById(R.id.dimOverlay);
+        bottomSheet = findViewById(R.id.bottomSheet);
+        emailLayout = findViewById(R.id.emailLayout);
+        inputPassword = findViewById(R.id.input_password);
         editLogin = findViewById(R.id.edit_login);
         editPassword = findViewById(R.id.edit_password);
         btnLogin = findViewById(R.id.btn_login);
-        inputPassword = findViewById(R.id.input_password);
+        selectedInstanceName = findViewById(R.id.selectedInstanceName);
+        selectedInstanceUrl = findViewById(R.id.selectedInstanceUrl);
+        selectedInstancePing = findViewById(R.id.selectedInstancePing);
+        textAddInstance = findViewById(R.id.textAddInstance);
+        recyclerViewInstances = findViewById(R.id.recyclerViewInstances);
 
-        setupInstanceSpinner();
+        // Инициализируем списки из статических массивов
+        for (int i = 0; i < INSTANCE_URLS.length; i++) {
+            instanceUrlsList.add(INSTANCE_URLS[i]);
+            instanceDisplayNamesList.add(INSTANCE_DISPLAY_NAMES[i]);
+            instancePingsList.add(generateRandomPing());
+        }
+        
+        setupBottomSheet();
+        setupInstancesList();
+        updateSelectedInstanceDisplay();
 
-        editPassword.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        inputPassword.setPasswordVisibilityToggleEnabled(true);
+        btnLogin.setOnClickListener(v -> performLogin());
 
-        btnLogin.setOnClickListener(new View.OnClickListener() {
+        findViewById(R.id.btnRegister).setOnClickListener(v -> {
+            Toast.makeText(this, getString(R.string.closed), Toast.LENGTH_SHORT).show();
+        });
+
+        findViewById(R.id.textAddInstance).setOnClickListener(v -> {
+            showAddInstanceDialog();
+        });
+    }
+    
+    private void setupBottomSheet() {
+        bottomSheetBehavior = BottomSheetBehavior.from(bottomSheet);
+        bottomSheetBehavior.setPeekHeight(90);
+        bottomSheetBehavior.setHideable(false);
+        bottomSheetBehavior.addBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
             @Override
-            public void onClick(View v) {
-                performLogin();
+            public void onStateChanged(View bottomSheet, int newState) {
+                if (newState == BottomSheetBehavior.STATE_EXPANDED) {
+                    dimOverlay.setVisibility(View.VISIBLE);
+                    dimOverlay.setAlpha(1f);
+                } else if (newState == BottomSheetBehavior.STATE_COLLAPSED) {
+                    dimOverlay.setVisibility(View.GONE);
+                }
+            }
+
+            @Override
+            public void onSlide(View bottomSheet, float slideOffset) {
+                if (slideOffset > 0) {
+                    dimOverlay.setVisibility(View.VISIBLE);
+                    dimOverlay.setAlpha(slideOffset);
+                } else {
+                    dimOverlay.setVisibility(View.GONE);
+                }
             }
         });
 
-        findViewById(R.id.text_forgot_password).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Toast.makeText(LoginActivity.this, getString(R.string.closed), Toast.LENGTH_SHORT).show();
-            }
-        });
-
-        findViewById(R.id.text_register).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Toast.makeText(LoginActivity.this, getString(R.string.closed), Toast.LENGTH_SHORT).show();
+        findViewById(R.id.selectedInstanceContainer).setOnClickListener(v -> {
+            if (bottomSheetBehavior.getState() != BottomSheetBehavior.STATE_EXPANDED) {
+                bottomSheetBehavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+            } else {
+                bottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
             }
         });
     }
     
-    private void setupInstanceSpinner() {
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
-            this,
-            android.R.layout.simple_dropdown_item_1line,
-            INSTANCE_DISPLAY_NAMES
-        );
-        
-        spinnerInstance.setAdapter(adapter);
-
-        spinnerInstance.setText(INSTANCE_DISPLAY_NAMES[0], false);
-        selectedInstanceIndex = 0;
-        
-        spinnerInstance.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                selectedInstanceIndex = position;
-
-                if (INSTANCE_DISPLAY_NAMES[position].equals(CUSTOM_OPTION)) {
-                    layoutCustomInstance.setVisibility(View.VISIBLE);
-                    editCustomInstance.requestFocus();
-                } else {
-                    layoutCustomInstance.setVisibility(View.GONE);
-                }
-            }
-        });
+    private void setupInstancesList() {
+        recyclerViewInstances.setLayoutManager(new LinearLayoutManager(this));
+        List<InstancesAdapter.InstanceItem> items = new ArrayList<>();
+        for (int i = 0; i < instanceDisplayNamesList.size(); i++) {
+            items.add(new InstancesAdapter.InstanceItem(
+                instanceDisplayNamesList.get(i),
+                instanceUrlsList.get(i),
+                instancePingsList.get(i),
+                i == selectedInstanceIndex
+            ));
+        }
+        instancesAdapter = new InstancesAdapter(items, this::onInstanceSelected);
+        recyclerViewInstances.setAdapter(instancesAdapter);
     }
-
+    
+    private String generateRandomPing() {
+        // Генерируем случайный пинг от 30 до 350 мс
+        int pingMs = 30 + (int)(Math.random() * 320);
+        return pingMs + "ms";
+    }
+    
+    private void onInstanceSelected(int position) {
+        selectedInstanceIndex = position;
+        updateSelectedInstanceDisplay();
+        instancesAdapter.setSelectedPosition(position);
+        bottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
+    }
+    
+    private void updateSelectedInstanceDisplay() {
+        if (selectedInstanceIndex >= 0 && selectedInstanceIndex < instanceDisplayNamesList.size()) {
+            selectedInstanceName.setText(instanceDisplayNamesList.get(selectedInstanceIndex));
+            selectedInstanceUrl.setText(instanceUrlsList.get(selectedInstanceIndex));
+            selectedInstancePing.setText(instancePingsList.get(selectedInstanceIndex));
+        }
+    }
+    
     private void performLogin() {
         String instance = getSelectedInstance();
         String login = editLogin.getText().toString().trim();
         String password = editPassword.getText().toString().trim();
 
-        if (instance.isEmpty()) {
-            Toast.makeText(this, getString(R.string.select_instance), Toast.LENGTH_SHORT).show();
-            return;
-        }
         if (login.isEmpty()) {
-            editLogin.setError(getString(R.string.login_enter_email));
+            emailLayout.setError(getString(R.string.login_enter_email));
             editLogin.requestFocus();
             return;
+        } else {
+            emailLayout.setError(null);
         }
         if (password.isEmpty()) {
-            editPassword.setError(getString(R.string.login_enter_password));
+            inputPassword.setError(getString(R.string.login_enter_password));
             editPassword.requestFocus();
             return;
+        } else {
+            inputPassword.setError(null);
         }
 
         final String formattedInstance = formatInstanceUrl(instance);
@@ -180,21 +246,15 @@ public class LoginActivity extends AppCompatActivity {
     }
     
     private String getSelectedInstance() {
-        if (INSTANCE_DISPLAY_NAMES[selectedInstanceIndex].equals(CUSTOM_OPTION)) {
-            String customInstance = editCustomInstance.getText().toString().trim();
-            if (customInstance.isEmpty()) {
-                editCustomInstance.setError(getString(R.string.instance_address_hint));
-                return "";
-            }
-            return customInstance;
-        } else {
-            return INSTANCE_URLS[selectedInstanceIndex];
+        if (selectedInstanceIndex >= 0 && selectedInstanceIndex < instanceUrlsList.size()) {
+            return instanceUrlsList.get(selectedInstanceIndex);
         }
+        return "https://api.openvk.org";
     }
 
     private String formatInstanceUrl(String instance) {
         if (instance == null || instance.trim().isEmpty()) {
-            return "https://api.openvk.org"; // По умолчанию
+            return "https://api.openvk.org";
         }
         
         instance = instance.trim();
@@ -342,6 +402,7 @@ public class LoginActivity extends AppCompatActivity {
             if (!errorMsg.isEmpty()) {
                 if (errorMsg.contains("Invalid username") || errorMsg.contains("Invalid password") || errorMsg.contains("invalid_grant")) {
                     message = getString(R.string.login_error1);
+                    showCustomError();
                 } else if (errorMsg.contains("Invalid 2FA")) {
                     message = getString(R.string.login_error2);
                 } else {
@@ -353,6 +414,7 @@ public class LoginActivity extends AppCompatActivity {
                 
                 if (errorType.equals("invalid_grant") || errorDescription.contains("Invalid username or password")) {
                     message = getString(R.string.login_error1);
+                    showCustomError();
                 } else if (errorType.equals("invalid_client")) {
                     message = getString(R.string.login_error3);
                 } else if (!errorDescription.isEmpty()) {
@@ -366,7 +428,9 @@ public class LoginActivity extends AppCompatActivity {
                 message = getString(R.string.error_unknown);
             }
             
-            Toast.makeText(LoginActivity.this, message, Toast.LENGTH_LONG).show();
+            if (!message.isEmpty() && !message.equals(getString(R.string.login_error1))) {
+                Toast.makeText(LoginActivity.this, message, Toast.LENGTH_LONG).show();
+            }
             
         } catch (Exception e) {
             System.out.println("Ошибка парсинга JSON: " + e.getMessage());
@@ -375,5 +439,62 @@ public class LoginActivity extends AppCompatActivity {
         
         btnLogin.setEnabled(true);
         btnLogin.setText(getString(R.string.btn_login));
+    }
+    
+    private void showAddInstanceDialog() {
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_instance, null);
+        TextView title = dialogView.findViewById(R.id.dialog_title);
+        TextInputLayout urlLayout = dialogView.findViewById(R.id.url_input_layout);
+        TextInputEditText urlEdit = dialogView.findViewById(R.id.url_input);
+        
+        new MaterialAlertDialogBuilder(this)
+            .setView(dialogView)
+            .setPositiveButton(getString(R.string.add), (dialog, which) -> {
+                String url = urlEdit != null ? urlEdit.getText().toString().trim() : "";
+                if (url.isEmpty()) {
+                    Toast.makeText(this, getString(R.string.instance_url_empty), Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                // Добавляем новый инстанс
+                String displayName = url.replaceFirst("^(https?://)?(www\\.)?", "");
+                if (displayName.endsWith("/")) {
+                    displayName = displayName.substring(0, displayName.length() - 1);
+                }
+                String ping = generateRandomPing();
+                instanceUrlsList.add(url);
+                instanceDisplayNamesList.add(displayName);
+                instancePingsList.add(ping);
+                
+                // Обновляем адаптер
+                setupInstancesList();
+                // Выбираем новый инстанс
+                selectedInstanceIndex = instanceUrlsList.size() - 1;
+                updateSelectedInstanceDisplay();
+                instancesAdapter.setSelectedPosition(selectedInstanceIndex);
+                
+                Toast.makeText(this, getString(R.string.instance_added), Toast.LENGTH_SHORT).show();
+            })
+            .setNegativeButton(getString(R.string.cancel), null)
+            .show();
+    }
+    
+    private void showCustomError() {
+        // Подсветка полей ошибкой
+        emailLayout.setErrorIconDrawable(R.drawable.ic_error_custom);
+        emailLayout.setError(" ");
+        inputPassword.setErrorIconDrawable(R.drawable.ic_error_custom);
+        inputPassword.setError(" ");
+        
+        // Показываем кастомный snackbar
+        Snackbar snackbar = Snackbar.make(coordinatorLayout, "", Snackbar.LENGTH_LONG);
+        Snackbar.SnackbarLayout layout = (Snackbar.SnackbarLayout) snackbar.getView();
+        layout.setBackgroundColor(Color.TRANSPARENT);
+        layout.setPadding(0, 0, 0, 0);
+        
+        View customView = getLayoutInflater().inflate(R.layout.custom_error_snackbar, null);
+        layout.addView(customView, 0);
+        
+        snackbar.setAnchorView(R.id.bottomSheet);
+        snackbar.show();
     }
 }
