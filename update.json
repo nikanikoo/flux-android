@@ -1,7 +1,7 @@
 {
-  "versionCode": 37,
-  "versionName": "Build 4943a05 (37)",
-  "changelog": "- feat(utils): ignore SSL certificates in update checker (4943a05)\n",
-  "releaseApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-37/flux.apk",
-  "debugApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-37/flux-debug.apk"
+  "versionCode": 38,
+  "versionName": "Build 0717cd6 (38)",
+  "changelog": "- test (0717cd6)\n",
+  "releaseApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-38/flux.apk",
+  "debugApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-38/flux-debug.apk"
 }
