@@ -1,7 +1,7 @@
 {
-  "versionCode": 36,
-  "versionName": "Build 97f8ef9 (36)",
-  "changelog": "- feat(updates): implement automated update JSON generation and transition to gh-pages API (97f8ef9)\n",
-  "releaseApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-36/flux.apk",
-  "debugApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-36/flux-debug.apk"
+  "versionCode": 37,
+  "versionName": "Build 4943a05 (37)",
+  "changelog": "- feat(utils): ignore SSL certificates in update checker (4943a05)\n",
+  "releaseApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-37/flux.apk",
+  "debugApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-37/flux-debug.apk"
 }
