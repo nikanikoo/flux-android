@@ -1,7 +1,7 @@
 {
-  "versionCode": 39,
-  "versionName": "Build c6fa36f (39)",
-  "changelog": "- feat(utils): disable caching for update checks (c6fa36f)\n",
-  "releaseApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-39/flux.apk",
-  "debugApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-39/flux-debug.apk"
+  "versionCode": 40,
+  "versionName": "Build 449d4a9 (40)",
+  "changelog": "- хочу кисель (449d4a9)\n",
+  "releaseApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-40/flux.apk",
+  "debugApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-40/flux-debug.apk"
 }
