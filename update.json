@@ -1,7 +1,7 @@
 {
-  "versionCode": 41,
-  "versionName": "Build d60a480 (41)",
-  "changelog": "- fix(utils): improve update download reliability with browser fallback (d60a480)\n",
-  "releaseApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-41/flux.apk",
-  "debugApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-41/flux-debug.apk"
+  "versionCode": 42,
+  "versionName": "Build 055c48f (42)",
+  "changelog": "- абоба (055c48f)\n",
+  "releaseApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-42/flux.apk",
+  "debugApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-42/flux-debug.apk"
 }
