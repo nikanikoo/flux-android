@@ -1,7 +1,7 @@
 {
-  "versionCode": 45,
-  "versionName": "Build fbe3683 (45)",
+  "versionCode": 46,
+  "versionName": "Build fbe3683 (46)",
   "changelog": "- ci(github): set release status to release (fbe3683)\n",
-  "releaseApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-45/flux.apk",
-  "debugApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-45/flux-debug.apk"
+  "releaseApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-46/flux.apk",
+  "debugApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-46/flux-debug.apk"
 }
