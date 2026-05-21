@@ -1,7 +1,7 @@
 {
-  "versionCode": 46,
-  "versionName": "Build fbe3683 (46)",
-  "changelog": "- ci(github): set release status to release (fbe3683)\n",
-  "releaseApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-46/flux.apk",
-  "debugApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-46/flux-debug.apk"
+  "versionCode": 47,
+  "versionName": "Build d6c35eb (47)",
+  "changelog": "- feat(posts): display copyright in posts (#56) (d6c35eb)\n- feat(posts): display platform device icons in posts (ee353c2)\n- fix(posts): correct UI updates for likes in posts and comments (#68) (3721dea)\n- fix(profile): small drop-down list in profile (#72) (be8ff28)\n- fix(longpoll): migrate LongPollService to specialUse foreground service type and fix avatar loading leaks (#74) (976663b)\n- fix(player): handle media button events in AudioPlayerService (#75) (4f41d56)\n- ci(android): add new check job (da7accb)\n- ci(github): set release status to release (fbe3683)\n- бл (84eb9f7)\n- fix(updates): support update download for legacy Android versions (90403a2)\n- абоба (055c48f)\n- fix(utils): improve update download reliability with browser fallback (d60a480)\n- хочу кисель (449d4a9)\n- feat(utils): disable caching for update checks (c6fa36f)\n- test (0717cd6)\n- feat(utils): ignore SSL certificates in update checker (4943a05)\n- feat(updates): implement automated update JSON generation and transition to gh-pages API (97f8ef9)\n- ci(github): add debug APK to releases and update checker logic (5152095)\n- ci(android): move buildToolsVersion to env (126989b)\n- ci(android): add buildToolsVersion 34 (87294af)\n- feat(updates): add in-app update checker and automatic GitHub releases (b98cb28)\n",
+  "releaseApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-47/flux.apk",
+  "debugApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-47/flux-debug.apk"
 }
