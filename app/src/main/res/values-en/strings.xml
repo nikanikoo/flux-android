@@ -584,4 +584,9 @@
     <string name="transfer_err_invalid_recipient">Invalid recipient</string>
     <string name="transfer_err_message_too_long">Message is too long</string>
 
+    <!-- Navigation Settings -->
+    <string name="navigation_style_title">Navigation menu style</string>
+    <string name="navigation_style_drawer">Side menu (Drawer)</string>
+    <string name="navigation_style_bottom">Bottom menu</string>
+
 </resources>

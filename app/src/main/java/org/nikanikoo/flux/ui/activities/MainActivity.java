@@ -36,6 +36,15 @@ import org.nikanikoo.flux.utils.LocaleManager;
 import org.nikanikoo.flux.utils.ThemeManager;
 import org.nikanikoo.flux.utils.ValidationUtils;
 
+import android.content.SharedPreferences;
+import android.view.LayoutInflater;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 /**
  * Главная Activity приложения.
  * Использует NavigationController для управления навигацией и MiniPlayerController для плеера.
@@ -58,6 +67,7 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
     private int currentThemeMode = -1;
     private int currentThemeStyle = -1;
     private int currentContrastMode = -1;
+    private boolean currentBottomNavEnabled;
 
     private final OnBackPressedCallback backPressedCallback = new OnBackPressedCallback(true) {
         @Override
@@ -101,6 +111,7 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
         Logger.checkAndShowCrashReport(this);
         
         initializeManagers();
+        currentBottomNavEnabled = isBottomNavigationEnabled();
         setupControllers(); // Setup controllers BEFORE toolbar (navigationController needed)
         setupToolbar();
         setupLongPoll();
@@ -213,6 +224,7 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
         }
         
         navigationController = new NavigationController(this, drawerLayout, navigationView, navigationRailView, toolbar);
+        updateNavigationMode();
         
         // Mini Player Controller
         miniPlayerController = new MiniPlayerController(this);
@@ -380,9 +392,10 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
         ThemeManager themeManager = ThemeManager.getInstance(this);
         if (currentThemeMode != themeManager.getThemeMode() ||
             currentThemeStyle != themeManager.getThemeStyle() ||
-            currentContrastMode != themeManager.getContrastMode()) {
+            currentContrastMode != themeManager.getContrastMode() ||
+            currentBottomNavEnabled != isBottomNavigationEnabled()) {
             
-            Logger.d(TAG, "Theme changed, recreating MainActivity");
+            Logger.d(TAG, "Theme or navigation mode changed, recreating MainActivity");
             recreate();
             return;
         }
@@ -452,6 +465,248 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
         return super.onOptionsItemSelected(item);
     }
     
+    public NavigationController getNavigationController() {
+        return navigationController;
+    }
+
+    public boolean isBottomNavigationEnabled() {
+        SharedPreferences prefs = getSharedPreferences("navigation_prefs", Context.MODE_PRIVATE);
+        return prefs.getBoolean("bottom_nav_enabled", false);
+    }
+
+    public void updateNavigationMode() {
+        boolean isBottomNav = isBottomNavigationEnabled();
+        LinearLayout bottomNavContainer = findViewById(R.id.custom_bottom_navigation);
+        View navigationRailView = findViewById(R.id.navigation_rail);
+        org.nikanikoo.flux.ui.custom.CustomDrawerLayout drawerLayout = findViewById(R.id.drawer_layout);
+        
+        boolean isTablet = getResources().getBoolean(R.bool.is_tablet);
+        
+        if (bottomNavContainer != null) {
+            bottomNavContainer.setVisibility(isBottomNav ? View.VISIBLE : View.GONE);
+        }
+        
+        if (navigationRailView != null) {
+            navigationRailView.setVisibility((isTablet && !isBottomNav) ? View.VISIBLE : View.GONE);
+        }
+        
+        if (drawerLayout != null) {
+            if (isBottomNav) {
+                drawerLayout.setDrawerLockMode(androidx.drawerlayout.widget.DrawerLayout.LOCK_MODE_LOCKED_CLOSED);
+            } else {
+                drawerLayout.setDrawerLockMode(androidx.drawerlayout.widget.DrawerLayout.LOCK_MODE_UNLOCKED);
+            }
+        }
+        
+        if (isBottomNav) {
+            refreshBottomNavigation();
+        }
+        
+        if (navigationController != null) {
+            navigationController.updateDrawerToggleForBackStack(getSupportFragmentManager().getBackStackEntryCount());
+        }
+    }
+
+    public void refreshBottomNavigation() {
+        LinearLayout bottomNavContainer = findViewById(R.id.custom_bottom_navigation);
+        if (bottomNavContainer == null) return;
+        
+        bottomNavContainer.removeAllViews();
+        
+        SharedPreferences prefs = getSharedPreferences("navigation_prefs", Context.MODE_PRIVATE);
+        boolean showLabels = prefs.getBoolean("bottom_nav_show_labels", true);
+        String savedItems = prefs.getString("bottom_nav_items", "drawer_news,drawer_messages,drawer_friends,drawer_notification");
+        
+        List<String> items = new ArrayList<>();
+        if (!savedItems.isEmpty()) {
+            items.addAll(Arrays.asList(savedItems.split(",")));
+        }
+        
+        items.add("drawer_menu_dashboard");
+        
+        LayoutInflater inflater = LayoutInflater.from(this);
+        int currentId = navigationController != null ? navigationController.getCurrentFragmentId() : -1;
+        
+        for (String tag : items) {
+            View itemView = inflater.inflate(R.layout.item_custom_bottom_nav, bottomNavContainer, false);
+            int itemId = getDrawerIdForTag(tag);
+            itemView.setTag(itemId);
+            
+            ImageView iconView = itemView.findViewById(R.id.nav_item_icon);
+            TextView labelView = itemView.findViewById(R.id.nav_item_label);
+            
+            if (iconView != null) {
+                iconView.setImageResource(getIconForTag(tag));
+            }
+            
+            if (labelView != null) {
+                if (showLabels && !"drawer_menu_dashboard".equals(tag)) {
+                    labelView.setVisibility(View.VISIBLE);
+                    labelView.setText(getNameResForTag(tag));
+                } else if ("drawer_menu_dashboard".equals(tag)) {
+                    labelView.setVisibility(showLabels ? View.VISIBLE : View.GONE);
+                    labelView.setText("Меню");
+                } else {
+                    labelView.setVisibility(View.GONE);
+                }
+            }
+            
+            itemView.setOnClickListener(v -> {
+                if (navigationController != null) {
+                    navigationController.navigateToDrawerItem(itemId);
+                }
+            });
+            
+            bottomNavContainer.addView(itemView);
+        }
+        
+        updateBottomNavigationSelection(currentId);
+        updateAllBadges();
+    }
+
+    public void updateBottomNavigationSelection(int selectedId) {
+        LinearLayout bottomNav = findViewById(R.id.custom_bottom_navigation);
+        if (bottomNav == null) return;
+
+        int activeColor = getColorFromAttr(this, androidx.appcompat.R.attr.colorPrimary);
+        int inactiveColor = getColorFromAttr(this, androidx.appcompat.R.attr.colorControlNormal);
+
+        for (int i = 0; i < bottomNav.getChildCount(); i++) {
+            View child = bottomNav.getChildAt(i);
+            Object tag = child.getTag();
+            if (tag instanceof Integer) {
+                int itemId = (Integer) tag;
+                boolean isSelected = (itemId == selectedId);
+
+                ImageView iconView = child.findViewById(R.id.nav_item_icon);
+                TextView labelView = child.findViewById(R.id.nav_item_label);
+
+                if (iconView != null) {
+                    iconView.setImageTintList(android.content.res.ColorStateList.valueOf(
+                            isSelected ? activeColor : inactiveColor
+                    ));
+                }
+                if (labelView != null) {
+                    labelView.setTextColor(isSelected ? activeColor : inactiveColor);
+                    labelView.setTypeface(null, isSelected ? android.graphics.Typeface.BOLD : android.graphics.Typeface.NORMAL);
+                }
+            }
+        }
+    }
+
+    private void updateBottomBadge(int itemId, int count) {
+        LinearLayout bottomNav = findViewById(R.id.custom_bottom_navigation);
+        if (bottomNav != null) {
+            for (int i = 0; i < bottomNav.getChildCount(); i++) {
+                View child = bottomNav.getChildAt(i);
+                Object tag = child.getTag();
+                if (tag instanceof Integer && (Integer) tag == itemId) {
+                    TextView badgeView = child.findViewById(R.id.nav_item_badge);
+                    if (badgeView != null) {
+                        if (count > 0) {
+                            badgeView.setVisibility(View.VISIBLE);
+                            badgeView.setText(count > 99 ? "99+" : String.valueOf(count));
+                        } else {
+                            badgeView.setVisibility(View.GONE);
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    private int getColorFromAttr(Context context, int attr) {
+        android.util.TypedValue typedValue = new android.util.TypedValue();
+        context.getTheme().resolveAttribute(attr, typedValue, true);
+        return typedValue.data;
+    }
+
+    private int getIconForTag(String tag) {
+        switch (tag) {
+            case "drawer_news":
+                return R.drawable.ic_newspaper;
+            case "drawer_messages":
+                return R.drawable.ic_chat_bubble;
+            case "drawer_friends":
+                return R.drawable.ic_contacts;
+            case "drawer_groups":
+                return R.drawable.ic_group;
+            case "drawer_photos":
+                return R.drawable.ic_photo;
+            case "drawer_videos":
+                return R.drawable.ic_video_library;
+            case "drawer_audio":
+                return R.drawable.ic_library_music;
+            case "drawer_notes":
+                return R.drawable.ic_note_stack;
+            case "drawer_notification":
+                return R.drawable.ic_notifications;
+            case "drawer_settings":
+                return R.drawable.ic_settings;
+            case "drawer_menu_dashboard":
+                return R.drawable.ic_menu;
+            default:
+                return R.drawable.ic_newspaper;
+        }
+    }
+
+    private int getNameResForTag(String tag) {
+        switch (tag) {
+            case "drawer_news":
+                return R.string.nav_news;
+            case "drawer_messages":
+                return R.string.nav_messages;
+            case "drawer_friends":
+                return R.string.nav_friends;
+            case "drawer_groups":
+                return R.string.nav_groups;
+            case "drawer_photos":
+                return R.string.nav_photos;
+            case "drawer_videos":
+                return R.string.nav_videos;
+            case "drawer_audio":
+                return R.string.nav_music;
+            case "drawer_notes":
+                return R.string.nav_notes;
+            case "drawer_notification":
+                return R.string.nav_notifications;
+            case "drawer_settings":
+                return R.string.nav_settings;
+            default:
+                return R.string.nav_news;
+        }
+    }
+
+    private int getDrawerIdForTag(String tag) {
+        switch (tag) {
+            case "drawer_news":
+                return R.id.drawer_news;
+            case "drawer_messages":
+                return R.id.drawer_messages;
+            case "drawer_friends":
+                return R.id.drawer_friends;
+            case "drawer_groups":
+                return R.id.drawer_groups;
+            case "drawer_photos":
+                return R.id.drawer_photos;
+            case "drawer_videos":
+                return R.id.drawer_videos;
+            case "drawer_audio":
+                return R.id.drawer_audio;
+            case "drawer_notes":
+                return R.id.drawer_notes;
+            case "drawer_notification":
+                return R.id.drawer_notification;
+            case "drawer_settings":
+                return R.id.drawer_settings;
+            case "drawer_menu_dashboard":
+                return R.id.drawer_menu_dashboard;
+            default:
+                return R.id.drawer_news;
+        }
+    }
+
     /**
      * Установить заголовок Toolbar
      */
@@ -523,6 +778,12 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
                         updateRailBadge(navigationRailView, R.id.drawer_notification, notifications);
                         updateRailBadge(navigationRailView, R.id.drawer_messages, messages);
                         updateRailBadge(navigationRailView, R.id.drawer_friends, friends);
+                    }
+
+                    if (isBottomNavigationEnabled()) {
+                        updateBottomBadge(R.id.drawer_notification, notifications);
+                        updateBottomBadge(R.id.drawer_messages, messages);
+                        updateBottomBadge(R.id.drawer_friends, friends);
                     }
                 });
             }

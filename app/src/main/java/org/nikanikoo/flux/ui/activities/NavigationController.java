@@ -30,6 +30,7 @@ import org.nikanikoo.flux.ui.fragments.news.NewsFragment;
 import org.nikanikoo.flux.ui.fragments.notifications.NotificationsFragment;
 import org.nikanikoo.flux.ui.fragments.profile.ProfileFragment;
 import org.nikanikoo.flux.ui.fragments.settings.SettingsFragment;
+import org.nikanikoo.flux.ui.fragments.menu.MenuDashboardFragment;
 import org.nikanikoo.flux.utils.Logger;
 
 import java.util.List;
@@ -418,12 +419,15 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
     
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-        int id = item.getItemId();
-        
+        navigateToDrawerItem(item.getItemId());
+        return true;
+    }
+
+    public void navigateToDrawerItem(int id) {
         // Предотвращаем повторное открытие текущего фрагмента
         if (id == currentFragmentId) {
             closeDrawer();
-            return true;
+            return;
         }
         
         Fragment fragment = null;
@@ -461,6 +465,10 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
             fragment = new SettingsFragment();
             tag = "settings";
             activity.setToolbarTitle(activity.getString(R.string.nav_settings));
+        } else if (id == R.id.drawer_menu_dashboard) {
+            fragment = new MenuDashboardFragment();
+            tag = "menu_dashboard";
+            activity.setToolbarTitle("Меню");
         }
         
         if (fragment != null) {
@@ -469,7 +477,6 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
         }
         
         closeDrawer();
-        return true;
     }
     
     /**
@@ -520,6 +527,9 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
                 }
             }
         }
+        if (activity.isBottomNavigationEnabled()) {
+            activity.updateBottomNavigationSelection(id);
+        }
     }
     
     /**
@@ -561,6 +571,8 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
         Logger.d(TAG, "updateDrawerToggleForBackStack: backStackCount=" + backStackCount + 
                 ", current drawerIndicatorEnabled=" + drawerToggle.isDrawerIndicatorEnabled());
         
+        boolean isBottomNav = activity.isBottomNavigationEnabled();
+        
         if (backStackCount > 0) {
             drawerToggle.setDrawerIndicatorEnabled(false);
             if (activity.getSupportActionBar() != null) {
@@ -568,12 +580,20 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
             }
             Logger.d(TAG, "Set drawerIndicatorEnabled=false, displayHomeAsUpEnabled=true");
         } else {
-            boolean isTablet = navigationRailView != null && navigationRailView.getVisibility() == View.VISIBLE;
-            drawerToggle.setDrawerIndicatorEnabled(!isTablet);
-            if (activity.getSupportActionBar() != null) {
-                activity.getSupportActionBar().setDisplayHomeAsUpEnabled(!isTablet);
+            if (isBottomNav) {
+                drawerToggle.setDrawerIndicatorEnabled(false);
+                if (activity.getSupportActionBar() != null) {
+                    activity.getSupportActionBar().setDisplayHomeAsUpEnabled(false);
+                }
+                Logger.d(TAG, "Bottom navigation enabled: disabled drawer indicator and HomeAsUp");
+            } else {
+                boolean isTablet = navigationRailView != null && navigationRailView.getVisibility() == View.VISIBLE;
+                drawerToggle.setDrawerIndicatorEnabled(!isTablet);
+                if (activity.getSupportActionBar() != null) {
+                    activity.getSupportActionBar().setDisplayHomeAsUpEnabled(!isTablet);
+                }
+                Logger.d(TAG, "Set drawerIndicatorEnabled=" + !isTablet + ", displayHomeAsUpEnabled=" + (!isTablet));
             }
-            Logger.d(TAG, "Set drawerIndicatorEnabled=" + !isTablet + ", displayHomeAsUpEnabled=" + (!isTablet));
         }
         drawerToggle.syncState();
     }

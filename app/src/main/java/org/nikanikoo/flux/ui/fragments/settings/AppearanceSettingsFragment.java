@@ -26,9 +26,11 @@ public class AppearanceSettingsFragment extends Fragment {
     private TextView themeModeValue;
     private TextView colorSchemeValue;
     private TextView contrastValue;
+    private TextView navigationModeValue;
     private View settingsThemeMode;
     private View settingsColorScheme;
     private View settingsContrast;
+    private View settingsNavigationMode;
 
     @Nullable
     @Override
@@ -48,22 +50,28 @@ public class AppearanceSettingsFragment extends Fragment {
         themeModeValue = view.findViewById(R.id.theme_mode_value);
         colorSchemeValue = view.findViewById(R.id.color_scheme_value);
         contrastValue = view.findViewById(R.id.contrast_value);
+        navigationModeValue = view.findViewById(R.id.navigation_mode_value);
         
         settingsThemeMode = view.findViewById(R.id.settings_theme_mode);
         settingsColorScheme = view.findViewById(R.id.settings_color_scheme);
         settingsContrast = view.findViewById(R.id.settings_contrast);
+        settingsNavigationMode = view.findViewById(R.id.settings_navigation_mode);
     }
     
     private void setupClickListeners() {
         settingsThemeMode.setOnClickListener(v -> showThemeModeDialog());
         settingsColorScheme.setOnClickListener(v -> showColorSchemeDialog());
         settingsContrast.setOnClickListener(v -> showContrastDialog());
+        settingsNavigationMode.setOnClickListener(v -> showNavigationModeDialog());
     }
     
     private void updateThemeValues() {
         themeModeValue.setText(themeManager.getThemeName(themeManager.getThemeMode()));
         colorSchemeValue.setText(themeManager.getStyleName(themeManager.getThemeStyle()));
         contrastValue.setText(themeManager.getContrastName(themeManager.getContrastMode()));
+        boolean isBottomNav = requireContext().getSharedPreferences("navigation_prefs", android.content.Context.MODE_PRIVATE)
+                .getBoolean("bottom_nav_enabled", false);
+        navigationModeValue.setText(getString(isBottomNav ? R.string.navigation_style_bottom : R.string.navigation_style_drawer));
     }
     
     private void showThemeModeDialog() {
@@ -225,6 +233,29 @@ public class AppearanceSettingsFragment extends Fragment {
             .create();
         
         dialog.show();
+    }
+
+    private void showNavigationModeDialog() {
+        String[] options = {
+            getString(R.string.navigation_style_drawer),
+            getString(R.string.navigation_style_bottom)
+        };
+        
+        android.content.SharedPreferences prefs = requireContext().getSharedPreferences("navigation_prefs", android.content.Context.MODE_PRIVATE);
+        boolean currentBottomNav = prefs.getBoolean("bottom_nav_enabled", false);
+        int currentSelection = currentBottomNav ? 1 : 0;
+        
+        new MaterialAlertDialogBuilder(requireContext())
+            .setTitle(getString(R.string.navigation_style_title))
+            .setSingleChoiceItems(options, currentSelection, (dialog, which) -> {
+                boolean enableBottom = (which == 1);
+                prefs.edit().putBoolean("bottom_nav_enabled", enableBottom).apply();
+                dialog.dismiss();
+                updateThemeValues();
+                restartMainActivity();
+            })
+            .setNegativeButton(getString(R.string.cancel), null)
+            .show();
     }
     
     private void restartMainActivity() {

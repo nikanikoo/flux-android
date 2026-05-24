@@ -75,6 +75,16 @@
                 layout="@layout/mini_player"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"/>
+
+            <LinearLayout
+                android:id="@+id/custom_bottom_navigation"
+                android:layout_width="match_parent"
+                android:layout_height="58dp"
+                android:orientation="horizontal"
+                android:background="?attr/colorSurfaceContainer"
+                android:elevation="8dp"
+                android:gravity="center"
+                android:visibility="gone"/>
         </LinearLayout>
     </LinearLayout>
 

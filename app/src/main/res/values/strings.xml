@@ -665,4 +665,9 @@
     <string name="update_check_failed">Не удалось проверить обновления</string>
     <string name="update_check_btn">Проверить обновления</string>
 
+    <!-- Navigation Settings -->
+    <string name="navigation_style_title">Стиль меню</string>
+    <string name="navigation_style_drawer">Боковое меню (Drawer)</string>
+    <string name="navigation_style_bottom">Нижнее меню</string>
+
 </resources>
