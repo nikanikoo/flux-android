@@ -1,7 +1,7 @@
 {
-  "versionCode": 48,
-  "versionName": "Build b9bed31 (48)",
-  "changelog": "- ci(android): enhance commit checking logic (b9bed31)\n",
-  "releaseApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-48/flux.apk",
-  "debugApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-48/flux-debug.apk"
+  "versionCode": 49,
+  "versionName": "Build 7d1facf (49)",
+  "changelog": "- feat(utils): improve time formatting with localized strings and relative dates (7d1facf)\n- fix(toolbar): open newsfeed menu in other sections (#71) (2af49e7)\n- feat(profile): add menu profile (135ec9c)\n- feat(settings): add balance management and vote transfers (39d383c)\n",
+  "releaseApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-49/flux.apk",
+  "debugApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-49/flux-debug.apk"
 }
