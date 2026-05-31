@@ -1,7 +1,7 @@
 {
-  "versionCode": 51,
-  "versionName": "Build ee29423 (51)",
-  "changelog": "- ci(android): Update commit info step to include version code (ee29423)\n- feat(ui): changing theme via drawer menu (#70) (cf33085)\n",
-  "releaseApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-51/flux.apk",
-  "debugApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-51/flux-debug.apk"
+  "versionCode": 52,
+  "versionName": "Build dc63882 (52)",
+  "changelog": "- feat(posts): polls in posts (dc63882)\n- ci(android): fix generate update json and create release (475a114)\n- feat(audio): implement audio caching and offline playback support (by Lusell #66) (a6e1b2a)\n",
+  "releaseApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-52/flux.apk",
+  "debugApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-52/flux-debug.apk"
 }
