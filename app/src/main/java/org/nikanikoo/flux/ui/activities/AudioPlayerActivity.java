@@ -12,6 +12,7 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -23,6 +24,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.squareup.picasso.Picasso;
 
 import org.nikanikoo.flux.R;
+import org.nikanikoo.flux.data.managers.AudioManager;
 import org.nikanikoo.flux.data.models.Audio;
 import org.nikanikoo.flux.services.AudioPlayerService;
 import org.nikanikoo.flux.ui.adapters.audio.PlaylistAdapter;
@@ -51,6 +53,10 @@ public class AudioPlayerActivity extends AppCompatActivity implements AudioPlaye
     private ImageButton btnPlayPause;
     private ImageButton btnPrevious;
     private ImageButton btnNext;
+    private ImageButton btnAddToLibrary;
+
+    private AudioManager audioManager;
+    private boolean isAudioActionInProgress;
 
     private DrawerLayout drawerLayout;
     private RecyclerView playlistRecycler;
@@ -109,7 +115,9 @@ public class AudioPlayerActivity extends AppCompatActivity implements AudioPlaye
         btnPlayPause = findViewById(R.id.btn_play_pause);
         btnPrevious = findViewById(R.id.btn_previous);
         btnNext = findViewById(R.id.btn_next);
+        btnAddToLibrary = findViewById(R.id.btn_add_to_library);
         drawerLayout = findViewById(R.id.drawer_layout);
+        audioManager = AudioManager.getInstance(this);
         playlistRecycler = findViewById(R.id.playlist_recycler);
         playlistCount = findViewById(R.id.playlist_count);
         
@@ -147,6 +155,8 @@ public class AudioPlayerActivity extends AppCompatActivity implements AudioPlaye
                 playerService.next();
             }
         });
+
+        btnAddToLibrary.setOnClickListener(v -> toggleAddToLibrary());
 
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
@@ -222,6 +232,97 @@ public class AudioPlayerActivity extends AppCompatActivity implements AudioPlaye
 
         updatePlaylist();
         updatePlayPauseButton();
+        updateAddToLibraryButton();
+    }
+
+    private void toggleAddToLibrary() {
+        if (!serviceBound || isAudioActionInProgress) {
+            return;
+        }
+
+        Audio audio = playerService.getCurrentAudio();
+        if (audio == null) {
+            return;
+        }
+
+        isAudioActionInProgress = true;
+        btnAddToLibrary.setEnabled(false);
+
+        AudioManager.AudioActionCallback callback = new AudioManager.AudioActionCallback() {
+            @Override
+            public void onSuccess() {
+                runOnUiThread(() -> {
+                    isAudioActionInProgress = false;
+                    updateAddToLibraryButton();
+                    if (audio.isAdded()) {
+                        Toast.makeText(AudioPlayerActivity.this, R.string.audio_added, Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(AudioPlayerActivity.this, R.string.audio_removed, Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                runOnUiThread(() -> {
+                    isAudioActionInProgress = false;
+                    updateAddToLibraryButton();
+                    int messageId = audio.isAdded() ? R.string.audio_remove_error : R.string.audio_add_error;
+                    Toast.makeText(AudioPlayerActivity.this, getString(messageId) + error, Toast.LENGTH_SHORT).show();
+                });
+            }
+        };
+
+        if (audio.isAdded()) {
+            audioManager.deleteAudio(audio.getId(), audio.getOwnerId(), new AudioManager.AudioActionCallback() {
+                @Override
+                public void onSuccess() {
+                    audio.setAdded(false);
+                    callback.onSuccess();
+                }
+
+                @Override
+                public void onError(String error) {
+                    callback.onError(error);
+                }
+            });
+        } else {
+            audioManager.addAudio(audio.getId(), audio.getOwnerId(), new AudioManager.AudioActionCallback() {
+                @Override
+                public void onSuccess() {
+                    audio.setAdded(true);
+                    callback.onSuccess();
+                }
+
+                @Override
+                public void onError(String error) {
+                    callback.onError(error);
+                }
+            });
+        }
+    }
+
+    private void updateAddToLibraryButton() {
+        if (btnAddToLibrary == null) {
+            return;
+        }
+
+        Audio audio = serviceBound ? playerService.getCurrentAudio() : null;
+        boolean hasAudio = audio != null;
+        btnAddToLibrary.setEnabled(hasAudio && !isAudioActionInProgress);
+        if (!hasAudio) {
+            btnAddToLibrary.setImageResource(R.drawable.ic_add);
+            btnAddToLibrary.setContentDescription(getString(R.string.audio_add_to_library));
+            return;
+        }
+
+        if (audio.isAdded()) {
+            btnAddToLibrary.setImageResource(R.drawable.ic_check);
+            btnAddToLibrary.setContentDescription(getString(R.string.audio_remove_from_library));
+        } else {
+            btnAddToLibrary.setImageResource(R.drawable.ic_add);
+            btnAddToLibrary.setContentDescription(getString(R.string.audio_add_to_library));
+        }
     }
 
     private void loadAlbumArt(String artist, String title) {
@@ -275,6 +376,7 @@ public class AudioPlayerActivity extends AppCompatActivity implements AudioPlaye
             trackArtist.setText(audio.getArtist());
             loadAlbumArt(audio.getArtist(), audio.getTitle());
             updatePlaylist();
+            updateAddToLibraryButton();
         });
     }
 
