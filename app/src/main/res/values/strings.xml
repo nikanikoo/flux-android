@@ -227,8 +227,8 @@
     <string name="friend_requests_loading_error">Ошибка загрузки заявок: %s</string>
     <string name="friend_send_message">Написать сообщение</string>
     <string name="friend_1_follower">1 участник</string>
-    <string name="friend_5_followers"> участника</string>
-    <string name="friend_followers6"> участников</string>
+    <string name="friend_5_followers">\u0020участника</string>
+    <string name="friend_followers6">\u0020участников</string>
 
     <!-- Groups -->
     <string name="groups_title">Группы</string>

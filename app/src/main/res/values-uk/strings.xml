@@ -205,8 +205,8 @@
     <string name="friend_requests_loading_error">Помилка завантаження заявок: %s</string>
     <string name="friend_send_message">Написати повідомлення</string>
     <string name="friend_1_follower">1 учасник</string>
-    <string name="friend_5_followers"> учасника</string>
-    <string name="friend_followers6"> учасників</string>
+    <string name="friend_5_followers">\u0020учасника</string>
+    <string name="friend_followers6">\u0020учасників</string>
 
     <string name="groups_title">Спільноти</string>
     <string name="groups_search">Пошук спільнот</string>
