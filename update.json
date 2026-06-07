@@ -1,7 +1,7 @@
 {
-  "versionCode": 52,
-  "versionName": "Build dc63882 (52)",
-  "changelog": "- feat(posts): polls in posts (dc63882)\n- ci(android): fix generate update json and create release (475a114)\n- feat(audio): implement audio caching and offline playback support (by Lusell #66) (a6e1b2a)\n",
-  "releaseApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-52/flux.apk",
-  "debugApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-52/flux-debug.apk"
+  "versionCode": 53,
+  "versionName": "Build bf64d6a (53)",
+  "changelog": "- feat(audioplayer): add a button for adding audio to the library (#78) (bf64d6a)\n",
+  "releaseApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-53/flux.apk",
+  "debugApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-53/flux-debug.apk"
 }
