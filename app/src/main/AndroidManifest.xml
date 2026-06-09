@@ -62,7 +62,7 @@
         <activity
             android:name=".ui.activities.AudioPlayerActivity"
             android:exported="false"
-            android:theme="@style/Theme.Flux"
+            android:theme="@style/Theme.AudioPlayer"
             android:launchMode="singleTop"
             android:configChanges="orientation|screenSize" />
         <activity
