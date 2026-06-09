@@ -209,7 +209,7 @@
 
     <!-- Friends -->
     <string name="friends_title">Друзья</string>
-    <string name="friends_title2">Друзья </string>
+    <string name="friends_title2">Друзья\u0020</string>
     <string name="friends_all">Все друзья</string>
     <string name="friends_requests">Заявки</string>
     <string name="friends_search">Поиск друзей</string>

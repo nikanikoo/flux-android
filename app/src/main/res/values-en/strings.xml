@@ -458,7 +458,7 @@
     <string name="instance_info">INFORMATION</string>
     <string name="instance_rules">Rules instance</string>
     <string name="instance_policy">Privacy Policy</string>
-    <string name="friends_title2">"Friends "</string>
+    <string name="friends_title2">"Friends\u0020"</string>
     <string name="friends_all">All friends</string>
     <string name="group_none">Groups list is empty</string>
     <string name="group_none_desc">You are not a member of any group yet</string>
