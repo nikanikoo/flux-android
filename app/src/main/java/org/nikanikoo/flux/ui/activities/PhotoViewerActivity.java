@@ -23,6 +23,7 @@ import android.widget.ImageView;
 import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.util.Log;
 import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -66,7 +67,6 @@ public class PhotoViewerActivity extends AppCompatActivity {
     private static final String EXTRA_AUTHOR_NAME = "author_name";
 
     private static final int UI_HIDE_DELAY = 3000;
-    private static final float DISMISS_THRESHOLD = 0.3f;
 
     private ViewPager2 viewPager;
     private View rootContainer;
@@ -90,13 +90,10 @@ public class PhotoViewerActivity extends AppCompatActivity {
 
     private GestureDetector gestureDetector;
     private SwipeToCloseHelper swipeHelper;
-    private boolean isDragging = false;
-    private float initialY = 0f;
     private float currentTranslationY = 0f;
 
     private ActivityResultLauncher<String> storagePermissionLauncher;
     private String pendingDownloadUrl;
-    private boolean downloadAllPending = false;
     private List<String> downloadQueue = new ArrayList<>();
     private int downloadIndex = 0;
     private int downloadSuccessCount = 0;
@@ -202,7 +199,7 @@ public class PhotoViewerActivity extends AppCompatActivity {
         swipeHelper = new SwipeToCloseHelper(rootContainer, new SwipeToCloseHelper.OnSwipeListener() {
             @Override
             public void onSwipeStart() {
-                cancelUIHide();
+                hideUI();
                 viewPager.setUserInputEnabled(false);
             }
             
@@ -228,14 +225,24 @@ public class PhotoViewerActivity extends AppCompatActivity {
             }
         });
 
-        rootContainer.setOnTouchListener((v, event) -> {
-            gestureDetector.onTouchEvent(event);
-            return swipeHelper.onTouchEvent(event, rootContainer);
-        });
-
         btnMore.setOnClickListener(v -> {
             showPopupMenu();
         });
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        if (gestureDetector != null) {
+            gestureDetector.onTouchEvent(ev);
+        }
+        
+        if (swipeHelper != null && rootContainer != null) {
+            if (swipeHelper.onTouchEvent(ev, rootContainer)) {
+                return true;
+            }
+        }
+        
+        return super.dispatchTouchEvent(ev);
     }
 
     public void toggleUI() {
@@ -249,16 +256,6 @@ public class PhotoViewerActivity extends AppCompatActivity {
     public void setSwipeToCloseEnabled(boolean enabled) {
         if (swipeHelper != null) {
             swipeHelper.setCanStartSwipe(enabled);
-        }
-    }
-    
-    private void handleDragEnd() {
-        float dismissDistance = getWindow().getDecorView().getHeight() * DISMISS_THRESHOLD;
-        
-        if (Math.abs(currentTranslationY) > dismissDistance) {
-            animateExit();
-        } else {
-            animateReturn();
         }
     }
     

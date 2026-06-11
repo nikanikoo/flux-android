@@ -64,11 +64,12 @@
 
     <!-- Theme for PhotoViewer Activity -->
     <style name="Theme.PhotoViewer" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:statusBarColor">@android:color/black</item>
         <item name="android:navigationBarColor">@android:color/black</item>
         <item name="android:windowLightStatusBar" tools:targetApi="23">false</item>
         <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
+        <item name="android:windowIsTranslucent">true</item>
     </style>
 	
 	<!-- Theme for AudioPlayer Activity -->
