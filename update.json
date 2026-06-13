@@ -1,7 +1,7 @@
 {
-  "versionCode": 54,
-  "versionName": "Build 1f86e12 (54)",
-  "changelog": "- make AudioPlayerActivity close on swipe (#82) (1f86e12)\n- feat(ui): video thumbnail display (#9) (8979e22)\n- add missing space after member count (#81) (e6889d7)\n- fix(ui): remove white tint from fab_create_post (#80) (8b9e11e)\n",
-  "releaseApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-54/flux.apk",
-  "debugApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-54/flux-debug.apk"
+  "versionCode": 55,
+  "versionName": "Build 449c567 (55)",
+  "changelog": "- fix(ui): fix the use of SwipeToCloseHelper in PhotoViewerActivity (#84) (449c567)\n- fix(ui): remove white tint from mark_all_read_fab (#85) (94cc6a4)\n- feat: notes (#18) (93beddc)\n- fix(ui): add missing space in a locale string in the UserFriendsFragment (#83) (4723e6f)\n",
+  "releaseApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-55/flux.apk",
+  "debugApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-55/flux-debug.apk"
 }
