@@ -255,10 +255,38 @@ public class NoteViewerFragment extends Fragment implements CommentsAdapter.OnCo
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (item.getItemId() == 1001) {
-            Toast.makeText(requireContext(), R.string.note_delete_not_supported, Toast.LENGTH_SHORT).show();
+            showDeleteConfirmationDialog();
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void showDeleteConfirmationDialog() {
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.delete)
+                .setMessage(R.string.note_delete_confirm)
+                .setPositiveButton(R.string.yes, (dialog, which) -> deleteNote())
+                .setNegativeButton(R.string.no, null)
+                .show();
+    }
+
+    private void deleteNote() {
+        notesManager.deleteNote(note.getId(), new NotesManager.ActionCallback() {
+            @Override
+            public void onSuccess() {
+                if (!isAdded()) return;
+                Toast.makeText(requireContext(), R.string.note_delete_success, Toast.LENGTH_SHORT).show();
+                if (getActivity() != null) {
+                    getActivity().onBackPressed();
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                if (!isAdded()) return;
+                Toast.makeText(requireContext(), getString(R.string.error) + ": " + error, Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     @Override

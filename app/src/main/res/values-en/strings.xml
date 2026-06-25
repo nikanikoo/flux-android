@@ -45,6 +45,8 @@
     <string name="nav_music">Music</string>
     <string name="nav_notes">Notes</string>
     <string name="note_delete_not_supported">Note deletion is not supported</string>
+    <string name="note_delete_confirm">Delete note?</string>
+    <string name="note_delete_success">Note deleted</string>
     <string name="note_create_title">New note</string>
     <string name="note_title_hint">Title</string>
     <string name="note_text_hint">Note text</string>
