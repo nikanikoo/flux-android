@@ -165,10 +165,24 @@ public class PostParser {
                                actualPostData.optInt("explicit", 0) == 1 ||
                                actualPostData.optBoolean("explicit", false);
             post.setExplicit(isExplicit);
-            
-            post.setCanEdit(actualPostData.optBoolean("can_edit", false));
-            post.setCanDelete(actualPostData.optBoolean("can_delete", false));
-            post.setCanPin(actualPostData.optBoolean("can_pin", false));
+
+            boolean canEdit = actualPostData.optInt("can_edit", 0) == 1 ||
+                    actualPostData.optBoolean("can_edit", false) ||
+                    actualPostData.optInt("can_edit", 0) == 1 ||
+                    actualPostData.optBoolean("can_edit", false);
+            post.setCanEdit(canEdit);
+
+            boolean canDelete = actualPostData.optInt("can_delete", 0) == 1 ||
+                    actualPostData.optBoolean("can_delete", false) ||
+                    actualPostData.optInt("can_delete", 0) == 1 ||
+                    actualPostData.optBoolean("can_delete", false);
+            post.setCanDelete(canDelete);
+
+            boolean canPin = actualPostData.optInt("can_pin", 0) == 1 ||
+                    actualPostData.optBoolean("can_pin", false) ||
+                    actualPostData.optInt("can_pin", 0) == 1 ||
+                    actualPostData.optBoolean("can_pin", false);
+            post.setCanPin(canPin);
 
             JSONObject postSource = actualPostData.optJSONObject("post_source");
             if (postSource != null) {

@@ -11,7 +11,7 @@ public class Poll implements Serializable {
     private int votesCount;
     private boolean multiple;
     private boolean closed;
-    private boolean canVote;
+    private int canVote;
     private boolean disableUnvote;
     private List<Integer> answerIds = new ArrayList<>();
     private List<Answer> answers = new ArrayList<>();
@@ -58,8 +58,8 @@ public class Poll implements Serializable {
     public boolean isClosed() { return closed; }
     public void setClosed(boolean closed) { this.closed = closed; }
 
-    public boolean isCanVote() { return canVote; }
-    public void setCanVote(boolean canVote) { this.canVote = canVote; }
+    public int getCanVote() { return canVote; }
+    public void setCanVote(int canVote) { this.canVote = canVote; }
 
     public boolean isDisableUnvote() { return disableUnvote; }
     public void setDisableUnvote(boolean disableUnvote) { this.disableUnvote = disableUnvote; }

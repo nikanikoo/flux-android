@@ -70,7 +70,7 @@ public class PollAttachmentView {
             public void run() {
                 optionsContainer.removeAllViews();
                 boolean hasVoted = poll.getAnswerIds() != null && !poll.getAnswerIds().isEmpty();
-                boolean showResults = hasVoted || poll.isClosed() || !poll.isCanVote();
+                boolean showResults = hasVoted || poll.isClosed() || poll.getCanVote() == 0;
                 boolean shouldAnimate = !isFirstDraw[0];
                 isFirstDraw[0] = false;
 
@@ -205,14 +205,14 @@ public class PollAttachmentView {
 
         final List<Integer> prevAnswerIds = new ArrayList<>(poll.getAnswerIds());
         final int prevVotesCount = poll.getVotesCount();
-        final boolean prevCanVote = poll.isCanVote();
+        final int prevCanVote = poll.getCanVote();
         final List<Poll.Answer> prevAnswers = new ArrayList<>();
         for (Poll.Answer ans : poll.getAnswers()) {
             prevAnswers.add(new Poll.Answer(ans.getId(), ans.getText(), ans.getVotes(), ans.getRate()));
         }
 
         poll.setAnswerIds(answerIds);
-        poll.setCanVote(false);
+        poll.setCanVote(0);
         
         int totalVotes = 0;
         for (Poll.Answer ans : poll.getAnswers()) {
@@ -260,14 +260,14 @@ public class PollAttachmentView {
 
         final List<Integer> prevAnswerIds = new ArrayList<>(poll.getAnswerIds());
         final int prevVotesCount = poll.getVotesCount();
-        final boolean prevCanVote = poll.isCanVote();
+        final int prevCanVote = poll.getCanVote();
         final List<Poll.Answer> prevAnswers = new ArrayList<>();
         for (Poll.Answer ans : poll.getAnswers()) {
             prevAnswers.add(new Poll.Answer(ans.getId(), ans.getText(), ans.getVotes(), ans.getRate()));
         }
 
         poll.setAnswerIds(new ArrayList<>());
-        poll.setCanVote(true);
+        poll.setCanVote(1);
         
         int totalVotes = 0;
         for (Poll.Answer ans : poll.getAnswers()) {
