@@ -46,18 +46,6 @@
     <string name="nav_videos">Відео</string>
     <string name="nav_music">Музика</string>
     <string name="nav_notes">Нотатки</string>
-    <string name="note_delete_not_supported">Видалення нотаток не підтримується</string>
-    <string name="note_delete_confirm">Видалити нотатку?</string>
-    <string name="note_delete_success">Нотатку видалено</string>
-    <string name="note_create_title">Нова нотатка</string>
-    <string name="note_title_hint">Заголовок</string>
-    <string name="note_text_hint">Текст нотатки</string>
-    <string name="note_btn_create">Створити</string>
-    <string name="note_fill_fields_error">Заповніть усі поля</string>
-    <string name="note_created_success">Нотатку створено</string>
-    <string name="note_viewer_title">Нотатка</string>
-    <string name="note_edit_title">Редагувати нотатку</string>
-    <string name="note_updated_success">Нотатку оновлено</string>
     <string name="nav_notifications">Сповіщення</string>
     <string name="nav_settings">Налаштування</string>
 
