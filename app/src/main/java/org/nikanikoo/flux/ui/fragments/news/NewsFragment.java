@@ -67,7 +67,13 @@ public class NewsFragment extends BaseFragment implements PostAdapter.OnPostClic
     private static List<Post> sCachedPosts = null;
     private static String sCachedNextFrom = null;
     private static boolean sHasLoadedPosts = false;
-    
+
+    public static void clearCache() {
+        sCachedPosts = null;
+        sCachedNextFrom = null;
+        sHasLoadedPosts = false;
+    }
+
     // Тип новостей: true = подписки, false = все новости
     private boolean isSubscriptionMode = true;
     private String[] newsTypes;

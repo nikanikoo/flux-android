@@ -405,6 +405,7 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
         
         // Очищаем кэш
         org.nikanikoo.flux.data.managers.ProfileManager.getInstance(activity).clearCache();
+        org.nikanikoo.flux.ui.fragments.news.NewsFragment.clearCache();
         
         // Сбрасываем OpenVKApi
         org.nikanikoo.flux.data.managers.api.OpenVKApi.resetInstance();

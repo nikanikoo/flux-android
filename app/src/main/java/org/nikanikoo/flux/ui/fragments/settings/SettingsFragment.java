@@ -359,6 +359,7 @@ public class SettingsFragment extends Fragment {
             // Clear cache and reset API instance
             ProfileManager.getInstance(requireContext()).clearCache();
             MessageNotificationManager.getInstance(requireContext()).clearCache();
+            org.nikanikoo.flux.ui.fragments.news.NewsFragment.clearCache();
 
             // Reset OpenVKApi to use new token
             org.nikanikoo.flux.data.managers.api.OpenVKApi.resetInstance();
@@ -380,6 +381,7 @@ public class SettingsFragment extends Fragment {
         
         // Clear profile cache
         ProfileManager.getInstance(requireContext()).clearCache();
+        org.nikanikoo.flux.ui.fragments.news.NewsFragment.clearCache();
         
         // Clear notifications cache and cancel all notifications
         MessageNotificationManager.getInstance(requireContext()).clearCache();
