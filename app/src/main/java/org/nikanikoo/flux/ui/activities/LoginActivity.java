@@ -316,6 +316,10 @@ public class LoginActivity extends AppCompatActivity {
 
             boolean needs2FA = false;
             String errorMsg = "";
+
+            if ("need_validation".equals(errorJson.optString("error"))) {
+                needs2FA = true;
+            }
             
             if (errorJson.has("error_code")) {
                 int errorCode = errorJson.getInt("error_code");
