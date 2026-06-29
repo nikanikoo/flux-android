@@ -174,7 +174,7 @@
     <string name="post_error_like">Невозможно поставить лайк этому посту</string>
     <string name="post_delete_message">Это действие нельзя отменить</string>
     <string name="post_published">Пост опубликован!</string>
-    <string name="post_publish_error">"Ошибка публикации: "</string>
+    <string name="post_publish_error">"Ошибка публикации:\u0020"</string>
     <string name="post_publishing">Публикация...</string>
 
     <!-- Create Post -->
@@ -188,8 +188,8 @@
     <!-- Comments -->
     <string name="comments_title">Комментарии</string>
     <string name="comments_write">Написать комментарий</string>
-    <string name="comments_loading_error">Ошибка загрузки комментариев: </string>
-    <string name="comments_send_error">Ошибка отправки комментария: </string>
+    <string name="comments_loading_error">Ошибка загрузки комментариев:\u0020</string>
+    <string name="comments_send_error">Ошибка отправки комментария:\u0020</string>
     <string name="comments_add_error">Введите комментарий</string>
     <string name="comments_cannot_load">Невозможно загрузить комментарии</string>
     <string name="comments_updated">Комментарии обновлены</string>
@@ -198,21 +198,21 @@
     <string name="comments_post_not_found">Ошибка: пост не найден</string>
 
     <!-- News -->
-    <string name="news_loading_error">Ошибка загрузки новостей: </string>
+    <string name="news_loading_error">Ошибка загрузки новостей:\u0020</string>
     <string name="news_refresh_error">Не удалось загрузить новые посты</string>
-    <string name="news_public_loading_error">Ошибка загрузки публичных постов: </string>
+    <string name="news_public_loading_error">Ошибка загрузки публичных постов:\u0020</string>
     <string name="news_select_type">Выберите тип новостей</string>
     <string name="news_wait_for_load">Дождитесь окончания загрузки</string>
     <string name="news_create_post">Создать пост</string>
 
     <!-- Messages -->
     <string name="messages_title">Сообщения</string>
-    <string name="messages_loading_error">Ошибка загрузки диалогов: </string>
+    <string name="messages_loading_error">Ошибка загрузки диалогов:\u0020</string>
     <string name="chat_title">Чат</string>
     <string name="chat_message_hint">Введите сообщение</string>
     <string name="chat_send">Отправить</string>
-    <string name="chat_loading_error">Ошибка загрузки сообщений: </string>
-    <string name="chat_send_error">Ошибка отправки: </string>
+    <string name="chat_loading_error">Ошибка загрузки сообщений:\u0020</string>
+    <string name="chat_send_error">Ошибка отправки:\u0020</string>
     <string name="message_incoming">Входящее сообщение</string>
     <string name="message_outgoing">Исходящее сообщение</string>
     <string name="message_time">%s</string>
@@ -223,7 +223,7 @@
     <string name="friends_all">Все друзья</string>
     <string name="friends_requests">Заявки</string>
     <string name="friends_search">Поиск друзей</string>
-    <string name="friends_loading_error">Ошибка загрузки друзей: </string>
+    <string name="friends_loading_error">Ошибка загрузки друзей:\u0020</string>
     <string name="friends_not_found">Друзья не найдены</string>
     <string name="friends_not_found_info">У пользователя пока нет друзей :(</string>
     <string name="friends_common">%d общих друзей</string>
@@ -252,16 +252,16 @@
     <string name="group_members">%d участников</string>
     <string name="group_description">Описание:</string>
     <string name="group_members_search">Поиск участников</string>
-    <string name="group_members_loading_error">Ошибка загрузки участников: </string>
+    <string name="group_members_loading_error">Ошибка загрузки участников:\u0020</string>
     <string name="group_members_not_found">Участники не найдены</string>
-    <string name="group_members2">Участники </string>
+    <string name="group_members2">Участники\u0020</string>
     <string name="group_members_none">В группе пока нет участников</string>
     <string name="search_none2">Попробуйте изменить параметры поиска</string>
     <string name="group_join">Вступить</string>
     <string name="group_leave">Покинуть</string>
     <string name="group_joined">Вы вступили в группу</string>
     <string name="group_left">Вы покинули группу</string>
-    <string name="group_load_error">Ошибка загрузки группы: </string>
+    <string name="group_load_error">Ошибка загрузки группы:\u0020</string>
 
     <!-- Photos -->
     <string name="photos_title">Фотографии</string>
@@ -284,7 +284,7 @@
     <string name="video_preview">Превью видео</string>
     <string name="video_play">Воспроизвести</string>
     <string name="video_url_not_found">URL видео не найден</string>
-    <string name="video_error">Ошибка воспроизведения: </string>
+    <string name="video_error">Ошибка воспроизведения:\u0020</string>
     <string name="video_search">Поиск видео</string>
     <string name="video_forward">%d »</string>
     <string name="video_back">« %d</string>
@@ -295,13 +295,13 @@
     <string name="audio_playlist">Плейлист</string>
     <string name="audio_track_name">Название</string>
     <string name="audio_no_tracks">У вас пока нет аудиозаписей</string>
-    <string name="audio_search_error">Ошибка поиска: </string>
+    <string name="audio_search_error">Ошибка поиска:\u0020</string>
     <string name="audio_nothing_found">Ничего не найдено</string>
     <string name="audio_removed">Удалено из аудиозаписей</string>
-    <string name="audio_loading_error">Ошибка загрузки: </string>
-    <string name="audio_remove_error">Ошибка удаления: </string>
+    <string name="audio_loading_error">Ошибка загрузки:\u0020</string>
+    <string name="audio_remove_error">Ошибка удаления:\u0020</string>
     <string name="audio_added">Добавлено в аудиозаписи</string>
-    <string name="audio_add_error">Ошибка добавления: </string>
+    <string name="audio_add_error">Ошибка добавления:\u0020</string>
     <string name="audio_dob">Дополнительные опции</string>
     <string name="audio_search">Поиск музыки</string>
     <string name="audio_add">Добавить</string>
@@ -312,7 +312,7 @@
     <string name="audio_downloading">Загрузка...</string>
     <string name="audio_downloaded">Трек загружен</string>
     <string name="audio_download_removed">Загрузка удалена</string>
-    <string name="audio_download_error">Ошибка загрузки: </string>
+    <string name="audio_download_error">Ошибка загрузки:\u0020</string>
     <string name="audio_no_downloaded">Загруженных треков пока нет</string>
     <string name="audio_download">Загрузить</string>
     <string name="audio_remove_download">Удалить загрузку</string>
@@ -346,7 +346,7 @@
 
     <!-- Notifications -->
     <string name="notifications_title">Уведомления</string>
-    <string name="notifications_loading_error">Ошибка загрузки архивных уведомлений: </string>
+    <string name="notifications_loading_error">Ошибка загрузки архивных уведомлений:\u0020</string>
     <string name="notifications_all_read">Все уведомления помечены как прочитанные</string>
     <string name="notifications_mark_all_read">Пометить все как прочитанные</string>
     <string name="notifications_error_user">Не удалось определить пользователя</string>
@@ -494,8 +494,8 @@
 
     <!-- About App -->
     <string name="about_app_title">О приложении</string>
-    <string name="about_app_version">Версия: </string>
-    <string name="about_app_commit">Коммит: </string>
+    <string name="about_app_version">Версия:\u0020</string>
+    <string name="about_app_commit">Коммит:\u0020</string>
     <string name="about_app_github">Исходный код на Github</string>
     <string name="about_app_team">КОМАНДА РАЗРАБОТКИ</string>
     <string name="about_app_author">Автор</string>
@@ -522,12 +522,12 @@
     <string name="about_instance_users">ПОЛЬЗОВАТЕЛЕЙ</string>
     <string name="about_instance_https">HTTPS (Защищённое соединение)</string>
     <string name="about_instance_http">HTTP (Незащищённое соединение)</string>
-    <string name="about_instance_version">Версия: </string>
-    <string name="about_instance_error">Ошибка при обработке данных: </string>
+    <string name="about_instance_version">Версия:\u0020</string>
+    <string name="about_instance_error">Ошибка при обработке данных:\u0020</string>
 
     <!-- Errors -->
     <string name="error_loading_profile">Ошибка загрузки профиля</string>
-    <string name="error_loading">Ошибка: </string>
+    <string name="error_loading">Ошибка:\u0020</string>
     <string name="error_generic">Произошла ошибка</string>
     <string name="error_network">Ошибка сети</string>
     <string name="error_unknown">Неизвестная ошибка</string>
@@ -541,7 +541,7 @@
     <string name="profile_title">Профиль</string>
     <string name="profile_sex_male">Мужской</string>
     <string name="profile_sex_female">Женский</string>
-    <string name="profile_username">Имя пользователя: </string>
+    <string name="profile_username">Имя пользователя:</string>
     <string name="profile_status_online">В сети</string>
     <string name="profile_gender">Пол:</string>
     <string name="profile_date_registered">Дата регистрации:</string>
@@ -566,7 +566,7 @@
     <string name="profile_subs">подписчиков</string>
     <string name="profile_groups">групп</string>
     <string name="profile_create_post">Создать пост</string>
-    <string name="profile_posts_loading_error">Ошибка загрузки постов: </string>
+    <string name="profile_posts_loading_error">Ошибка загрузки постов:\u0020</string>
     <string name="profile_posts_refresh_error">Не удалось загрузить новые посты</string>
     <string name="profile_photo_title">Фото профиля</string>
     <string name="profile_edit">Редактировать</string>
