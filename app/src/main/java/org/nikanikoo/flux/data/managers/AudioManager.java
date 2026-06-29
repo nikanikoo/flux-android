@@ -165,7 +165,7 @@ public class AudioManager extends BaseManager<AudioManager> {
             audio.setManifest(json.optString("manifest", ""));
             audio.setGenreId(json.optInt("genre_id", 0));
             audio.setGenreStr(json.optString("genre_str", ""));
-            audio.setLyrics(json.optInt("lyrics", 0));
+            audio.setLyrics_id(json.optInt("lyrics", 0));
             audio.setAdded(json.optBoolean("added", false));
             audio.setEditable(json.optBoolean("editable", false));
             audio.setSearchable(json.optBoolean("searchable", true));

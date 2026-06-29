@@ -55,14 +55,14 @@ public class UserProfile {
             // Новые поля
             profile.sex = json.optInt("sex", 0);
             // verified может быть int 1/0 или boolean
-if (json.has("verified")) {
-    Object verifiedObj = json.opt("verified");
-    if (verifiedObj instanceof Integer) {
-        profile.verified = (Integer) verifiedObj == 1;
-    } else if (verifiedObj instanceof Boolean) {
-        profile.verified = (Boolean) verifiedObj;
-    }
-}
+            if (json.has("verified")) {
+                Object verifiedObj = json.opt("verified");
+                if (verifiedObj instanceof Integer) {
+                    profile.verified = (Integer) verifiedObj == 1;
+                } else if (verifiedObj instanceof Boolean) {
+                    profile.verified = (Boolean) verifiedObj;
+                }
+            }
             profile.hasPhoto = json.optBoolean("has_photo", false);
             profile.lastSeen = json.optLong("last_seen", 0);
             profile.music = json.optString("music", "");

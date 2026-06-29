@@ -109,7 +109,7 @@ public class AudioCacheManager extends BaseManager<AudioCacheManager> {
             audio.setCoverUrl(item.optString("coverUrl", ""));
             audio.setGenreId(item.optInt("genreId", 0));
             audio.setGenreStr(item.optString("genreStr", ""));
-            audio.setLyrics(item.optInt("lyrics", 0));
+            audio.setLyrics_id(item.optInt("lyrics", 0));
             audio.setAdded(item.optBoolean("added", false));
             audio.setEditable(item.optBoolean("editable", false));
             audio.setSearchable(item.optBoolean("searchable", true));
@@ -274,7 +274,7 @@ public class AudioCacheManager extends BaseManager<AudioCacheManager> {
             item.put("coverUrl", audio.getCoverUrl());
             item.put("genreId", audio.getGenreId());
             item.put("genreStr", audio.getGenreStr());
-            item.put("lyrics", audio.getLyrics());
+            item.put("lyrics_id", audio.getLyrics_id());
             item.put("added", audio.isAdded());
             item.put("editable", audio.isEditable());
             item.put("searchable", audio.isSearchable());
