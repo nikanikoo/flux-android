@@ -49,6 +49,8 @@
     <string name="nav_music">Музыка</string>
     <string name="nav_notes">Заметки</string>
     <string name="note_delete_not_supported">Удаление заметок не поддерживается</string>
+    <string name="note_delete_confirm">Удалить заметку?</string>
+    <string name="note_delete_success">Заметка удалена</string>
     <string name="note_create_title">Новая заметка</string>
     <string name="note_title_hint">Заголовок</string>
     <string name="note_text_hint">Текст заметки</string>
