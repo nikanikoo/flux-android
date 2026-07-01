@@ -637,6 +637,10 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
         }
     }
 
+    public NavigationController getNavigationController() {
+        return navigationController;
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);

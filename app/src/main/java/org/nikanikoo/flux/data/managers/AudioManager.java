@@ -7,6 +7,7 @@ import org.json.JSONObject;
 import org.nikanikoo.flux.data.managers.api.OpenVKApi;
 import org.nikanikoo.flux.data.models.Audio;
 import org.nikanikoo.flux.utils.Logger;
+import org.nikanikoo.flux.data.models.AudioPlaylist;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,6 +33,16 @@ public class AudioManager extends BaseManager<AudioManager> {
 
     public interface AudioActionCallback {
         void onSuccess();
+        void onError(String error);
+    }
+
+    public interface PlaylistsCallback {
+        void onSuccess(List<AudioPlaylist> playlists, int totalCount);
+        void onError(String error);
+    }
+
+    public interface PlaylistCallback {
+        void onSuccess(AudioPlaylist playlist);
         void onError(String error);
     }
 
@@ -118,6 +129,222 @@ public class AudioManager extends BaseManager<AudioManager> {
             @Override
             public void onSuccess(JSONObject response) {
                 callback.onSuccess();
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    public void getPlaylists(int ownerId, int offset, int count, PlaylistsCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("owner_id", String.valueOf(ownerId));
+        params.put("offset", String.valueOf(offset));
+        params.put("count", String.valueOf(count));
+
+        api.callMethod("audio.getPlaylists", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                try {
+                    JSONObject responseObj = response.getJSONObject("response");
+                    int totalCount = responseObj.optInt("count", 0);
+                    JSONArray items = responseObj.getJSONArray("items");
+                    List<AudioPlaylist> playlists = new ArrayList<>();
+                    for (int i = 0; i < items.length(); i++) {
+                        JSONObject playlistJson = items.optJSONObject(i);
+                        if (playlistJson != null) {
+                            playlists.add(AudioPlaylist.fromJson(playlistJson));
+                        }
+                    }
+                    callback.onSuccess(playlists, totalCount);
+                } catch (Exception e) {
+                    Logger.e(TAG, "Ошибка парсинга плейлистов", e);
+                    callback.onError("Ошибка парсинга плейлистов");
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    public void getPlaylistById(int ownerId, int playlistId, PlaylistCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("owner_id", String.valueOf(ownerId));
+        params.put("playlist_id", String.valueOf(playlistId));
+
+        api.callMethod("audio.getPlaylistById", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                try {
+                    JSONObject responseObj = response.getJSONObject("response");
+                    AudioPlaylist playlist = AudioPlaylist.fromJson(responseObj);
+                    callback.onSuccess(playlist);
+                } catch (Exception e) {
+                    Logger.e(TAG, "Ошибка парсинга плейлиста", e);
+                    callback.onError("Ошибка парсинга плейлиста");
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    public void searchPlaylists(String query, int offset, int limit, int order, int fromMe, PlaylistsCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("q", query);
+        params.put("offset", String.valueOf(offset));
+        params.put("limit", String.valueOf(limit));
+        params.put("order", String.valueOf(order));
+        params.put("from_me", String.valueOf(fromMe));
+
+        api.callMethod("audio.searchAlbums", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                try {
+                    JSONObject responseObj = response.getJSONObject("response");
+                    int totalCount = responseObj.optInt("count", 0);
+                    JSONArray items = responseObj.getJSONArray("items");
+                    List<AudioPlaylist> playlists = new ArrayList<>();
+                    for (int i = 0; i < items.length(); i++) {
+                        JSONObject playlistJson = items.optJSONObject(i);
+                        if (playlistJson != null) {
+                            playlists.add(AudioPlaylist.fromJson(playlistJson));
+                        }
+                    }
+                    callback.onSuccess(playlists, totalCount);
+                } catch (Exception e) {
+                    Logger.e(TAG, "Ошибка парсинга поиска альбомов", e);
+                    callback.onError("Ошибка парсинга поиска альбомов");
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    public void getPopular(int genreId, int offset, int count, AudioCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        if (genreId > 0) {
+            params.put("genre_id", String.valueOf(genreId));
+        }
+        params.put("offset", String.valueOf(offset));
+        params.put("count", String.valueOf(count));
+
+        api.callMethod("audio.getPopular", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                try {
+                    JSONObject responseObj = response.getJSONObject("response");
+                    int totalCount = responseObj.optInt("count", 0);
+                    JSONArray items = responseObj.getJSONArray("items");
+                    List<Audio> audios = parseAudios(items);
+                    callback.onSuccess(audios, totalCount);
+                } catch (Exception e) {
+                    Logger.e(TAG, "Ошибка парсинга популярной музыки", e);
+                    callback.onError("Ошибка парсинга популярной музыки");
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    public void getFeed(int genreId, int offset, int count, AudioCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        if (genreId > 0) {
+            params.put("genre_id", String.valueOf(genreId));
+        }
+        params.put("offset", String.valueOf(offset));
+        params.put("count", String.valueOf(count));
+
+        api.callMethod("audio.getFeed", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                try {
+                    JSONObject responseObj = response.getJSONObject("response");
+                    int totalCount = responseObj.optInt("count", 0);
+                    JSONArray items = responseObj.getJSONArray("items");
+                    List<Audio> audios = parseAudios(items);
+                    callback.onSuccess(audios, totalCount);
+                } catch (Exception e) {
+                    Logger.e(TAG, "Ошибка парсинга ленты музыки", e);
+                    callback.onError("Ошибка парсинга ленты музыки");
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    public void searchAudioWithSort(String query, int offset, int count, int sort, AudioCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("q", query);
+        params.put("offset", String.valueOf(offset));
+        params.put("count", String.valueOf(count));
+        params.put("sort", String.valueOf(sort));
+
+        api.callMethod("audio.search", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                try {
+                    JSONObject responseObj = response.getJSONObject("response");
+                    int totalCount = responseObj.optInt("count", 0);
+                    JSONArray items = responseObj.getJSONArray("items");
+                    List<Audio> audios = parseAudios(items);
+                    callback.onSuccess(audios, totalCount);
+                } catch (Exception e) {
+                    Logger.e(TAG, "Ошибка парсинга поиска аудио с сортировкой", e);
+                    callback.onError("Ошибка парсинга поиска аудио с сортировкой");
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    public void getPlaylistAudios(int ownerId, int playlistId, String accessKey, int offset, int count, AudioCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("owner_id", String.valueOf(ownerId));
+        params.put("album_id", String.valueOf(playlistId));
+        if (accessKey != null && !accessKey.isEmpty()) {
+            params.put("access_key", accessKey);
+        }
+        params.put("offset", String.valueOf(offset));
+        params.put("count", String.valueOf(count));
+
+        api.callMethod("audio.get", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                try {
+                    JSONObject responseObj = response.getJSONObject("response");
+                    int totalCount = responseObj.optInt("count", 0);
+                    JSONArray items = responseObj.getJSONArray("items");
+                    List<Audio> audios = parseAudios(items);
+                    callback.onSuccess(audios, totalCount);
+                } catch (Exception e) {
+                    Logger.e(TAG, "Ошибка парсинга аудио плейлиста", e);
+                    callback.onError("Ошибка парсинга аудио плейлиста");
+                }
             }
 
             @Override

@@ -235,9 +235,12 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
     private void prepareAudio(Audio audio) {
         if (audio == null || audio.getUrl() == null || audio.getUrl().isEmpty()) {
             Logger.e(TAG, "Invalid audio URL");
+            System.out.println("AudioPlayerService: prepareAudio FAILED - url is empty/null for: "
+                    + (audio != null ? audio.getArtist() + " - " + audio.getTitle() : "null"));
             notifyError("Невозможно воспроизвести аудио");
             return;
         }
+        System.out.println("AudioPlayerService: prepareAudio OK url=" + audio.getUrl());
 
         int generation = ++prepareGeneration;
 
@@ -441,6 +444,14 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
     }
 
     private void notifyTrackChanged(Audio audio, int position) {
+        if (audio != null && audio.getArtist() != null) {
+            try {
+                org.nikanikoo.flux.data.managers.RecentlyPlayedManager.getInstance(getApplicationContext())
+                        .addArtist(audio.getArtist());
+            } catch (Exception e) {
+                Logger.e(TAG, "Error adding artist to recently played", e);
+            }
+        }
         for (PlayerCallback callback : callbacks) {
             callback.onTrackChanged(audio, position);
         }

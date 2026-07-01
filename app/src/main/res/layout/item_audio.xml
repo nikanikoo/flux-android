@@ -13,6 +13,7 @@
     app:cardCornerRadius="8dp"
     android:clickable="true"
     android:focusable="true"
+    android:descendantFocusability="blocksDescendants"
     android:foreground="?attr/selectableItemBackground">
 
     <LinearLayout
