@@ -1,7 +1,7 @@
 {
-  "versionCode": 56,
-  "versionName": "Build a786ea6 (56)",
-  "changelog": "- fix(newsfeed): clear cache after changing account (#86) (a786ea6)\n- feat(notes): implement note deletion (#88) (2acf6c3)\n- chore(lang): add missing spaces in russian and ukrainian (#87) (b626456)\n- fix(api):  fix app after ovk api update (#89) (44e7612)\n",
-  "releaseApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-56/flux.apk",
-  "debugApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-56/flux-debug.apk"
+  "versionCode": 57,
+  "versionName": "Build e336a97 (57)",
+  "changelog": "- fix(drawermenu): fix swipe open menu (e336a97)\n",
+  "releaseApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-57/flux.apk",
+  "debugApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-57/flux-debug.apk"
 }
