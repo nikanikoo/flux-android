@@ -3,6 +3,7 @@ package org.nikanikoo.flux.ui.custom;
 import android.content.Context;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
+import android.view.ViewConfiguration;
 
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
@@ -10,19 +11,26 @@ import androidx.drawerlayout.widget.DrawerLayout;
 public class CustomDrawerLayout extends DrawerLayout {
 
     private float mInitialTouchX;
+    private float mInitialTouchY;
+    private float mLastTouchX;
+    private float mLastTouchY;
+    private int mTouchSlop;
 
     public CustomDrawerLayout(Context context) {
         super(context);
+        mTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
         initEdgeSize();
     }
 
     public CustomDrawerLayout(Context context, AttributeSet attrs) {
         super(context, attrs);
+        mTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
         initEdgeSize();
     }
 
     public CustomDrawerLayout(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
+        mTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
         initEdgeSize();
     }
 
@@ -93,20 +101,31 @@ public class CustomDrawerLayout extends DrawerLayout {
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent ev) {
+        float x = ev.getX();
+        float y = ev.getY();
         if (ev.getActionMasked() == MotionEvent.ACTION_DOWN) {
-            mInitialTouchX = ev.getX();
+            mInitialTouchX = x;
+            mInitialTouchY = y;
         }
+        mLastTouchX = x;
+        mLastTouchY = y;
         return super.dispatchTouchEvent(ev);
     }
 
     @Override
     public void requestDisallowInterceptTouchEvent(boolean disallowIntercept) {
         int edgeSizePx = (int) (140 * getResources().getDisplayMetrics().density);
-        if (mInitialTouchX < edgeSizePx && !isDrawerOpen(GravityCompat.START)) {
-            // Allow parent to intercept despite child scroll
+        if (!disallowIntercept || mInitialTouchX >= edgeSizePx || isDrawerOpen(GravityCompat.START)) {
+            super.requestDisallowInterceptTouchEvent(disallowIntercept);
             return;
         }
-        super.requestDisallowInterceptTouchEvent(disallowIntercept);
+        float dx = mLastTouchX - mInitialTouchX;
+        float dy = mLastTouchY - mInitialTouchY;
+        float absDx = Math.abs(dx);
+        float absDy = Math.abs(dy);
+        if (absDy > absDx || (absDx == 0 && absDy == 0)) {
+            super.requestDisallowInterceptTouchEvent(true);
+        }
     }
 
     @Override
@@ -115,9 +134,21 @@ public class CustomDrawerLayout extends DrawerLayout {
             initEdgeSize();
         }
         try {
+            if (ev.getActionMasked() == MotionEvent.ACTION_MOVE
+                    && !isDrawerOpen(GravityCompat.START)) {
+                int edgeSizePx = (int) (140 * getResources().getDisplayMetrics().density);
+                if (mInitialTouchX < edgeSizePx) {
+                    float dx = mLastTouchX - mInitialTouchX;
+                    float dy = mLastTouchY - mInitialTouchY;
+                    float absDx = Math.abs(dx);
+                    float absDy = Math.abs(dy);
+                    if (absDy > absDx || (absDx == 0 && absDy == 0)) {
+                        return false;
+                    }
+                }
+            }
             return super.onInterceptTouchEvent(ev);
         } catch (IllegalArgumentException e) {
-            // Safe catch for potential multi-touch PointerIndexOutOfBoundsException inside DrawerLayout
             return false;
         }
     }
