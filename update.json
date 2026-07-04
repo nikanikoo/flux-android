@@ -1,7 +1,7 @@
 {
-  "versionCode": 57,
-  "versionName": "Build e336a97 (57)",
-  "changelog": "- fix(drawermenu): fix swipe open menu (e336a97)\n",
-  "releaseApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-57/flux.apk",
-  "debugApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-57/flux-debug.apk"
+  "versionCode": 58,
+  "versionName": "Build 49f4ba8 (58)",
+  "changelog": "- fix(drawer menu): fix incorrect swipe opening menu (49f4ba8)\n",
+  "releaseApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-58/flux.apk",
+  "debugApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-58/flux-debug.apk"
 }
