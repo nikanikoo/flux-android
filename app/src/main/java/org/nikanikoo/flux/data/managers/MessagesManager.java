@@ -203,6 +203,16 @@ public class MessagesManager extends BaseManager<MessagesManager> {
         });
     }
 
+    // Отправка статуса тайпинга
+    public void sendTypingActivity(int peerId, OpenVKApi.ApiCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_id", String.valueOf(peerId));
+        params.put("user_id", String.valueOf(peerId));
+        params.put("type", "typing");
+
+        api.callMethod("messages.setActivity", params, callback);
+    }
+
     /**
      * Parse conversations response in background thread
      */
@@ -307,6 +317,9 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                 }
 
                 int unreadCount = conversationObj.optInt("unread_count", 0);
+                if (lastMessage != null && lastMessage.optInt("out", 0) == 1) {
+                    unreadCount = 0;
+                }
 
                 Conversation conversation = new Conversation(
                         i, peerId, title, lastMessageText,

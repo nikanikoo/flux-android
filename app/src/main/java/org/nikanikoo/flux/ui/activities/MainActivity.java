@@ -290,19 +290,21 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
                     MessageNotificationManager.getInstance(MainActivity.this)
                             .showMessageNotification(messageId, fromId, peerId, text, timestamp);
                 }
-                updateMessagesListIfVisible();
+                updateMessagesListIfVisible(peerId, text, timestamp, isOut);
                 onNotificationBadgeUpdate();
             }
 
             @Override
             public void onMessageRead(int peerId, int localId) {
                 updateChatIfVisible(peerId);
+                updateMessagesListOnRead(peerId);
                 onNotificationBadgeUpdate();
             }
 
             @Override
             public void onMessageEdit(int messageId, int peerId, String newText) {
                 updateChatIfVisible(peerId);
+                updateMessagesListOnEdit(peerId, newText);
             }
         });
         
@@ -610,11 +612,27 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
     
     // ==================== Helper Methods ====================
     
-    private void updateMessagesListIfVisible() {
+    private void updateMessagesListIfVisible(int peerId, String text, long timestamp, boolean isOut) {
         androidx.fragment.app.Fragment currentFragment = 
                 getSupportFragmentManager().findFragmentById(R.id.fragment_container);
         if (currentFragment instanceof MessagesListFragment) {
-            ((MessagesListFragment) currentFragment).refreshConversations();
+            ((MessagesListFragment) currentFragment).onNewMessageReceived(peerId, text, timestamp, isOut);
+        }
+    }
+
+    private void updateMessagesListOnRead(int peerId) {
+        androidx.fragment.app.Fragment currentFragment = 
+                getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (currentFragment instanceof MessagesListFragment) {
+            ((MessagesListFragment) currentFragment).onMessageReadLocally(peerId);
+        }
+    }
+
+    private void updateMessagesListOnEdit(int peerId, String newText) {
+        androidx.fragment.app.Fragment currentFragment = 
+                getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (currentFragment instanceof MessagesListFragment) {
+            ((MessagesListFragment) currentFragment).onMessageEditLocally(peerId, newText);
         }
     }
     

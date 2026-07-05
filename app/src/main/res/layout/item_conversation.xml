@@ -114,24 +114,13 @@
 
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/unread_badge"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    android:layout_width="10dp"
+                    android:layout_height="10dp"
                     android:layout_marginStart="8dp"
-                    app:cardCornerRadius="12dp"
+                    app:cardCornerRadius="5dp"
                     app:cardElevation="0dp"
                     app:cardBackgroundColor="?attr/colorError"
                     android:visibility="gone">
-
-                    <com.google.android.material.textview.MaterialTextView
-                        android:id="@+id/unread_count"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_margin="6dp"
-                        android:minWidth="20dp"
-                        android:gravity="center"
-                        android:textSize="12sp"
-                        android:textColor="?attr/colorOnError"
-                        android:textStyle="bold" />
 
                 </com.google.android.material.card.MaterialCardView>
 

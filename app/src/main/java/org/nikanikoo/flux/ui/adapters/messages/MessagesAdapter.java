@@ -359,6 +359,13 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         }
     }
 
+    public void notifyMessageChanged(Message message) {
+        int position = items.indexOf(message);
+        if (position >= 0) {
+            notifyItemChanged(position);
+        }
+    }
+
     @Override
     public void onViewRecycled(@NonNull RecyclerView.ViewHolder holder) {
         super.onViewRecycled(holder);

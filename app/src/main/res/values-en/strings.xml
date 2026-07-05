@@ -31,6 +31,7 @@
     <string name="link_copied">Link copied</string>
     <string name="chat_favorites">Favorites</string>
     <string name="chat_favorites_subtitle">Chat with yourself</string>
+    <string name="chat_typing">typing...</string>
 
     <!-- Navigation -->
     <string name="toolbar_globalfeed">All news</string>

@@ -32,6 +32,7 @@
     <string name="link_copied">Ссылка скопирована</string>
     <string name="chat_favorites">Избранное</string>
     <string name="chat_favorites_subtitle">Чат с самим собой</string>
+    <string name="chat_typing">печатает...</string>
 
     <!-- toolbars -->
     <string name="toolbar_subsfeed">Мои новости</string>
