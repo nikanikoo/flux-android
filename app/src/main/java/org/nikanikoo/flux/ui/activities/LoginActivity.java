@@ -44,9 +44,9 @@ public class LoginActivity extends AppCompatActivity {
 
     private static final String[] INSTANCE_URLS = {
         "https://api.openvk.org",
+        "https://openvk.xyz",
         "http://openvk.xyz",
-        "https://api.vepurovk.fun",
-        "https://vepurovk.xyz"
+        "https://api.vepurovk.fun"
     };
     
     private String[] INSTANCE_DISPLAY_NAMES;
@@ -69,9 +69,9 @@ public class LoginActivity extends AppCompatActivity {
 
         INSTANCE_DISPLAY_NAMES = new String[] {
                 "api.openvk.org",
-                "openvk.xyz",
+                "openvk.xyz (https)",
+                "openvk.xyz (http)",
                 "api.vepurovk.fun",
-                "vepurovk.xyz",
                 getString(R.string.instance_display_names_custom)
         };
 
