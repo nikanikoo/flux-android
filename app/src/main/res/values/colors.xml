@@ -191,4 +191,10 @@
     <color name="amoled_surface_container">#050505</color>
     <color name="amoled_surface_container_high">#0A0A0A</color>
     <color name="amoled_surface_container_highest">#101010</color>
+
+    <color name="colorError">@color/md_theme_light_error</color>
+    <color name="colorBackground">@color/md_theme_light_background</color>
+    <color name="colorTextPrimary">@color/md_theme_light_onBackground</color>
+    <color name="colorTextSecondary">@color/md_theme_light_onSurfaceVariant</color>
+    <color name="colorPrimary">@color/md_theme_light_primary</color>
 </resources>

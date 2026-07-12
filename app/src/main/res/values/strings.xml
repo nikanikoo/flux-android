@@ -716,4 +716,11 @@
     <string name="poll_error_vote">Ошибка при голосовании</string>
     <string name="poll_error_unvote">Ошибка при отмене голоса</string>
 
+    <!-- Custom instance addition -->
+    <string name="add_instance">Добавить инстанс</string>
+    <string name="instance_url">URL инстанса</string>
+    <string name="instance_url_empty">Введите URL инстанса</string>
+    <string name="instance_added">Инстанс добавлен</string>
+    <string name="add">Добавить</string>
+
 </resources>
