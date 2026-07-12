@@ -13,6 +13,10 @@ import org.nikanikoo.flux.utils.AsyncTaskHelper;
 import org.nikanikoo.flux.utils.Logger;
 import org.nikanikoo.flux.utils.SSLHelper;
 
+import com.google.android.material.color.DynamicColors;
+import com.google.android.material.color.DynamicColorsOptions;
+import org.nikanikoo.flux.utils.ThemeManager;
+
 import java.io.File;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -33,6 +37,13 @@ public class FluxApplication extends Application {
         instance = this;
         Logger.init(this);
         super.onCreate();
+
+        // Инициализация Dynamic Colors с проверкой стиля в настройках
+        DynamicColors.applyToActivitiesIfAvailable(this, new DynamicColorsOptions.Builder()
+                .setPrecondition((activity, theme) -> {
+                    return ThemeManager.getInstance(activity).getThemeStyle() == ThemeManager.STYLE_MATERIAL_YOU;
+                })
+                .build());
 
         Logger.d("FluxApplication", "Инициализация приложения");
         Notification.setAppContext(this);

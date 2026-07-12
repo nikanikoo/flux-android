@@ -22,7 +22,6 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import com.google.android.material.color.DynamicColors;
 import com.google.android.material.textfield.TextInputEditText;
 import com.squareup.picasso.Picasso;
 
@@ -75,11 +74,6 @@ public class CreatePostActivity extends AppCompatActivity {
         setContentView(R.layout.activity_create_post);
         
         ThemeManager.applySystemBarsAppearance(this);
-
-        if (themeManager.getThemeStyle() == ThemeManager.STYLE_MATERIAL_YOU && 
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            DynamicColors.applyToActivityIfAvailable(this);
-        }
 
         postsManager = PostsManager.getInstance(this);
         profileManager = ProfileManager.getInstance(this);

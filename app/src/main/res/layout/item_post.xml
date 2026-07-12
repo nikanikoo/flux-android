@@ -1,11 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="8dp"
-    app:cardCornerRadius="12dp"
-    app:cardElevation="4dp">
+    android:orientation="vertical"
+    android:background="?attr/colorSurface">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -21,13 +20,13 @@
             android:gravity="center_vertical"
             android:layout_marginBottom="12dp">
 
-            <ImageView
+            <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/post_avatar"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:src="@drawable/camera_200"
                 android:scaleType="centerCrop"
-                android:background="@drawable/post_item"
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
                 android:clickable="true"
                 android:focusable="true" />
 
@@ -126,14 +125,14 @@
                     android:textSize="14sp" />
 
                 <!-- Оригинальный пост (для репостов) -->
-                <androidx.cardview.widget.CardView
+                <com.google.android.material.card.MaterialCardView
                     android:id="@+id/original_post_container"
+                    style="?attr/materialCardViewFilledStyle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="12dp"
                     android:visibility="gone"
-                    app:cardCornerRadius="8dp"
-                    app:cardElevation="2dp"
+                    app:cardCornerRadius="12dp"
                     android:clickable="true"
                     android:focusable="true"
                     android:foreground="?attr/selectableItemBackground">
@@ -385,7 +384,7 @@
 
                     </LinearLayout>
 
-                </androidx.cardview.widget.CardView>
+                </com.google.android.material.card.MaterialCardView>
 
                 <!-- Коллаж изображений -->
                 <org.nikanikoo.flux.ui.adapters.posts.PostImagesCollage
@@ -605,4 +604,9 @@
 
     </LinearLayout>
 
-</androidx.cardview.widget.CardView>
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?attr/colorOutlineVariant" />
+
+</LinearLayout>

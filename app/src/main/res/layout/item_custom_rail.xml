@@ -9,13 +9,21 @@
     android:focusable="true"
     android:background="?attr/selectableItemBackgroundBorderless">
 
-    <ImageView
-        android:id="@+id/rail_item_icon"
-        android:layout_width="28dp"
-        android:layout_height="28dp"
+    <FrameLayout
+        android:layout_width="56dp"
+        android:layout_height="32dp"
         android:layout_gravity="center"
-        app:tint="@color/rail_icon_color"
-        android:duplicateParentState="true" />
+        android:background="@drawable/bg_rail_item"
+        android:duplicateParentState="true">
+
+        <ImageView
+            android:id="@+id/rail_item_icon"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="center"
+            app:tint="@color/rail_icon_color"
+            android:duplicateParentState="true" />
+    </FrameLayout>
 
     <TextView
         android:id="@+id/rail_item_badge"

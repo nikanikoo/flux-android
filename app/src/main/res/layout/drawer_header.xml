@@ -5,7 +5,7 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="?attr/colorPrimaryContainer">
+    android:background="?attr/colorSurfaceContainerLow">
 
     <!-- Current Account Header -->
     <FrameLayout
@@ -30,11 +30,13 @@
                 android:layout_weight="1"
                 android:orientation="vertical">
 
-                <androidx.appcompat.widget.AppCompatImageView
+                <com.google.android.material.imageview.ShapeableImageView
                     android:id="@+id/drawer_avatar"
                     android:layout_width="64dp"
                     android:layout_height="64dp"
                     android:src="@drawable/camera_200"
+                    android:scaleType="centerCrop"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
                     android:background="?android:attr/selectableItemBackgroundBorderless"/>
 
                 <LinearLayout
@@ -49,7 +51,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/empty_loading"
-                        android:textColor="?attr/colorOnPrimaryContainer"
+                        android:textColor="?attr/colorOnSurface"
                         android:textStyle="bold"
                         android:textSize="16sp"/>
 
@@ -70,7 +72,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:text="@string/empty_loading"
-                    android:textColor="?attr/colorOnPrimaryContainer"
+                    android:textColor="?attr/colorOnSurfaceVariant"
                     android:textSize="14sp"
                     android:alpha="0.8"/>
 
@@ -80,7 +82,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
                     android:text="@string/empty_loading"
-                    android:textColor="?attr/colorOnPrimaryContainer"
+                    android:textColor="?attr/colorOnSurfaceVariant"
                     android:textSize="12sp"
                     android:alpha="0.6"/>
 
@@ -94,6 +96,7 @@
                 android:src="@drawable/ic_keyboard_arrow_down"
                 android:rotation="0"
                 android:alpha="0.7"
+                app:tint="?attr/colorOnSurfaceVariant"
                 android:layout_gravity="center_vertical" />
 
         </LinearLayout>
@@ -107,7 +110,7 @@
             android:layout_marginEnd="12dp"
             android:padding="12dp"
             android:src="@drawable/ic_sunny"
-            android:tint="?attr/colorOnPrimaryContainer"
+            app:tint="?attr/colorOnSurfaceVariant"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:clickable="true"
             android:focusable="true"

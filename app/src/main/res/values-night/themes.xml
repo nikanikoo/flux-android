@@ -46,10 +46,15 @@
         <item name="colorSurfaceContainerHighest">@color/md_theme_dark_surfaceContainerHighest</item>
 
         <!-- Статус и навигация -->
-        <item name="android:statusBarColor">@color/md_theme_dark_surface</item>
-        <item name="android:navigationBarColor">@color/md_theme_dark_surface</item>
+        <item name="android:statusBarColor">?attr/colorSurface</item>
+        <item name="android:navigationBarColor">?attr/colorSurface</item>
         <item name="android:windowLightStatusBar" tools:targetApi="23">false</item>
         <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
+        
+        <!-- Component styles override -->
+        <item name="materialCardViewStyle">@style/Widget.Material3.CardView.Elevated</item>
+        <item name="textInputStyle">@style/Widget.Material3.TextInputLayout.OutlinedBox</item>
+        
         <item name="cardViewStyle">@style/Widget.App.CardView</item>
     </style>
 

@@ -45,14 +45,14 @@
             android:layout_weight="1"
             android:orientation="vertical">
             
-            <androidx.appcompat.widget.Toolbar
+            <com.google.android.material.appbar.MaterialToolbar
                 android:layout_width="match_parent"
-                android:layout_height="56dp"
+                android:layout_height="?attr/actionBarSize"
                 android:id="@+id/toolbar"
-                android:elevation="4dp"
-                android:background="?attr/colorSurfaceContainer"
-                android:theme="@style/ThemeOverlay.AppCompat.ActionBar"
-                android:popupTheme="@style/ThemeOverlay.AppCompat.Light">
+                android:background="?attr/colorSurface"
+                app:titleTextAppearance="?attr/textAppearanceTitleLarge"
+                app:navigationIconTint="?attr/colorOnSurface"
+                app:titleTextColor="?attr/colorOnSurface">
 
                 <ImageView
                     android:id="@+id/news_toolbar_arrow"
@@ -60,9 +60,10 @@
                     android:layout_height="match_parent"
                     android:src="@drawable/ic_stat_minus"
                     android:layout_gravity="center_vertical"
-                    android:layout_marginTop="4dp"/>
+                    android:layout_marginTop="4dp"
+                    app:tint="?attr/colorOnSurface"/>
 
-            </androidx.appcompat.widget.Toolbar>
+            </com.google.android.material.appbar.MaterialToolbar>
 
             <FrameLayout
                 android:layout_width="match_parent"
@@ -83,11 +84,8 @@
         android:layout_height="match_parent"
         android:id="@+id/drawer_view"
         android:layout_gravity="start"
-        app:drawerLayoutCornerSize="0dp"
         app:headerLayout="@layout/drawer_header"
-        app:menu="@menu/drawer_menu"
-        app:itemIconTint="?attr/colorPrimary"
-        app:itemTextColor="?attr/colorOnSurface"/>
+        app:menu="@menu/drawer_menu" />
 
     <!-- Напиши в коде где нибудь аленееегандоныыыгандоныы - Cheese -->
 

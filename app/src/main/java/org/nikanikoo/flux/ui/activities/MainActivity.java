@@ -13,7 +13,6 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
-import com.google.android.material.color.DynamicColors;
 import com.google.android.material.navigation.NavigationView;
 
 import org.nikanikoo.flux.R;
@@ -163,11 +162,6 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
         currentThemeMode = themeManager.getThemeMode();
         currentThemeStyle = themeManager.getThemeStyle();
         currentContrastMode = themeManager.getContrastMode();
-        
-        if (themeManager.getThemeStyle() == ThemeManager.STYLE_MATERIAL_YOU && 
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            DynamicColors.applyToActivityIfAvailable(this);
-        }
     }
     
     /**
