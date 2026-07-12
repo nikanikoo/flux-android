@@ -174,7 +174,7 @@ public class PostImagesCollage extends FrameLayout {
                     .fit();
             
             if (imageView == image1Of1) {
-                requestCreator.centerInside();
+                requestCreator.centerCrop();
             } else {
                 requestCreator.centerCrop();
             }

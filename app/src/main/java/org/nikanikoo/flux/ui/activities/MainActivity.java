@@ -6,6 +6,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.TextView;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
@@ -205,6 +206,9 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
         // Toolbar
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayShowTitleEnabled(false);
+        }
         
         // Navigation Controller
         CustomDrawerLayout drawerLayout = findViewById(R.id.drawer_layout);
@@ -465,6 +469,10 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
     public void setToolbarTitle(String title) {
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle(title);
+            TextView customTitle = findViewById(R.id.toolbar_custom_title);
+            if (customTitle != null) {
+                customTitle.setText(title);
+            }
             Toolbar toolbar = findViewById(R.id.toolbar);
             if (toolbar != null) {
                 toolbar.setOnClickListener(null);
@@ -480,6 +488,10 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
     public void setToolbarTitleClickable(String title, View.OnClickListener clickListener) {
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle(title);
+            TextView customTitle = findViewById(R.id.toolbar_custom_title);
+            if (customTitle != null) {
+                customTitle.setText(title);
+            }
             Toolbar toolbar = findViewById(R.id.toolbar);
             if (toolbar != null) {
                 toolbar.setOnClickListener(clickListener);

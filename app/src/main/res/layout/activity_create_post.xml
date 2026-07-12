@@ -10,13 +10,14 @@
     tools:context=".ui.activities.CreatePostActivity">
 
     <!-- Toolbar -->
-    <androidx.appcompat.widget.Toolbar
+    <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="?attr/colorSurfaceContainer"
-        android:theme="@style/ThemeOverlay.AppCompat.DayNight.ActionBar"
+        android:background="?attr/colorSurface"
+        app:titleTextAppearance="?attr/textAppearanceTitleLarge"
         app:title="@string/post_create_title"
+        app:navigationIconTint="?attr/colorOnSurface"
         app:titleTextColor="?attr/colorOnSurface" />
 
     <ScrollView
@@ -41,8 +42,8 @@
                     android:id="@+id/author_avatar"
                     android:layout_width="48dp"
                     android:layout_height="48dp"
-                    android:background="@drawable/avatar_circle"
                     android:scaleType="centerCrop"
+                    app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full"
                     android:src="@drawable/camera_200" />
 
                 <LinearLayout
@@ -98,14 +99,16 @@
                 android:visibility="gone" />
 
             <!-- Предварительный просмотр изображения -->
-            <androidx.cardview.widget.CardView
+            <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_image_preview"
+                style="?attr/materialCardViewFilledStyle"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
                 android:visibility="gone"
                 app:cardCornerRadius="12dp"
-                app:cardElevation="4dp">
+                app:cardElevation="0dp"
+                app:strokeWidth="0dp">
 
                 <RelativeLayout
                     android:layout_width="match_parent"
@@ -133,7 +136,7 @@
 
                 </RelativeLayout>
 
-            </androidx.cardview.widget.CardView>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- Действия -->
             <LinearLayout
@@ -142,33 +145,17 @@
                 android:layout_marginBottom="16dp"
                 android:orientation="horizontal">
 
-                <LinearLayout
-                    android:id="@+id/btn_add_photo"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginEnd="16dp"
-                    android:background="?android:attr/selectableItemBackground"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:padding="12dp">
-
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@drawable/ic_add"
-                        app:tint="?attr/colorPrimary" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:text="@string/create_post_photo"
-                        android:textSize="14sp"
-                        app:tint="?attr/colorPrimary"/>
-
-                </LinearLayout>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_add_photo"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="16dp"
+                android:text="@string/create_post_photo"
+                android:textColor="?attr/colorPrimary"
+                app:icon="@drawable/ic_add"
+                app:iconSize="24dp"
+                app:iconTint="?attr/colorPrimary" />
 
             </LinearLayout>
 

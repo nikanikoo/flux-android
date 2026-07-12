@@ -25,12 +25,11 @@
                 android:orientation="vertical">
 
                 <!-- Оригинальный пост -->
-                <androidx.cardview.widget.CardView
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_margin="8dp"
-                    app:cardCornerRadius="12dp"
-                    app:cardElevation="4dp">
+                    android:orientation="vertical"
+                    android:background="?attr/colorSurface">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -46,13 +45,13 @@
                             android:gravity="center_vertical"
                             android:layout_marginBottom="12dp">
 
-                            <ImageView
+                            <com.google.android.material.imageview.ShapeableImageView
                                 android:id="@+id/original_post_avatar"
                                 android:layout_width="40dp"
                                 android:layout_height="40dp"
                                 android:src="@drawable/camera_200"
                                 android:scaleType="centerCrop"
-                                android:background="@drawable/avatar_circle" />
+                                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Full" />
 
                             <LinearLayout
                                 android:layout_width="0dp"
@@ -248,20 +247,21 @@
                             <LinearLayout
                                 android:id="@+id/original_post_like_button"
                                 android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
+                                android:layout_height="36dp"
                                 android:orientation="horizontal"
-                                android:gravity="center_vertical"
+                                android:gravity="center"
                                 android:clickable="true"
                                 android:focusable="true"
-                                android:padding="8dp"
-                                android:layout_marginEnd="16dp">
+                                android:background="@drawable/bg_post_action_button"
+                                android:paddingHorizontal="12dp"
+                                android:layout_marginEnd="8dp">
 
                                 <ImageView
                                     android:id="@+id/original_post_like_icon"
                                     android:layout_width="20dp"
                                     android:layout_height="20dp"
                                     android:src="@drawable/ic_favorite"
-                                    app:tint="@android:color/darker_gray" />
+                                    app:tint="@color/like_inactive" />
 
                                 <TextView
                                     android:id="@+id/original_post_like_count"
@@ -276,16 +276,20 @@
 
                             <LinearLayout
                                 android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
+                                android:layout_height="36dp"
                                 android:orientation="horizontal"
-                                android:gravity="center_vertical"
-                                android:padding="8dp">
+                                android:gravity="center"
+                                android:clickable="false"
+                                android:focusable="false"
+                                android:background="@drawable/bg_post_action_button"
+                                android:paddingHorizontal="12dp"
+                                android:layout_marginEnd="8dp">
 
                                 <ImageView
                                     android:layout_width="20dp"
                                     android:layout_height="20dp"
                                     android:src="@drawable/ic_comment"
-                                    app:tint="@android:color/darker_gray" />
+                                    app:tint="?attr/colorOnSurfaceVariant" />
 
                                 <TextView
                                     android:id="@+id/original_post_comment_count"
@@ -301,19 +305,19 @@
                             <LinearLayout
                                 android:id="@+id/original_post_share_button"
                                 android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
+                                android:layout_height="36dp"
                                 android:orientation="horizontal"
-                                android:gravity="center_vertical"
+                                android:gravity="center"
                                 android:clickable="true"
                                 android:focusable="true"
-                                android:padding="8dp"
-                                android:layout_marginStart="16dp">
+                                android:background="@drawable/bg_post_action_button"
+                                android:paddingHorizontal="12dp">
 
                                 <ImageView
                                     android:layout_width="20dp"
                                     android:layout_height="20dp"
                                     android:src="@drawable/ic_share"
-                                    app:tint="@android:color/darker_gray" />
+                                    app:tint="?attr/colorOnSurfaceVariant" />
 
                                 <TextView
                                     android:id="@+id/original_post_share_text"
@@ -330,7 +334,12 @@
 
                     </LinearLayout>
 
-                </androidx.cardview.widget.CardView>
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="?attr/colorOutlineVariant" />
+
+                </LinearLayout>
 
                 <!-- Заголовок комментариев -->
                 <TextView

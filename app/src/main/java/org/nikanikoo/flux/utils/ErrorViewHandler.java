@@ -186,9 +186,9 @@ public class ErrorViewHandler {
     public void showErrorAuto(@NonNull String errorMessage) {
         ErrorType type = detectErrorType(errorMessage);
         showError(type);
-        if (this.errorMessage != null && !this.errorMessage.getText().equals(errorMessage)) {
-            // сообщение с ошибкой
-            // this.errorMessage.setText(errorMessage);
+        if (this.errorMessage != null) {
+            this.errorMessage.setVisibility(View.VISIBLE);
+            this.errorMessage.setText(errorMessage);
         }
     }
 }

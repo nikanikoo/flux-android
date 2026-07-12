@@ -12,6 +12,10 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import androidx.appcompat.widget.SearchView;
 import android.view.View;
 import android.view.ViewGroup;
 
@@ -77,6 +81,8 @@ public class NewsFragment extends BaseFragment implements PostAdapter.OnPostClic
     // Тип новостей: true = подписки, false = все новости
     private boolean isSubscriptionMode = true;
     private String[] newsTypes;
+    private boolean isSearchMode = false;
+    private String currentSearchQuery = "";
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -115,6 +121,7 @@ public class NewsFragment extends BaseFragment implements PostAdapter.OnPostClic
         setupSwipeRefresh();
         setupEndlessScroll();
         setupToolbarTitle();
+        setHasOptionsMenu(true);
 
         if (hasLoadedPosts && !savedPosts.isEmpty()) {
             postAdapter.setPosts(new ArrayList<>(savedPosts));
@@ -271,7 +278,21 @@ public class NewsFragment extends BaseFragment implements PostAdapter.OnPostClic
         paginationHelper.startLoading();
 
         // Выбираем метод загрузки в зависимости от режима
-        if (isSubscriptionMode) {
+        if (isSearchMode) {
+            postsManager.searchNews(currentSearchQuery, nextFrom, new PostsManager.FeedPostsCallback() {
+                @Override
+                public void onSuccess(List<Post> loadedPosts, String nextFrom) {
+                    Logger.d(TAG, " Successfully loaded " + loadedPosts.size() + " search posts, next_from: " + nextFrom);
+                    handlePostsLoaded(loadedPosts, nextFrom, isRefresh, currentRequest);
+                }
+
+                @Override
+                public void onError(String error) {
+                    Logger.d(TAG, " Error searching newsfeed: " + error);
+                    handlePostsError(error, isRefresh, currentRequest);
+                }
+            });
+        } else if (isSubscriptionMode) {
             postsManager.loadSubscriptionNewsFeed(nextFrom, new PostsManager.FeedPostsCallback() {
                 @Override
                 public void onSuccess(List<Post> loadedPosts, String nextFrom) {
@@ -803,6 +824,65 @@ public class NewsFragment extends BaseFragment implements PostAdapter.OnPostClic
                 arrow.setVisibility(View.GONE);
             }
         }
+    }
+
+    @Override
+    public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
+        inflater.inflate(R.menu.menu_search, menu);
+        
+        MenuItem searchItem = menu.findItem(R.id.action_search);
+        if (searchItem != null) {
+            SearchView searchView = (SearchView) searchItem.getActionView();
+            if (searchView != null) {
+                searchView.setQueryHint(getString(R.string.search_hint));
+                searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+                    @Override
+                    public boolean onQueryTextSubmit(String query) {
+                        if (!query.trim().isEmpty()) {
+                            isSearchMode = true;
+                            currentSearchQuery = query;
+                            savedPosts.clear();
+                            postAdapter.setPosts(new ArrayList<>());
+                            loadPosts(true);
+                        }
+                        return true;
+                    }
+
+                    @Override
+                    public boolean onQueryTextChange(String newText) {
+                        return false;
+                    }
+                });
+            }
+
+            searchItem.setOnActionExpandListener(new MenuItem.OnActionExpandListener() {
+                @Override
+                public boolean onMenuItemActionExpand(MenuItem item) {
+                    // Скрываем стрелку выбора типа новостей при поиске
+                    if (arrow != null) {
+                        arrow.setVisibility(View.GONE);
+                    }
+                    return true;
+                }
+
+                @Override
+                public boolean onMenuItemActionCollapse(MenuItem item) {
+                    if (isSearchMode) {
+                        isSearchMode = false;
+                        currentSearchQuery = "";
+                        savedPosts.clear();
+                        postAdapter.setPosts(new ArrayList<>());
+                        loadPosts(true);
+                    }
+                    if (arrow != null) {
+                        arrow.setVisibility(View.VISIBLE);
+                    }
+                    return true;
+                }
+            });
+        }
+        
+        super.onCreateOptionsMenu(menu, inflater);
     }
 
     @Override

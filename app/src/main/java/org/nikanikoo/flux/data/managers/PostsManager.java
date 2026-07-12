@@ -415,6 +415,60 @@ public class PostsManager extends BaseManager<PostsManager> {
         });
     }
 
+    public void searchNews(String query, String startFrom, FeedPostsCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("q", query);
+        params.put("count", String.valueOf(Constants.Api.POSTS_PER_PAGE));
+        params.put("extended", "1");
+        params.put("fields", "verified");
+
+        if (startFrom != null && !startFrom.isEmpty()) {
+            params.put("start_from", startFrom);
+        }
+
+        Logger.d(TAG, "Searching news with query: " + query + ", start_from: " + startFrom);
+
+        api.callMethod("newsfeed.search", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                AsyncTaskHelper.executeAsync(() -> {
+                    Logger.apiResponse(TAG, response.toString());
+
+                    JSONObject responseObj = response.getJSONObject("response");
+                    JSONArray items = responseObj.getJSONArray("items");
+                    JSONArray profiles = responseObj.optJSONArray("profiles");
+                    JSONArray groups = responseObj.optJSONArray("groups");
+                    
+                    String newNextFrom = responseObj.optString("next_from", null);
+
+                    Logger.d(TAG, "Search items count: " + items.length() + ", next_from: " + newNextFrom);
+
+                    List<Post> posts = org.nikanikoo.flux.utils.PostParser.parsePostsFromNewsfeed(items, profiles, groups);
+                    Logger.d(TAG, "Parsed searched posts count: " + posts.size());
+
+                    return new FeedPostsResult(posts, newNextFrom);
+                }, new AsyncTaskHelper.AsyncCallback<FeedPostsResult>() {
+                    @Override
+                    public void onSuccess(FeedPostsResult result) {
+                        callback.onSuccess(result.posts, result.nextFrom);
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        Logger.e(TAG, "Search parse error: " + error);
+                        callback.onError("Не удалось загрузить результаты поиска");
+                    }
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                Logger.e(TAG, "Search newsfeed error: " + error);
+                callback.onError("Не удалось загрузить результаты поиска");
+            }
+        });
+    }
+
     private void loadSubscriptionNewsFeedLegacy(int offset, PostsCallback callback) {
         Map<String, String> params = new HashMap<>();
         params.put("count", String.valueOf(Constants.Api.POSTS_PER_PAGE));

@@ -622,7 +622,10 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
             Logger.d(TAG, "Set drawerIndicatorEnabled=false, displayHomeAsUpEnabled=true");
         } else {
             boolean isTablet = navigationRailView != null && navigationRailView.getVisibility() == View.VISIBLE;
-            drawerToggle.setDrawerIndicatorEnabled(!isTablet);
+            drawerToggle.setDrawerIndicatorEnabled(false);
+            if (!isTablet) {
+                drawerToggle.setHomeAsUpIndicator(R.drawable.ic_sort);
+            }
             if (activity.getSupportActionBar() != null) {
                 activity.getSupportActionBar().setDisplayHomeAsUpEnabled(!isTablet);
             }
@@ -631,6 +634,11 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
             drawerToggle.syncState();
             
             if (toolbar != null) {
+                if (isTablet) {
+                    toolbar.setNavigationIcon(null);
+                } else {
+                    toolbar.setNavigationIcon(R.drawable.ic_sort);
+                }
                 toolbar.setNavigationOnClickListener(v -> {
                     Logger.d(TAG, "Toolbar navigation clicked");
                     int bc = activity.getSupportFragmentManager().getBackStackEntryCount();
@@ -641,7 +649,7 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
                     }
                 });
             }
-            Logger.d(TAG, "Set drawerIndicatorEnabled=" + !isTablet + ", displayHomeAsUpEnabled=" + (!isTablet));
+            Logger.d(TAG, "Set drawerIndicatorEnabled=false, displayHomeAsUpEnabled=" + (!isTablet) + ", homeAsUpIndicator=ic_sort");
         }
         drawerToggle.syncState();
     }

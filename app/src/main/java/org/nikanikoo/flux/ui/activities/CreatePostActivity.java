@@ -41,7 +41,7 @@ public class CreatePostActivity extends AppCompatActivity {
 
     private TextInputEditText editPostContent;
     private Button btnPublish;
-    private LinearLayout btnAddPhoto;
+    private View btnAddPhoto;
     private PostsManager postsManager;
     private ProfileManager profileManager;
     private TextView authorName;

@@ -38,7 +38,6 @@ public class FluxApplication extends Application {
         Logger.init(this);
         super.onCreate();
 
-        // Инициализация Dynamic Colors с проверкой стиля в настройках
         DynamicColors.applyToActivitiesIfAvailable(this, new DynamicColorsOptions.Builder()
                 .setPrecondition((activity, theme) -> {
                     return ThemeManager.getInstance(activity).getThemeStyle() == ThemeManager.STYLE_MATERIAL_YOU;
