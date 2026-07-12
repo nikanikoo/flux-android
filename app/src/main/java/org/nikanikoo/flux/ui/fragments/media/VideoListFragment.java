@@ -230,26 +230,31 @@ public class VideoListFragment extends BaseFragment implements VideoAdapter.OnVi
         
         MenuItem searchItem = menu.findItem(R.id.action_search);
         SearchView searchView = (SearchView) searchItem.getActionView();
-        
-        searchView.setQueryHint(getString(R.string.video_search));
-        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
-            @Override
-            public boolean onQueryTextSubmit(String query) {
-                if (!query.trim().isEmpty()) {
-                    isSearchMode = true;
-                    currentSearchQuery = query;
-                    videos.clear();
-                    videoAdapter.notifyDataSetChanged();
-                    searchVideos(query, true);
+        if (searchView != null) {
+            searchView.setQueryHint(getString(R.string.video_search));
+            View searchPlate = searchView.findViewById(androidx.appcompat.R.id.search_plate);
+            if (searchPlate != null) {
+                searchPlate.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+            }
+            searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+                @Override
+                public boolean onQueryTextSubmit(String query) {
+                    if (!query.trim().isEmpty()) {
+                        isSearchMode = true;
+                        currentSearchQuery = query;
+                        videos.clear();
+                        videoAdapter.notifyDataSetChanged();
+                        searchVideos(query, true);
+                    }
+                    return true;
                 }
-                return true;
-            }
 
-            @Override
-            public boolean onQueryTextChange(String newText) {
-                return false;
-            }
-        });
+                @Override
+                public boolean onQueryTextChange(String newText) {
+                    return false;
+                }
+            });
+        }
 
         searchItem.setOnActionExpandListener(new MenuItem.OnActionExpandListener() {
             @Override

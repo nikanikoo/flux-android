@@ -15,6 +15,7 @@ import androidx.fragment.app.Fragment;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.radiobutton.MaterialRadioButton;
+import com.google.android.material.materialswitch.MaterialSwitch;
 
 import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.ui.activities.MainActivity;
@@ -27,6 +28,8 @@ public class AppearanceSettingsFragment extends Fragment {
     private TextView colorSchemeValue;
     private TextView contrastValue;
     private View settingsThemeMode;
+    private View settingsThemeAmoled;
+    private MaterialSwitch switchThemeAmoled;
     private View settingsColorScheme;
     private View settingsContrast;
 
@@ -50,18 +53,33 @@ public class AppearanceSettingsFragment extends Fragment {
         contrastValue = view.findViewById(R.id.contrast_value);
         
         settingsThemeMode = view.findViewById(R.id.settings_theme_mode);
+        settingsThemeAmoled = view.findViewById(R.id.settings_theme_amoled);
+        switchThemeAmoled = view.findViewById(R.id.switch_theme_amoled);
         settingsColorScheme = view.findViewById(R.id.settings_color_scheme);
         settingsContrast = view.findViewById(R.id.settings_contrast);
     }
     
     private void setupClickListeners() {
         settingsThemeMode.setOnClickListener(v -> showThemeModeDialog());
+        settingsThemeAmoled.setOnClickListener(v -> {
+            if (switchThemeAmoled != null) {
+                boolean enabled = !switchThemeAmoled.isChecked();
+                switchThemeAmoled.setChecked(enabled);
+                themeManager.setAmoledThemeEnabled(enabled);
+                if (themeManager.isDarkMode()) {
+                    restartMainActivity();
+                }
+            }
+        });
         settingsColorScheme.setOnClickListener(v -> showColorSchemeDialog());
         settingsContrast.setOnClickListener(v -> showContrastDialog());
     }
     
     private void updateThemeValues() {
         themeModeValue.setText(themeManager.getThemeName(themeManager.getThemeMode()));
+        if (switchThemeAmoled != null) {
+            switchThemeAmoled.setChecked(themeManager.isAmoledThemeEnabled());
+        }
         colorSchemeValue.setText(themeManager.getStyleName(themeManager.getThemeStyle()));
         contrastValue.setText(themeManager.getContrastName(themeManager.getContrastMode()));
     }
@@ -71,7 +89,6 @@ public class AppearanceSettingsFragment extends Fragment {
         RadioGroup radioGroup = dialogView.findViewById(R.id.theme_mode_radio_group);
         MaterialRadioButton radioLight = dialogView.findViewById(R.id.radio_theme_light);
         MaterialRadioButton radioDark = dialogView.findViewById(R.id.radio_theme_dark);
-        MaterialRadioButton radioAmoled = dialogView.findViewById(R.id.radio_theme_amoled);
         MaterialRadioButton radioSystem = dialogView.findViewById(R.id.radio_theme_system);
         
         int currentTheme = themeManager.getThemeMode();
@@ -80,10 +97,8 @@ public class AppearanceSettingsFragment extends Fragment {
                 radioLight.setChecked(true);
                 break;
             case ThemeManager.THEME_DARK:
-                radioDark.setChecked(true);
-                break;
             case ThemeManager.THEME_AMOLED:
-                radioAmoled.setChecked(true);
+                radioDark.setChecked(true);
                 break;
             case ThemeManager.THEME_SYSTEM:
                 radioSystem.setChecked(true);
@@ -100,8 +115,6 @@ public class AppearanceSettingsFragment extends Fragment {
                     newTheme = ThemeManager.THEME_LIGHT;
                 } else if (checkedId == R.id.radio_theme_dark) {
                     newTheme = ThemeManager.THEME_DARK;
-                } else if (checkedId == R.id.radio_theme_amoled) {
-                    newTheme = ThemeManager.THEME_AMOLED;
                 } else {
                     newTheme = ThemeManager.THEME_SYSTEM;
                 }

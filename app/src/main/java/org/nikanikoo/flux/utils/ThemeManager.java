@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.view.WindowInsetsController;
+import android.view.View;
 import androidx.appcompat.app.AppCompatDelegate;
 import org.nikanikoo.flux.R;
 
@@ -14,6 +15,7 @@ public class ThemeManager {
     private static final String KEY_THEME_STYLE = "theme_style";
     private static final String KEY_CONTRAST_MODE = "contrast_mode";
     private static final String KEY_DYNAMIC_COLORS = "dynamic_colors";
+    private static final String KEY_AMOLED_THEME = "amoled_theme";
 
     public static final int THEME_LIGHT = 0;
     public static final int THEME_DARK = 1;
@@ -68,16 +70,50 @@ public class ThemeManager {
     }
 
     public static void applySystemBarsAppearance(Activity activity) {
+        ThemeManager themeManager = ThemeManager.getInstance(activity);
+        boolean isLightTheme = !themeManager.isDarkMode();
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             WindowInsetsController windowInsetsController = activity.getWindow().getInsetsController();
             if (windowInsetsController != null) {
-                ThemeManager themeManager = ThemeManager.getInstance(activity);
-                boolean isLightTheme = !themeManager.isDarkMode();
                 windowInsetsController.setSystemBarsAppearance(
                         isLightTheme ? WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS : 0,
                         WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
                 );
             }
+        } else {
+            View decorView = activity.getWindow().getDecorView();
+            int flags = decorView.getSystemUiVisibility();
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (isLightTheme) {
+                    flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                } else {
+                    flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                }
+            } else {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    if (isLightTheme) {
+                        activity.getWindow().setStatusBarColor(android.graphics.Color.BLACK);
+                    }
+                }
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                if (isLightTheme) {
+                    flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                } else {
+                    flags &= ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+                }
+            } else {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    if (isLightTheme) {
+                        activity.getWindow().setNavigationBarColor(android.graphics.Color.BLACK);
+                    }
+                }
+            }
+
+            decorView.setSystemUiVisibility(flags);
         }
     }
 
@@ -103,6 +139,14 @@ public class ThemeManager {
     
     public boolean isDynamicColorsEnabled() {
         return prefs.getBoolean(KEY_DYNAMIC_COLORS, false);
+    }
+
+    public void setAmoledThemeEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_AMOLED_THEME, enabled).apply();
+    }
+
+    public boolean isAmoledThemeEnabled() {
+        return prefs.getBoolean(KEY_AMOLED_THEME, false);
     }
     
     public boolean isDynamicColorsAvailable() {
@@ -148,7 +192,8 @@ public class ThemeManager {
             ", isDynamicColorsAvailable: " + isDynamicColorsAvailable());
 
         int mode = getThemeMode();
-        if (mode == THEME_AMOLED) {
+        boolean forceAmoled = isAmoledThemeEnabled() && isDarkMode();
+        if (mode == THEME_AMOLED || forceAmoled) {
             switch (style) {
                 case STYLE_GREEN:
                     return getContrastTheme(R.style.Theme_Flux_Green_Amoled, contrast);

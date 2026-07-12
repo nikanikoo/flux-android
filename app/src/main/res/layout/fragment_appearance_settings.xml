@@ -30,6 +30,7 @@
                     android:showDividers="middle">
 
                     <include layout="@layout/settings_item_theme_mode" />
+                    <include layout="@layout/settings_item_theme_amoled" />
                     <include layout="@layout/settings_item_color_scheme" />
                     <include layout="@layout/settings_item_contrast" />
 

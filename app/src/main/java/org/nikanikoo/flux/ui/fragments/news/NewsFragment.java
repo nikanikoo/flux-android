@@ -835,6 +835,10 @@ public class NewsFragment extends BaseFragment implements PostAdapter.OnPostClic
             SearchView searchView = (SearchView) searchItem.getActionView();
             if (searchView != null) {
                 searchView.setQueryHint(getString(R.string.search_hint));
+                View searchPlate = searchView.findViewById(androidx.appcompat.R.id.search_plate);
+                if (searchPlate != null) {
+                    searchPlate.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+                }
                 searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
                     @Override
                     public boolean onQueryTextSubmit(String query) {

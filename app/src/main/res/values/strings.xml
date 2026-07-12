@@ -439,6 +439,8 @@
     <string name="appearance_theme_light">Светлая</string>
     <string name="appearance_theme_dark">Тёмная</string>
     <string name="appearance_theme_amoled">AMOLED</string>
+    <string name="appearance_theme_amoled_switch">AMOLED-тема</string>
+    <string name="appearance_theme_amoled_switch_desc">Использовать чистый черный цвет в темном режиме</string>
     <string name="appearance_color_scheme">Цветовая схема</string>
     <string name="appearance_color_blue">Синяя</string>
     <string name="appearance_color_material_you">Material You (динамическая)</string>
