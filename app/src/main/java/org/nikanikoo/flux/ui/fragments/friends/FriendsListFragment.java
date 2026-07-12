@@ -4,6 +4,10 @@ import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import androidx.appcompat.widget.SearchView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
@@ -73,6 +77,7 @@ public class FriendsListFragment extends BaseFragment implements FriendsAdapter.
         setupFilters();
         setupSwipeRefresh();
         setupToolbarTitle();
+        setHasOptionsMenu(true);
         setupErrorView(view, R.id.recycler_view);
         setRetryCallback(() -> {
             if (showRequests) {
@@ -119,21 +124,56 @@ public class FriendsListFragment extends BaseFragment implements FriendsAdapter.
     }
 
     private void setupSearch() {
-        searchEditText.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+    }
 
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                currentSearchQuery = s.toString().toLowerCase(Locale.ROOT).trim();
-                if (!showRequests) {
-                    filterFriends();
+    @Override
+    public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
+        inflater.inflate(R.menu.menu_search, menu);
+        MenuItem searchItem = menu.findItem(R.id.action_search);
+        if (searchItem != null) {
+            SearchView searchView = (SearchView) searchItem.getActionView();
+            if (searchView != null) {
+                searchView.setQueryHint(getString(R.string.friends_search));
+                View searchPlate = searchView.findViewById(androidx.appcompat.R.id.search_plate);
+                if (searchPlate != null) {
+                    searchPlate.setBackgroundColor(android.graphics.Color.TRANSPARENT);
                 }
+                searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+                    @Override
+                    public boolean onQueryTextSubmit(String query) {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean onQueryTextChange(String newText) {
+                        currentSearchQuery = newText.toLowerCase(Locale.ROOT).trim();
+                        if (!showRequests) {
+                            filterFriends();
+                        }
+                        return true;
+                    }
+                });
             }
 
-            @Override
-            public void afterTextChanged(Editable s) {}
-        });
+            searchItem.setOnActionExpandListener(new MenuItem.OnActionExpandListener() {
+                @Override
+                public boolean onMenuItemActionExpand(MenuItem item) {
+                    return true;
+                }
+
+                @Override
+                public boolean onMenuItemActionCollapse(MenuItem item) {
+                    if (!currentSearchQuery.isEmpty()) {
+                        currentSearchQuery = "";
+                        if (!showRequests) {
+                            filterFriends();
+                        }
+                    }
+                    return true;
+                }
+            });
+        }
+        super.onCreateOptionsMenu(menu, inflater);
     }
 
     private void setupFilters() {

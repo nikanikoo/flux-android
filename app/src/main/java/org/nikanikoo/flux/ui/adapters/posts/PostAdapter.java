@@ -755,9 +755,19 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         if (post.isLiked()) {
             holder.likeIcon.setColorFilter(androidx.core.content.ContextCompat.getColor(context, R.color.like_active));
             holder.likeCount.setTextColor(androidx.core.content.ContextCompat.getColor(context, R.color.like_active));
+            if (holder.likeButton != null) {
+                holder.likeButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(
+                    androidx.core.content.ContextCompat.getColor(context, R.color.like_active_background)
+                ));
+            }
         } else {
             holder.likeIcon.setColorFilter(androidx.core.content.ContextCompat.getColor(context, R.color.like_inactive));
             holder.likeCount.setTextColor(androidx.core.content.ContextCompat.getColor(context, R.color.like_inactive));
+            if (holder.likeButton != null) {
+                holder.likeButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(
+                    android.graphics.Color.TRANSPARENT
+                ));
+            }
         }
     }
 

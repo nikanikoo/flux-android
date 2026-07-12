@@ -538,6 +538,28 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
                 .addToBackStack(tag)
                 .commit();
     }
+
+    public void restoreToolbarTitle(int id) {
+        if (id == R.id.drawer_news) {
+            activity.setToolbarTitle(activity.getString(R.string.nav_news));
+        } else if (id == R.id.drawer_messages) {
+            activity.setToolbarTitle(activity.getString(R.string.nav_messages));
+        } else if (id == R.id.drawer_friends) {
+            activity.setToolbarTitle(activity.getString(R.string.nav_friends));
+        } else if (id == R.id.drawer_groups) {
+            activity.setToolbarTitle(activity.getString(R.string.nav_groups));
+        } else if (id == R.id.drawer_audio) {
+            activity.setToolbarTitle(activity.getString(R.string.nav_music));
+        } else if (id == R.id.drawer_videos) {
+            activity.setToolbarTitle(activity.getString(R.string.nav_videos));
+        } else if (id == R.id.drawer_notification) {
+            activity.setToolbarTitle(activity.getString(R.string.nav_notifications));
+        } else if (id == R.id.drawer_notes) {
+            activity.setToolbarTitle(activity.getString(R.string.nav_notes));
+        } else if (id == R.id.drawer_settings) {
+            activity.setToolbarTitle(activity.getString(R.string.nav_settings));
+        }
+    }
     
     /**
      * Установить ID текущего фрагмента

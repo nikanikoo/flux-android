@@ -137,6 +137,7 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
             int savedFragmentId = savedInstanceState.getInt("current_fragment_id", -1);
             if (savedFragmentId != -1 && navigationController != null) {
                 navigationController.setCurrentFragmentId(savedFragmentId);
+                navigationController.restoreToolbarTitle(savedFragmentId);
             }
             if (navigationController != null) {
                 navigationController.updateDrawerToggleForBackStack(getSupportFragmentManager().getBackStackEntryCount());

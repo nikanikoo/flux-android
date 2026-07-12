@@ -63,7 +63,7 @@
                     android:layout_weight="1"
                     android:textSize="14sp"
                     android:textColor="?attr/colorOnSurface"
-                    android:maxLines="3"
+                    android:maxLines="5"
                     android:ellipsize="end" />
 
                 <View
@@ -91,7 +91,6 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:layout_marginStart="88dp"
         android:background="?attr/colorOutlineVariant" />
 
 </LinearLayout>

@@ -77,7 +77,7 @@ public class NotificationsAdapter extends RecyclerView.Adapter<NotificationsAdap
         // Установить текст уведомления
         String notificationText = "";
         if (notification.getFromName() != null && !notification.getFromName().isEmpty()) {
-            notificationText = notification.getFromName() + " " + notification.getReadableType();
+            notificationText = notification.getFromName() + "\n" + notification.getReadableType();
         } else {
             notificationText = notification.getReadableType();
         }
