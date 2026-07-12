@@ -40,7 +40,7 @@
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:src="@android:drawable/ic_menu_upload"
+                    android:src="@drawable/ic_account_circle"
                     app:tint="?attr/colorOnSurfaceVariant" />
 
                 <TextView
@@ -78,7 +78,7 @@
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:src="@android:drawable/ic_menu_myplaces"
+                    android:src="@drawable/ic_group"
                     app:tint="?attr/colorOnSurfaceVariant" />
 
                 <TextView
@@ -110,7 +110,7 @@
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:src="@android:drawable/ic_dialog_email"
+                    android:src="@drawable/ic_chat_bubble"
                     app:tint="?attr/colorOnSurfaceVariant" />
 
                 <TextView

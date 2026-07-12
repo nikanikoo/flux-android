@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.card.MaterialCardView;
 
 import org.nikanikoo.flux.R;
+import org.nikanikoo.flux.data.managers.AudioCacheManager;
 import org.nikanikoo.flux.data.models.Audio;
 import org.nikanikoo.flux.utils.AlbumArtFetcher;
 
@@ -20,13 +21,14 @@ import java.util.List;
 
 public class AudioAdapter extends RecyclerView.Adapter<AudioAdapter.AudioViewHolder> {
 
-    private List<Audio> audios;
-    private OnAudioClickListener listener;
+    private final List<Audio> audios;
+    private final OnAudioClickListener listener;
+    private AudioCacheManager audioCacheManager;
 
     public interface OnAudioClickListener {
         void onPlayClick(Audio audio, int position);
         void onAddClick(Audio audio, int position);
-        void onMoreClick(Audio audio, int position);
+        void onMoreClick(Audio audio, int position, View anchor);
     }
 
     public AudioAdapter(List<Audio> audios, OnAudioClickListener listener) {
@@ -44,8 +46,7 @@ public class AudioAdapter extends RecyclerView.Adapter<AudioAdapter.AudioViewHol
 
     @Override
     public void onBindViewHolder(@NonNull AudioViewHolder holder, int position) {
-        Audio audio = audios.get(position);
-        holder.bind(audio, position);
+        holder.bind(audios.get(position));
     }
 
     @Override
@@ -66,9 +67,10 @@ public class AudioAdapter extends RecyclerView.Adapter<AudioAdapter.AudioViewHol
         TextView artistText;
         TextView titleText;
         TextView durationText;
+        ImageView downloadedIndicator;
         ImageView addButton;
         ImageView moreButton;
-        
+
         AlbumArtFetcher albumArtFetcher;
 
         AudioViewHolder(@NonNull View itemView) {
@@ -78,61 +80,57 @@ public class AudioAdapter extends RecyclerView.Adapter<AudioAdapter.AudioViewHol
             audioCover = itemView.findViewById(R.id.audio_cover);
             artistText = itemView.findViewById(R.id.audio_artist);
             titleText = itemView.findViewById(R.id.audio_title);
-            durationText = itemView.findViewById(R.id.audio_duration);
-            addButton = itemView.findViewById(R.id.audio_add_button);
+            downloadedIndicator = itemView.findViewById(R.id.audio_downloaded_indicator);
             moreButton = itemView.findViewById(R.id.audio_more_button);
-            
             albumArtFetcher = new AlbumArtFetcher(context);
+            audioCacheManager = AudioCacheManager.getInstance(context);
         }
 
-        void bind(Audio audio, int position) {
+        void bind(Audio audio) {
             artistText.setText(audio.getArtist());
             titleText.setText(audio.getTitle());
-            durationText.setText(audio.getFormattedDuration());
-
-            // Загрузка обложки
+            downloadedIndicator.setVisibility(audioCacheManager.isDownloaded(audio) ? View.VISIBLE : View.GONE);
             loadAlbumArt(audio);
 
-            // Обновляем иконку добавления
-            if (audio.isAdded()) {
-                addButton.setImageResource(R.drawable.ic_check);
-                addButton.setContentDescription("Добавлено");
-            } else {
-                addButton.setImageResource(R.drawable.ic_add);
-                addButton.setContentDescription("Добавить");
-            }
+            moreButton.setImageResource(R.drawable.ic_more_vert);
+            moreButton.setContentDescription(itemView.getContext().getString(R.string.audio_more));
 
-            audioCard.setOnClickListener(v -> {
-                if (listener != null) {
-                    listener.onPlayClick(audio, position);
-                }
-            });
+            audioCard.setOnClickListener(v -> dispatchPosition((currentAudio, position) ->
+                    listener.onPlayClick(currentAudio, position)));
 
-            addButton.setOnClickListener(v -> {
-                if (listener != null) {
-                    listener.onAddClick(audio, position);
-                }
-            });
-
-            moreButton.setOnClickListener(v -> {
-                if (listener != null) {
-                    listener.onMoreClick(audio, position);
-                }
-            });
+            moreButton.setOnClickListener(v -> dispatchPosition((currentAudio, position) ->
+                    listener.onMoreClick(currentAudio, position, v)));
         }
-        
-        private void loadAlbumArt(Audio audio) {
-            if (audioCover == null) return;
-            
-            String artist = audio.getArtist();
-            String title = audio.getTitle();
-            
-            if (artist == null || title == null || artist.isEmpty() || title.isEmpty()) {
-                audioCover.setImageResource(R.drawable.ic_music);
+
+        private void dispatchPosition(AudioAction action) {
+            if (listener == null) {
                 return;
             }
-            
-            albumArtFetcher.loadAlbumArt(artist, title, audioCover, R.drawable.ic_music);
+
+            int position = getBindingAdapterPosition();
+            if (position == RecyclerView.NO_POSITION || position >= audios.size()) {
+                return;
+            }
+
+            action.run(audios.get(position), position);
         }
+
+        private void loadAlbumArt(Audio audio) {
+            if (audioCover == null) return;
+
+            String artist = audio.getArtist();
+            String title = audio.getTitle();
+
+            if (artist == null || title == null || artist.isEmpty() || title.isEmpty()) {
+                audioCover.setImageResource(R.drawable.ic_music_note);
+                return;
+            }
+
+            albumArtFetcher.loadAlbumArt(artist, title, audioCover, R.drawable.ic_music_note);
+        }
+    }
+
+    private interface AudioAction {
+        void run(Audio audio, int position);
     }
 }

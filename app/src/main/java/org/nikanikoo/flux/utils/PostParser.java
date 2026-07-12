@@ -130,6 +130,16 @@ public class PostParser {
 
             String timeAgo = TimeUtils.formatTimeAgo(timestamp);
 
+            int authorSex = 0;
+            if (authorSourceId > 0) {
+                JsonUtils.ProfileInfo authorProfile = profileMap.get(authorSourceId);
+                if (authorProfile != null) {
+                    authorSex = authorProfile.sex;
+                }
+            }
+
+            AuthorInfo ownerInfo = extractAuthorInfo(ownerId, profileMap, groupMap);
+
             Post post = new Post(authorInfo.name, timeAgo, text, likeCount, commentCount);
             post.setPostId(postId);
             post.setOwnerId(ownerId);
@@ -138,6 +148,59 @@ public class PostParser {
             post.setAuthorVerified(authorInfo.verified);
             post.setGroup(authorInfo.isGroup);
             post.setLiked(isLiked);
+            
+            post.setOwnerName(ownerInfo.name);
+            post.setOwnerVerified(ownerInfo.verified);
+            post.setOwnerGroup(ownerInfo.isGroup);
+            post.setAuthorSex(authorSex);
+
+            boolean isPinned = actualPostData.optInt("is_pinned", 0) == 1 || 
+                              actualPostData.optBoolean("is_pinned", false) ||
+                              actualPostData.optInt("pinned", 0) == 1 ||
+                              actualPostData.optBoolean("pinned", false);
+            post.setPinned(isPinned);
+            
+            boolean isExplicit = actualPostData.optInt("is_explicit", 0) == 1 || 
+                               actualPostData.optBoolean("is_explicit", false) ||
+                               actualPostData.optInt("explicit", 0) == 1 ||
+                               actualPostData.optBoolean("explicit", false);
+            post.setExplicit(isExplicit);
+
+            boolean canEdit = actualPostData.optInt("can_edit", 0) == 1 ||
+                    actualPostData.optBoolean("can_edit", false) ||
+                    actualPostData.optInt("can_edit", 0) == 1 ||
+                    actualPostData.optBoolean("can_edit", false);
+            post.setCanEdit(canEdit);
+
+            boolean canDelete = actualPostData.optInt("can_delete", 0) == 1 ||
+                    actualPostData.optBoolean("can_delete", false) ||
+                    actualPostData.optInt("can_delete", 0) == 1 ||
+                    actualPostData.optBoolean("can_delete", false);
+            post.setCanDelete(canDelete);
+
+            boolean canPin = actualPostData.optInt("can_pin", 0) == 1 ||
+                    actualPostData.optBoolean("can_pin", false) ||
+                    actualPostData.optInt("can_pin", 0) == 1 ||
+                    actualPostData.optBoolean("can_pin", false);
+            post.setCanPin(canPin);
+
+            JSONObject postSource = actualPostData.optJSONObject("post_source");
+            if (postSource != null) {
+                String platform = postSource.optString("platform", null);
+                if (platform != null && !platform.isEmpty()) {
+                    post.setPlatform(platform);
+                }
+            }
+
+            JSONObject copyright = actualPostData.optJSONObject("copyright");
+            if (copyright != null) {
+                String link = copyright.optString("link", null);
+                String name = copyright.optString("name", null);
+                if (link != null && !link.isEmpty()) {
+                    post.setCopyrightLink(link);
+                    post.setCopyrightName(name);
+                }
+            }
 
             JSONArray attachments = ValidationUtils.safeGetJSONArray(actualPostData, "attachments");
             AttachmentProcessor.AttachmentResult attachmentResult = AttachmentProcessor.processAttachments(attachments);
@@ -146,6 +209,7 @@ public class PostParser {
             post.setImageMaxResUrls(attachmentResult.getImageMaxResUrls());
             post.setAudioAttachments(attachmentResult.getAudioAttachments());
             post.setVideoAttachments(attachmentResult.getVideoAttachments());
+            post.setPollAttachments(attachmentResult.getPollAttachments());
             post.setUnsupportedElementsText(attachmentResult.getUnsupportedElementsText());
 
             JSONArray copyHistory = ValidationUtils.safeGetJSONArray(actualPostData, "copy_history");
@@ -199,6 +263,16 @@ public class PostParser {
 
             String timeAgo = TimeUtils.formatTimeAgo(timestamp);
 
+            int authorSex = 0;
+            if (sourceId > 0) {
+                JsonUtils.ProfileInfo authorProfile = profileMap.get(sourceId);
+                if (authorProfile != null) {
+                    authorSex = authorProfile.sex;
+                }
+            }
+
+            AuthorInfo ownerInfo = extractAuthorInfo(ownerId, profileMap, groupMap);
+
             Post post = new Post(authorInfo.name, timeAgo, text, likeCount, commentCount);
             post.setPostId(postId);
             post.setOwnerId(ownerId);
@@ -207,6 +281,35 @@ public class PostParser {
             post.setAuthorVerified(authorInfo.verified);
             post.setGroup(authorInfo.isGroup);
             post.setLiked(isLiked);
+            
+            post.setOwnerName(ownerInfo.name);
+            post.setOwnerVerified(ownerInfo.verified);
+            post.setOwnerGroup(ownerInfo.isGroup);
+            post.setAuthorSex(authorSex);
+
+            boolean isExplicit = originalPostData.optInt("is_explicit", 0) == 1 || 
+                               originalPostData.optBoolean("is_explicit", false) ||
+                               originalPostData.optInt("explicit", 0) == 1 ||
+                               originalPostData.optBoolean("explicit", false);
+            post.setExplicit(isExplicit);
+
+            JSONObject postSource = originalPostData.optJSONObject("post_source");
+            if (postSource != null) {
+                String platform = postSource.optString("platform", null);
+                if (platform != null && !platform.isEmpty()) {
+                    post.setPlatform(platform);
+                }
+            }
+
+            JSONObject copyright = originalPostData.optJSONObject("copyright");
+            if (copyright != null) {
+                String link = copyright.optString("link", null);
+                String name = copyright.optString("name", null);
+                if (link != null && !link.isEmpty()) {
+                    post.setCopyrightLink(link);
+                    post.setCopyrightName(name);
+                }
+            }
 
             JSONArray attachments = ValidationUtils.safeGetJSONArray(originalPostData, "attachments");
             AttachmentProcessor.AttachmentResult attachmentResult = AttachmentProcessor.processAttachments(attachments);
@@ -215,6 +318,7 @@ public class PostParser {
             post.setImageMaxResUrls(attachmentResult.getImageMaxResUrls());
             post.setAudioAttachments(attachmentResult.getAudioAttachments());
             post.setVideoAttachments(attachmentResult.getVideoAttachments());
+            post.setPollAttachments(attachmentResult.getPollAttachments());
             post.setUnsupportedElementsText(attachmentResult.getUnsupportedElementsText());
 
             return post;

@@ -1,6 +1,7 @@
 package org.nikanikoo.flux.ui.activities;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageView;
@@ -31,6 +32,8 @@ import org.nikanikoo.flux.ui.fragments.notifications.NotificationsFragment;
 import org.nikanikoo.flux.ui.fragments.profile.ProfileFragment;
 import org.nikanikoo.flux.ui.fragments.settings.SettingsFragment;
 import org.nikanikoo.flux.utils.Logger;
+import org.nikanikoo.flux.utils.ThemeManager;
+import org.nikanikoo.flux.utils.ThemeTransitionHelper;
 
 import java.util.List;
 
@@ -46,6 +49,7 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
     private final MainActivity activity;
     private final CustomDrawerLayout drawerLayout;
     private final NavigationView navigationView;
+    private final View navigationRailView;
     
     // Header views
     private TextView drawerName;
@@ -68,14 +72,58 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
     private final AccountManager accountManager;
     
     public NavigationController(MainActivity activity, CustomDrawerLayout drawerLayout, 
-                                NavigationView navigationView, Toolbar toolbar) {
+                                NavigationView navigationView, 
+                                View navigationRailView, 
+                                Toolbar toolbar) {
         this.activity = activity;
         this.drawerLayout = drawerLayout;
         this.navigationView = navigationView;
+        this.navigationRailView = navigationRailView;
         this.accountManager = AccountManager.getInstance(activity);
         
         initDrawer(toolbar);
         initHeaderViews();
+        initNavigationRail();
+
+        org.nikanikoo.flux.data.managers.ProfileManager profileManager =
+                org.nikanikoo.flux.data.managers.ProfileManager.getInstance(activity);
+        UserProfile cachedProfile = profileManager.getCachedProfileSync();
+        if (cachedProfile != null) {
+            updateUserInfo(cachedProfile);
+        }
+    }
+    
+    private void initNavigationRail() {
+        if (navigationRailView != null) {
+            View menuButton = navigationRailView.findViewById(R.id.rail_menu_button);
+            if (menuButton != null) {
+                menuButton.setOnClickListener(v -> openDrawer());
+            }
+
+            LinearLayout itemsContainer = navigationRailView.findViewById(R.id.navigation_rail_items);
+            if (itemsContainer != null) {
+                android.view.LayoutInflater inflater = android.view.LayoutInflater.from(activity);
+                android.view.Menu menu = navigationView.getMenu();
+                for (int i = 0; i < menu.size(); i++) {
+                    MenuItem item = menu.getItem(i);
+                    if (item.isVisible()) {
+                        View itemView = inflater.inflate(R.layout.item_custom_rail, itemsContainer, false);
+                        ImageView iconView = itemView.findViewById(R.id.rail_item_icon);
+                        if (iconView != null && item.getIcon() != null) {
+                            iconView.setImageDrawable(item.getIcon());
+                        }
+                        
+                        itemView.setOnClickListener(v -> {
+                            onNavigationItemSelected(item);
+                        });
+                        
+                        itemView.setTag(item.getItemId());
+                        
+                        itemsContainer.addView(itemView);
+                    }
+                }
+            }
+        }
     }
     
     /**
@@ -90,6 +138,10 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
                 R.string.close_drawer);
         
         drawerLayout.addDrawerListener(drawerToggle);
+        
+        boolean isTablet = navigationRailView != null && navigationRailView.getVisibility() == View.VISIBLE;
+        drawerToggle.setDrawerIndicatorEnabled(!isTablet);
+        
         drawerToggle.syncState();
         
         Logger.d(TAG, "initDrawer: drawerIndicatorEnabled=" + drawerToggle.isDrawerIndicatorEnabled());
@@ -160,6 +212,31 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
                 closeDrawer();
                 navigateToFragmentWithBackStack(ProfileFragment.newInstance("", ""), "profile");
                 activity.setToolbarTitle(activity.getString(R.string.nav_profile));
+            });
+        }
+
+        ImageView themeToggleBtn = headerView.findViewById(R.id.theme_toggle_btn);
+        if (themeToggleBtn != null) {
+            ThemeManager themeManager = ThemeManager.getInstance(activity);
+            boolean isDark = themeManager.isDarkMode();
+            themeToggleBtn.setImageResource(isDark ? R.drawable.ic_sunny : R.drawable.ic_bedtime);
+
+            themeToggleBtn.setOnClickListener(v -> {
+                int currentMode = themeManager.getThemeMode();
+                int newMode = (currentMode == ThemeManager.THEME_DARK || currentMode == ThemeManager.THEME_AMOLED)
+                        ? ThemeManager.THEME_LIGHT
+                        : ThemeManager.THEME_DARK;
+
+                int[] location = new int[2];
+                v.getLocationInWindow(location);
+                int x = location[0] + v.getWidth() / 2;
+                int y = location[1] + v.getHeight() / 2;
+
+                Bitmap screenshot = ThemeTransitionHelper.takeScreenshot(activity);
+                ThemeTransitionHelper.setTransitionData(screenshot, x, y);
+                themeManager.setThemeMode(newMode);
+                activity.recreate();
+                activity.overridePendingTransition(0, 0);
             });
         }
     }
@@ -328,6 +405,7 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
         
         // Очищаем кэш
         org.nikanikoo.flux.data.managers.ProfileManager.getInstance(activity).clearCache();
+        org.nikanikoo.flux.ui.fragments.news.NewsFragment.clearCache();
         
         // Сбрасываем OpenVKApi
         org.nikanikoo.flux.data.managers.api.OpenVKApi.resetInstance();
@@ -415,6 +493,10 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
             fragment = new NotificationsFragment();
             tag = "notifications";
             activity.setToolbarTitle(activity.getString(R.string.nav_notifications));
+        } else if (id == R.id.drawer_notes) {
+            fragment = new org.nikanikoo.flux.ui.fragments.notes.NotesFragment();
+            tag = "notes";
+            activity.setToolbarTitle(activity.getString(R.string.nav_notes));
         } else if (id == R.id.drawer_settings) {
             fragment = new SettingsFragment();
             tag = "settings";
@@ -423,7 +505,7 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
         
         if (fragment != null) {
             navigateToFragment(fragment, tag);
-            currentFragmentId = id;
+            setCurrentFragmentId(id);
         }
         
         closeDrawer();
@@ -464,6 +546,19 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
         this.currentFragmentId = id;
         if (navigationView != null) {
             navigationView.setCheckedItem(id);
+        }
+        if (navigationRailView != null) {
+            LinearLayout itemsContainer = navigationRailView.findViewById(R.id.navigation_rail_items);
+            if (itemsContainer != null) {
+                for (int i = 0; i < itemsContainer.getChildCount(); i++) {
+                    View child = itemsContainer.getChildAt(i);
+                    Object tag = child.getTag();
+                    if (tag instanceof Integer) {
+                        int itemId = (Integer) tag;
+                        child.setSelected(itemId == id);
+                    }
+                }
+            }
         }
     }
     
@@ -506,18 +601,47 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
         Logger.d(TAG, "updateDrawerToggleForBackStack: backStackCount=" + backStackCount + 
                 ", current drawerIndicatorEnabled=" + drawerToggle.isDrawerIndicatorEnabled());
         
+        Toolbar toolbar = activity.findViewById(R.id.toolbar);
         if (backStackCount > 0) {
             drawerToggle.setDrawerIndicatorEnabled(false);
+            drawerToggle.setHomeAsUpIndicator(R.drawable.ic_arrow_back);
             if (activity.getSupportActionBar() != null) {
                 activity.getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             }
+            if (toolbar != null) {
+                toolbar.setNavigationIcon(R.drawable.ic_arrow_back);
+                toolbar.setNavigationOnClickListener(v -> {
+                    Logger.d(TAG, "Back button clicked via toolbar listener");
+                    activity.getSupportFragmentManager().popBackStack();
+                });
+            }
+            drawerToggle.setToolbarNavigationClickListener(v -> {
+                Logger.d(TAG, "Back button clicked via drawerToggle listener");
+                activity.getSupportFragmentManager().popBackStack();
+            });
             Logger.d(TAG, "Set drawerIndicatorEnabled=false, displayHomeAsUpEnabled=true");
         } else {
-            drawerToggle.setDrawerIndicatorEnabled(true);
+            boolean isTablet = navigationRailView != null && navigationRailView.getVisibility() == View.VISIBLE;
+            drawerToggle.setDrawerIndicatorEnabled(!isTablet);
             if (activity.getSupportActionBar() != null) {
-                activity.getSupportActionBar().setDisplayHomeAsUpEnabled(false);
+                activity.getSupportActionBar().setDisplayHomeAsUpEnabled(!isTablet);
             }
-            Logger.d(TAG, "Set drawerIndicatorEnabled=true, displayHomeAsUpEnabled=false");
+            drawerToggle.setToolbarNavigationClickListener(null);
+            
+            drawerToggle.syncState();
+            
+            if (toolbar != null) {
+                toolbar.setNavigationOnClickListener(v -> {
+                    Logger.d(TAG, "Toolbar navigation clicked");
+                    int bc = activity.getSupportFragmentManager().getBackStackEntryCount();
+                    if (bc > 0) {
+                        activity.getSupportFragmentManager().popBackStack();
+                    } else {
+                        openDrawer();
+                    }
+                });
+            }
+            Logger.d(TAG, "Set drawerIndicatorEnabled=" + !isTablet + ", displayHomeAsUpEnabled=" + (!isTablet));
         }
         drawerToggle.syncState();
     }

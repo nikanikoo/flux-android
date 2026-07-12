@@ -15,7 +15,7 @@ public class Audio implements Serializable {
     private String coverUrl;
     private int genreId;
     private String genreStr;
-    private int lyrics;
+    private int lyrics_id;
     private boolean added;
     private boolean editable;
     private boolean searchable;
@@ -37,7 +37,7 @@ public class Audio implements Serializable {
     public String getCoverUrl() { return coverUrl; }
     public int getGenreId() { return genreId; }
     public String getGenreStr() { return genreStr; }
-    public int getLyrics() { return lyrics; }
+    public int getLyrics_id() { return lyrics_id; }
     public boolean isAdded() { return added; }
     public boolean isEditable() { return editable; }
     public boolean isSearchable() { return searchable; }
@@ -57,7 +57,7 @@ public class Audio implements Serializable {
     public void setCoverUrl(String coverUrl) { this.coverUrl = coverUrl; }
     public void setGenreId(int genreId) { this.genreId = genreId; }
     public void setGenreStr(String genreStr) { this.genreStr = genreStr; }
-    public void setLyrics(int lyrics) { this.lyrics = lyrics; }
+    public void setLyrics_id(int lyrics_id) { this.lyrics_id = lyrics_id; }
     public void setAdded(boolean added) { this.added = added; }
     public void setEditable(boolean editable) { this.editable = editable; }
     public void setSearchable(boolean searchable) { this.searchable = searchable; }

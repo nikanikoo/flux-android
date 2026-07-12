@@ -15,7 +15,12 @@
     <string name="save">Save</string>
     <string name="delete">Delete</string>
     <string name="edit">Edit</string>
+    <string name="edit_post_title">Edit post</string>
+    <string name="edit_post_hint">What\'s new?</string>
+    <string name="profile_edit_success">Changes saved</string>
     <string name="pin">Pin</string>
+    <string name="unpin">Unpin</string>
+    <string name="pinned">pinned</string>
     <string name="close">Close</string>
     <string name="back">Back</string>
     <string name="search">Search</string>
@@ -24,6 +29,9 @@
     <string name="share">Share</string>
     <string name="copy">Copy</string>
     <string name="link_copied">Link copied</string>
+    <string name="chat_favorites">Favorites</string>
+    <string name="chat_favorites_subtitle">Chat with yourself</string>
+    <string name="chat_typing">typing...</string>
 
     <!-- Navigation -->
     <string name="toolbar_globalfeed">All news</string>
@@ -37,6 +45,16 @@
     <string name="nav_videos">Videos</string>
     <string name="nav_music">Music</string>
     <string name="nav_notes">Notes</string>
+    <string name="note_delete_not_supported">Note deletion is not supported</string>
+    <string name="note_create_title">New note</string>
+    <string name="note_title_hint">Title</string>
+    <string name="note_text_hint">Note text</string>
+    <string name="note_btn_create">Create</string>
+    <string name="note_fill_fields_error">Please fill in all fields</string>
+    <string name="note_created_success">Note created</string>
+    <string name="note_viewer_title">Note</string>
+    <string name="note_edit_title">Edit note</string>
+    <string name="note_updated_success">Note updated</string>
     <string name="nav_notifications">Notifications</string>
     <string name="nav_settings">Settings</string>
     <string name="nav_profile">Profile</string>
@@ -51,6 +69,9 @@
     <string name="login_hint">Email</string>
     <string name="password_hint">Password</string>
     <string name="forgot_password">Forgot password?</string>
+    <string name="login_with_token">Sign in with token</string>
+    <string name="token_hint">Access token</string>
+    <string name="login_token_invalid">Please enter a token</string>
     <string name="btn_login">Sign in</string>
     <string name="btn_login_confirm">Log in anyway</string>
     <string name="btn_login_loading">Signing in...</string>
@@ -104,6 +125,12 @@
     <string name="post_original_author">Original post author</string>
     <string name="post_original_content">Original post content</string>
     <string name="post_time_ago">%s ago</string>
+    <string name="time_just_now">Just now</string>
+    <string name="time_minutes_ago">%1$d min ago</string>
+    <string name="time_today_at">today at %1$s</string>
+    <string name="time_yesterday_at">yesterday at %1$s</string>
+    <string name="time_full_format">%1$s at %2$s</string>
+    <string name="time_full_format_year">%1$s, %2$d at %3$s</string>
     <string name="post_likes">Likes</string>
     <string name="post_comments">Comments</string>
     <string name="post_shares">Share</string>
@@ -238,6 +265,31 @@
     <string name="audio_add">Add</string>
     <string name="audio_more">More</string>
     <string name="audio_no_title">No title</string>
+    <string name="audio_tab_all">All</string>
+    <string name="audio_tab_downloaded">Downloaded</string>
+    <string name="audio_downloading">Downloading...</string>
+    <string name="audio_downloaded">Track downloaded</string>
+    <string name="audio_download_removed">Download removed</string>
+    <string name="audio_download_error">Download error: </string>
+    <string name="audio_no_downloaded">No downloaded tracks yet</string>
+    <string name="audio_download">Download</string>
+    <string name="audio_remove_download">Remove download</string>
+    <string name="audio_already_downloaded">Track already downloaded</string>
+    <string name="audio_download_all">Download all songs</string>
+    <string name="audio_download_all_started">Starting download for all songs</string>
+    <string name="audio_download_all_queued">All songs were added to the download queue</string>
+    <string name="audio_wait_for_profile">Wait for profile to load</string>
+    <string name="audio_play_next">Play next</string>
+    <string name="audio_added_next">Added next in queue</string>
+    <string name="audio_add_to_library">Add to audio</string>
+    <string name="audio_remove_from_library">Remove from audio</string>
+    <string name="settings_music_cache_title">Music</string>
+    <string name="settings_save_on_listening">Save to cache when listening</string>
+    <string name="settings_save_on_listening_desc">Save streamed tracks to cache for offline access</string>
+    <string name="settings_music_cache_limit">Music storage limit</string>
+    <string name="settings_music_cache_unlimited">Unlimited</string>
+    <string name="settings_music_cache_occupied">Occupied: %1$s / %2$s</string>
+    <string name="settings_music_cache_occupied_unlimited">Occupied: %1$s / Unlimited</string>
 
     <!-- Music Player -->
     <string name="player_previous">Previous track</string>
@@ -262,6 +314,8 @@
     <!-- Settings -->
     <string name="notification_default">did something</string>
     <string name="settings_title">Settings</string>
+    <string name="settings_balance">Balance</string>
+    <string name="settings_balance_desc">Votes</string>
     <string name="settings_accounts">Account management</string>
     <string name="settings_accounts_desc">Switch between accounts</string>
     <string name="settings_appearance">Appearance</string>
@@ -298,6 +352,7 @@
     <string name="appearance_theme_system">System</string>
     <string name="appearance_theme_light">Light</string>
     <string name="appearance_theme_dark">Dark</string>
+    <string name="appearance_theme_amoled">AMOLED</string>
     <string name="appearance_color_scheme">Color scheme</string>
     <string name="appearance_color_flux_blue">Blue</string>
     <string name="appearance_color_blue">Blue</string>
@@ -305,6 +360,7 @@
     <string name="appearance_color_green">Green</string>
     <string name="appearance_color_purple">Purple</string>
     <string name="appearance_color_red">Red</string>
+    <string name="appearance_color_amoled">AMOLED</string>
     <string name="appearance_material_you_info">Material You is only available on Android 12+</string>
     <string name="appearance_select_theme">Select theme</string>
 
@@ -383,6 +439,12 @@
     <string name="profile_posts_loading_error">"Error loading posts: "</string>
     <string name="profile_posts_refresh_error">Could not load new posts</string>
 
+    <!-- Profile Menu -->
+    <string name="profile_menu_blacklist">Add to blacklist</string>
+    <string name="profile_menu_report">Report</string>
+    <string name="profile_menu_ignore">Ignore</string>
+    <string name="profile_menu_rate_up">Increase rating</string>
+
     <!-- Links -->
     <string name="profile_photo_title">Profile Photo</string>
     <string name="link_title">Link</string>
@@ -407,7 +469,7 @@
     <string name="instance_info">INFORMATION</string>
     <string name="instance_rules">Rules instance</string>
     <string name="instance_policy">Privacy Policy</string>
-    <string name="friends_title2">"Friends "</string>
+    <string name="friends_title2">"Friends\u0020"</string>
     <string name="friends_all">All friends</string>
     <string name="group_none">Groups list is empty</string>
     <string name="group_none_desc">You are not a member of any group yet</string>
@@ -493,5 +555,82 @@
     <string name="language_kazakh_cyrillic">Казахська (Кирилиця)</string>
     <string name="language_kazakh_latin">Казахська (Латиниця)</string>
     <string name="about_app_kk_cyrillic">🇰🇿 Kazakh language (Cyrillic)</string>
+
+    <!-- Logging & Crash settings -->
+    <string name="settings_log_limit">Log size limit</string>
+    <string name="settings_save_logs">Save logs to device</string>
+    <string name="settings_clear_logs">Clear logs</string>
+    <string name="settings_clear_logs_confirm">Clear log files?</string>
+    <string name="settings_clear_logs_message">Are you sure you want to delete all saved application logs?</string>
+    <string name="settings_logs_cleared">Logs cleared</string>
+    <string name="settings_logs_clear_error">Error clearing logs</string>
+    
+    <string name="crash_dialog_title">⚠️ Unexpected Crash</string>
+    <string name="crash_dialog_message">The application closed unexpectedly last time. Select an action for the crash report:</string>
+    <string name="crash_option_copy">Copy to clipboard</string>
+    <string name="crash_option_save">Save report to device</string>
+    <string name="crash_option_ignore">Ignore</string>
+    <string name="crash_copied_success">Report copied to clipboard</string>
+    <string name="crash_saved_success">File saved successfully</string>
+    <string name="crash_saved_error">Failed to save file</string>
+
+    <!-- Updates -->
+    <string name="update_available_title">Update available: %s</string>
+    <string name="update_available_message">A new version is available.\n\n%s</string>
+    <string name="update_download">Download</string>
+    <string name="update_downloading">Downloading update...</string>
+    <string name="update_later">Later</string>
+    <string name="update_skip">Skip</string>
+    <string name="update_checking">Checking for updates...</string>
+    <string name="update_available_short">Update available: %s</string>
+    <string name="update_latest_installed">You are using the latest version</string>
+    <string name="update_check_failed">Failed to check for updates</string>
+    <string name="update_check_btn">Check for updates</string>
+
+    <string name="balance_current">Current balance</string>
+    <string name="balance_votes_plural">votes</string>
+    <string name="balance_action_topup">Top-up</string>
+    <string name="balance_action_voucher">Voucher</string>
+    <string name="balance_action_transfer">Transfer</string>
+    <string name="balance_info_title">What are votes?</string>
+    <string name="balance_info_desc">Votes are OpenVK\'s internal currency. You can use them to buy stickers or send gifts to other users.</string>
+    <string name="transfer_title">Transfer votes</string>
+    <string name="transfer_recipient">Recipient</string>
+    <string name="transfer_amount_hint">Votes count</string>
+    <string name="transfer_message_hint">Message (optional)</string>
+    <string name="transfer_btn_cancel">Cancel</string>
+    <string name="transfer_btn_confirm">Transfer</string>
+    <string name="transfer_search_hint">Search</string>
+    <string name="transfer_tab_friends">Friends</string>
+    <string name="transfer_tab_search">Search</string>
+    <string name="transfer_search_empty_prompt">Enter name, surname or ID to search</string>
+    <string name="transfer_friends_load_error">Failed to load friends list</string>
+    <string name="transfer_search_error">Search error</string>
+    <string name="transfer_no_results">No results found</string>
+    <string name="transfer_sort_rating">By rating</string>
+    <string name="transfer_sort_new">New first</string>
+    <string name="transfer_sort_old">Old first</string>
+    <string name="transfer_err_empty_amount">Enter amount of votes</string>
+    <string name="transfer_err_invalid_format">Invalid number format</string>
+    <string name="transfer_err_greater_than_zero">Votes count must be greater than 0</string>
+    <string name="transfer_success">Votes successfully sent!</string>
+    <string name="transfer_err_commerce_disabled">Commerce is disabled on this instance</string>
+    <string name="transfer_err_not_enough_votes">Not enough votes for transfer</string>
+    <string name="transfer_err_self_transfer">Cannot transfer votes to yourself</string>
+    <string name="transfer_err_invalid_recipient">Invalid recipient</string>
+    <string name="transfer_err_message_too_long">Message is too long</string>
+
+    <!-- Polls -->
+    <string name="poll_anonymous">Anonymous poll</string>
+    <string name="poll_public">Public poll</string>
+    <string name="poll_multiple">Multiple choice</string>
+    <string name="poll_single">Single choice</string>
+    <string name="poll_votes_count">Voted: %d</string>
+    <string name="poll_votes_count_0">0 votes</string>
+    <string name="poll_vote_button">Vote</string>
+    <string name="poll_unvote_button">Retract vote</string>
+    <string name="poll_closed">Poll closed</string>
+    <string name="poll_error_vote">Voting error</string>
+    <string name="poll_error_unvote">Error retracting vote</string>
 
 </resources>

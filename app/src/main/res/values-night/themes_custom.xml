@@ -154,4 +154,88 @@
         <item name="cardViewStyle">@style/Widget.App.CardView</item>
     </style>
 
+    <!-- AMOLED Theme - Dark -->
+    <style name="Theme.Flux.Amoled" parent="Theme.Flux">
+        <item name="android:colorBackground">@color/amoled_background</item>
+        <item name="colorSurface">@color/amoled_surface</item>
+        <item name="colorSurfaceVariant">@color/amoled_surface_variant</item>
+
+        <item name="colorSurfaceDim">@color/amoled_surface_dim</item>
+        <item name="colorSurfaceBright">@color/amoled_surface_bright</item>
+        <item name="colorSurfaceContainerLowest">@color/amoled_surface_container_lowest</item>
+        <item name="colorSurfaceContainerLow">@color/amoled_surface_container_low</item>
+        <item name="colorSurfaceContainer">@color/amoled_surface_container</item>
+        <item name="colorSurfaceContainerHigh">@color/amoled_surface_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/amoled_surface_container_highest</item>
+
+        <item name="android:statusBarColor">@color/amoled_background</item>
+        <item name="android:navigationBarColor">@color/amoled_background</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="23">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
+        <item name="cardViewStyle">@style/Widget.App.CardView</item>
+    </style>
+
+    <!-- Green Theme - AMOLED -->
+    <style name="Theme.Flux.Green.Amoled" parent="Theme.Flux.Green">
+        <item name="android:colorBackground">@color/amoled_background</item>
+        <item name="colorSurface">@color/amoled_surface</item>
+        <item name="colorSurfaceVariant">@color/amoled_surface_variant</item>
+
+        <item name="colorSurfaceDim">@color/amoled_surface_dim</item>
+        <item name="colorSurfaceBright">@color/amoled_surface_bright</item>
+        <item name="colorSurfaceContainerLowest">@color/amoled_surface_container_lowest</item>
+        <item name="colorSurfaceContainerLow">@color/amoled_surface_container_low</item>
+        <item name="colorSurfaceContainer">@color/amoled_surface_container</item>
+        <item name="colorSurfaceContainerHigh">@color/amoled_surface_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/amoled_surface_container_highest</item>
+
+        <item name="android:statusBarColor">@color/amoled_background</item>
+        <item name="android:navigationBarColor">@color/amoled_background</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="23">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
+        <item name="cardViewStyle">@style/Widget.App.CardView</item>
+    </style>
+
+    <!-- Purple Theme - AMOLED -->
+    <style name="Theme.Flux.Purple.Amoled" parent="Theme.Flux.Purple">
+        <item name="android:colorBackground">@color/amoled_background</item>
+        <item name="colorSurface">@color/amoled_surface</item>
+        <item name="colorSurfaceVariant">@color/amoled_surface_variant</item>
+
+        <item name="colorSurfaceDim">@color/amoled_surface_dim</item>
+        <item name="colorSurfaceBright">@color/amoled_surface_bright</item>
+        <item name="colorSurfaceContainerLowest">@color/amoled_surface_container_lowest</item>
+        <item name="colorSurfaceContainerLow">@color/amoled_surface_container_low</item>
+        <item name="colorSurfaceContainer">@color/amoled_surface_container</item>
+        <item name="colorSurfaceContainerHigh">@color/amoled_surface_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/amoled_surface_container_highest</item>
+
+        <item name="android:statusBarColor">@color/amoled_background</item>
+        <item name="android:navigationBarColor">@color/amoled_background</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="23">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
+        <item name="cardViewStyle">@style/Widget.App.CardView</item>
+    </style>
+
+    <!-- Red Theme - AMOLED -->
+    <style name="Theme.Flux.Red.Amoled" parent="Theme.Flux.Red">
+        <item name="android:colorBackground">@color/amoled_background</item>
+        <item name="colorSurface">@color/amoled_surface</item>
+        <item name="colorSurfaceVariant">@color/amoled_surface_variant</item>
+
+        <item name="colorSurfaceDim">@color/amoled_surface_dim</item>
+        <item name="colorSurfaceBright">@color/amoled_surface_bright</item>
+        <item name="colorSurfaceContainerLowest">@color/amoled_surface_container_lowest</item>
+        <item name="colorSurfaceContainerLow">@color/amoled_surface_container_low</item>
+        <item name="colorSurfaceContainer">@color/amoled_surface_container</item>
+        <item name="colorSurfaceContainerHigh">@color/amoled_surface_container_high</item>
+        <item name="colorSurfaceContainerHighest">@color/amoled_surface_container_highest</item>
+
+        <item name="android:statusBarColor">@color/amoled_background</item>
+        <item name="android:navigationBarColor">@color/amoled_background</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="23">false</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
+        <item name="cardViewStyle">@style/Widget.App.CardView</item>
+    </style>
+
 </resources>

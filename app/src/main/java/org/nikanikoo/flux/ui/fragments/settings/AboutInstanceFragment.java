@@ -272,12 +272,12 @@ public class AboutInstanceFragment extends Fragment {
         if (photoUrl != null && !photoUrl.isEmpty()) {
             Picasso.get()
                 .load(photoUrl)
-                .placeholder(R.drawable.ic_account)
-                .error(R.drawable.ic_account)
+                .placeholder(R.drawable.ic_account_circle)
+                .error(R.drawable.ic_account_circle)
                 .transform(new org.nikanikoo.flux.ui.custom.CircularImageTransformation())
                 .into(avatarView);
         } else {
-            avatarView.setImageResource(R.drawable.ic_account);
+            avatarView.setImageResource(R.drawable.ic_account_circle);
         }
         
         view.setOnClickListener(v -> openUserProfile(userId));

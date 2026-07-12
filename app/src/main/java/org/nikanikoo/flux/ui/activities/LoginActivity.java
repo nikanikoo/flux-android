@@ -8,9 +8,13 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.LinearLayout;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.coordinatorlayout.widget.CoordinatorLayout;
@@ -34,6 +38,7 @@ import org.nikanikoo.flux.security.AccountManager;
 import org.nikanikoo.flux.ui.adapters.InstancesAdapter;
 import org.nikanikoo.flux.utils.LocaleManager;
 import org.nikanikoo.flux.utils.ThemeManager;
+import org.nikanikoo.flux.utils.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -58,9 +63,9 @@ public class LoginActivity extends AppCompatActivity {
 
     private static final String[] INSTANCE_URLS = {
         "https://api.openvk.org",
+        "https://openvk.xyz",
         "http://openvk.xyz",
-        "https://api.vepurovk.fun",
-        "https://vepurovk.xyz"
+        "https://api.vepurovk.fun"
     };
     
     private static final String[] INSTANCE_DISPLAY_NAMES = {
@@ -96,7 +101,10 @@ public class LoginActivity extends AppCompatActivity {
         themeManager.applyThemeToActivity(this);
         super.onCreate(savedInstanceState);
 
+
         setContentView(R.layout.activity_login);
+        
+        Logger.checkAndShowCrashReport(this);
         
         ThemeManager.applySystemBarsAppearance(this);
 
@@ -142,6 +150,10 @@ public class LoginActivity extends AppCompatActivity {
         findViewById(R.id.textAddInstance).setOnClickListener(v -> {
             showAddInstanceDialog();
         });
+
+        findViewById(R.id.text_login_with_token).setOnClickListener(v -> {
+            showTokenLoginDialog();
+        });
     }
     
     private void setupBottomSheet() {
@@ -177,6 +189,7 @@ public class LoginActivity extends AppCompatActivity {
                 bottomSheetBehavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
             }
         });
+
     }
     
     private void setupInstancesList() {
@@ -365,6 +378,10 @@ public class LoginActivity extends AppCompatActivity {
 
             boolean needs2FA = false;
             String errorMsg = "";
+
+            if ("need_validation".equals(errorJson.optString("error"))) {
+                needs2FA = true;
+            }
             
             if (errorJson.has("error_code")) {
                 int errorCode = errorJson.getInt("error_code");
@@ -440,6 +457,12 @@ public class LoginActivity extends AppCompatActivity {
         btnLogin.setEnabled(true);
         btnLogin.setText(getString(R.string.btn_login));
     }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        Logger.handleSaveCrashResult(this, requestCode, resultCode, data);
+    }
     
     private void showAddInstanceDialog() {
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_instance, null);
@@ -478,6 +501,131 @@ public class LoginActivity extends AppCompatActivity {
             .show();
     }
     
+    private void showTokenLoginDialog() {
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_login_token, null);
+        
+        AutoCompleteTextView dialogSpinnerInstance = dialogView.findViewById(R.id.dialog_spinner_instance);
+        TextInputLayout dialogLayoutCustomInstance = dialogView.findViewById(R.id.dialog_layout_custom_instance);
+        TextInputEditText dialogEditCustomInstance = dialogView.findViewById(R.id.dialog_edit_custom_instance);
+        TextInputEditText dialogEditToken = dialogView.findViewById(R.id.dialog_edit_token);
+
+        List<String> dialogDisplayNames = new ArrayList<>(instanceDisplayNamesList);
+        String customOption = getString(R.string.instance_display_names_custom);
+        dialogDisplayNames.add(customOption);
+
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+            this,
+            android.R.layout.simple_dropdown_item_1line,
+            dialogDisplayNames
+        );
+        dialogSpinnerInstance.setAdapter(adapter);
+        
+        if (selectedInstanceIndex < instanceDisplayNamesList.size()) {
+            dialogSpinnerInstance.setText(instanceDisplayNamesList.get(selectedInstanceIndex), false);
+        } else {
+            dialogSpinnerInstance.setText(customOption, false);
+            dialogLayoutCustomInstance.setVisibility(View.VISIBLE);
+        }
+        
+        final int[] dialogSelectedInstanceIndex = {selectedInstanceIndex};
+        
+        dialogSpinnerInstance.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                dialogSelectedInstanceIndex[0] = position;
+                if (dialogDisplayNames.get(position).equals(customOption)) {
+                    dialogLayoutCustomInstance.setVisibility(View.VISIBLE);
+                    dialogEditCustomInstance.requestFocus();
+                } else {
+                    dialogLayoutCustomInstance.setVisibility(View.GONE);
+                }
+            }
+        });
+
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+            .setTitle(getString(R.string.login_with_token))
+            .setView(dialogView)
+            .setPositiveButton(getString(R.string.btn_login), null)
+            .setNegativeButton(getString(R.string.cancel), (dialogInterface, which) -> dialogInterface.dismiss())
+            .create();
+            
+        dialog.show();
+        
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String instance = "";
+            if (dialogSelectedInstanceIndex[0] < instanceUrlsList.size()) {
+                instance = instanceUrlsList.get(dialogSelectedInstanceIndex[0]);
+            } else {
+                String customInstance = dialogEditCustomInstance.getText().toString().trim();
+                if (customInstance.isEmpty()) {
+                    dialogEditCustomInstance.setError(getString(R.string.instance_address_hint));
+                    return;
+                }
+                instance = customInstance;
+            }
+
+            String token = dialogEditToken.getText().toString().trim();
+            if (token.isEmpty()) {
+                dialogEditToken.setError(getString(R.string.login_token_invalid));
+                dialogEditToken.requestFocus();
+                return;
+            }
+
+            dialog.dismiss();
+            performTokenLogin(instance, token);
+        });
+    }
+
+    private void performTokenLogin(String instance, String token) {
+        OpenVKApi.resetInstance();
+        final String formattedInstance = formatInstanceUrl(instance);
+        OpenVKApi.getInstance(this).saveInstance(formattedInstance);
+        OpenVKApi.getInstance(this).saveToken(token);
+        
+        btnLogin.setEnabled(false);
+        btnLogin.setText(getString(R.string.btn_login_loading));
+        
+        ProfileManager.getInstance(this).clearCache();
+        ProfileManager.getInstance(this).loadProfile(false, false, new ProfileManager.ProfileCallback() {
+            @Override
+            public void onSuccess(UserProfile profile) {
+                runOnUiThread(() -> {
+                    AccountManager.getInstance(LoginActivity.this).addAccount(token, formattedInstance, profile);
+                    
+                    Toast.makeText(LoginActivity.this, getString(R.string.login_success), Toast.LENGTH_SHORT).show();
+                    
+                    Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                    if (getIntent().getBooleanExtra("add_account", false)) {
+                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    }
+                    startActivity(intent);
+                    finish();
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                runOnUiThread(() -> {
+                    UserProfile dummyProfile = new UserProfile();
+                    dummyProfile.setId(0);
+                    dummyProfile.setFirstName(getString(R.string.loading));
+                    dummyProfile.setLastName("");
+                    dummyProfile.setScreenName("Token User");
+                    AccountManager.getInstance(LoginActivity.this).addAccount(token, formattedInstance, dummyProfile);
+                    
+                    Toast.makeText(LoginActivity.this, getString(R.string.login_success), Toast.LENGTH_SHORT).show();
+                    
+                    Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+                    if (getIntent().getBooleanExtra("add_account", false)) {
+                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    }
+                    startActivity(intent);
+                    finish();
+                });
+            }
+        });
+    }
+
     private void showCustomError() {
         // Подсветка полей ошибкой
         emailLayout.setErrorIconDrawable(R.drawable.ic_error_custom);

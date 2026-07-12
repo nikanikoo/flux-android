@@ -218,12 +218,16 @@ public class GroupProfileFragment extends BaseProfileFragment {
             return;
         }
         
-        if (!isRefresh) {
-            paginationHelper.startLoading();
-        }
-        
         if (isRefresh) {
             paginationHelper.reset();
+        }
+        
+        paginationHelper.startLoading();
+        
+        if (!isRefresh) {
+            if (postAdapter != null && postAdapter.getPostsCount() > 0) {
+                postAdapter.showLoading();
+            }
         }
         
         int offset = paginationHelper.getCurrentOffset();
@@ -394,11 +398,11 @@ public class GroupProfileFragment extends BaseProfileFragment {
         
         if (isDetailsExpanded) {
             groupDetailsCard.setVisibility(View.GONE);
-            expandArrow.setImageResource(R.drawable.ic_expand_more);
+            expandArrow.setImageResource(R.drawable.ic_keyboard_arrow_down);
             isDetailsExpanded = false;
         } else {
             groupDetailsCard.setVisibility(View.VISIBLE);
-            expandArrow.setImageResource(R.drawable.ic_expand_less);
+            expandArrow.setImageResource(R.drawable.ic_keyboard_arrow_up);
             isDetailsExpanded = true;
         }
     }
@@ -513,35 +517,4 @@ public class GroupProfileFragment extends BaseProfileFragment {
         }
     }
 
-    @Override
-    public void onPostLongClick(Post post, View view) {
-        android.widget.PopupMenu popup = new android.widget.PopupMenu(requireContext(), view);
-        popup.getMenu().add(0, 1, 0, getString(R.string.copy_link));
-        
-        popup.setOnMenuItemClickListener(item -> {
-            if (item.getItemId() == 1) {
-                copyPostLink(post);
-                return true;
-            }
-            return false;
-        });
-        
-        popup.show();
-    }
-    
-    private void copyPostLink(Post post) {
-        org.nikanikoo.flux.data.managers.api.OpenVKApi api =
-            org.nikanikoo.flux.data.managers.api.OpenVKApi.getInstance(requireContext());
-        String baseUrl = api.getBaseUrl();
-        if (baseUrl.endsWith("/method")) {
-            baseUrl = baseUrl.substring(0, baseUrl.length() - 7);
-        }
-        String postUrl = baseUrl + "/wall" + post.getOwnerId() + "_" + post.getPostId();
-        
-        android.content.ClipboardManager clipboard = (android.content.ClipboardManager) 
-                requireContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE);
-        android.content.ClipData clip = android.content.ClipData.newPlainText("Post URL", postUrl);
-        clipboard.setPrimaryClip(clip);
-        Toast.makeText(getContext(), getString(R.string.copied_link), Toast.LENGTH_SHORT).show();
-    }
 }

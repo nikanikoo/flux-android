@@ -24,7 +24,7 @@
             android:layout_alignParentTop="true"
             android:layout_alignParentEnd="true"
             android:layout_margin="4dp"
-            android:src="@android:drawable/ic_menu_close_clear_cancel"
+            android:src="@drawable/ic_close"
             android:background="@android:color/black"
             android:padding="4dp"
             android:clickable="true"

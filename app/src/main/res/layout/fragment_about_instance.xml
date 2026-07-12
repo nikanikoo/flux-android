@@ -285,7 +285,7 @@
                         <ImageView
                             android:layout_width="24dp"
                             android:layout_height="24dp"
-                            android:src="@drawable/ic_info"
+                            android:src="@drawable/ic_rule"
                             app:tint="?attr/colorOnSurfaceVariant" />
 
                         <TextView
@@ -318,7 +318,7 @@
                         <ImageView
                             android:layout_width="24dp"
                             android:layout_height="24dp"
-                            android:src="@drawable/ic_security"
+                            android:src="@drawable/ic_policy"
                             app:tint="?attr/colorOnSurfaceVariant" />
 
                         <TextView

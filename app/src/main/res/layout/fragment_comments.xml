@@ -16,6 +16,7 @@
         <androidx.core.widget.NestedScrollView
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:descendantFocusability="blocksDescendants"
             android:fillViewport="true">
 
             <LinearLayout
@@ -64,44 +65,178 @@
                                     android:id="@+id/original_post_author_name"
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="Автор поста"
                                     android:textStyle="bold"
                                     android:textSize="16sp"
                                     android:textColor="?attr/colorOnSurface" />
 
-                                <TextView
-                                    android:id="@+id/original_post_timestamp"
+                                <LinearLayout
                                     android:layout_width="wrap_content"
                                     android:layout_height="wrap_content"
-                                    android:text="2 часа назад"
-                                    android:textSize="12sp"
-                                    android:textColor="?attr/colorOnSurfaceVariant" />
+                                    android:orientation="horizontal"
+                                    android:gravity="center_vertical">
+
+                                    <TextView
+                                        android:id="@+id/original_post_timestamp"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:textSize="12sp"
+                                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                                    <ImageView
+                                        android:id="@+id/original_post_device_icon"
+                                        android:layout_width="14dp"
+                                        android:layout_height="14dp"
+                                        android:layout_marginStart="4dp"
+                                        android:layout_gravity="center_vertical"
+                                        android:visibility="gone"
+                                        app:tint="?attr/colorOnSurfaceVariant" />
+
+                                </LinearLayout>
 
                             </LinearLayout>
 
                         </LinearLayout>
 
-                        <!-- Текст поста -->
-                        <TextView
-                            android:id="@+id/original_post_content"
+                        <FrameLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginBottom="12dp"
-                            android:lineSpacingExtra="2dp"
-                            android:text="Текст оригинального поста"
-                            android:textColor="?attr/colorOnSurface"
-                            android:textIsSelectable="true"
-                            android:textSize="14sp" />
+                            android:layout_marginBottom="12dp">
 
-                        <!-- Изображение поста -->
-                        <ImageView
-                            android:id="@+id/original_post_image"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:scaleType="fitStart"
-                            android:adjustViewBounds="true"
-                            android:visibility="gone"
-                            android:layout_marginBottom="12dp"/>
+                            <LinearLayout
+                                android:id="@+id/original_post_body_container"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical">
+
+                                <!-- Текст поста -->
+                                <TextView
+                                    android:id="@+id/original_post_content"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginBottom="12dp"
+                                    android:lineSpacingExtra="2dp"
+                                    android:textColor="?attr/colorOnSurface"
+                                    android:textIsSelectable="true"
+                                    android:textSize="14sp" />
+
+                                <!-- Изображение поста -->
+                                <org.nikanikoo.flux.ui.adapters.posts.PostImagesCollage
+                                    android:id="@+id/original_post_image"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:visibility="gone" />
+
+                                <LinearLayout
+                                    android:id="@+id/original_post_audio_container"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="vertical"
+                                    android:visibility="gone"
+                                    android:layout_marginBottom="8dp"/>
+
+                                <LinearLayout
+                                    android:id="@+id/original_post_video_container"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="vertical"
+                                    android:visibility="gone"
+                                    android:layout_marginBottom="8dp"/>
+
+                                <LinearLayout
+                                    android:id="@+id/original_post_poll_container"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="vertical"
+                                    android:visibility="gone"
+                                    android:layout_marginBottom="8dp"/>
+
+                                <TextView
+                                    android:id="@+id/original_post_unsupported_elements"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text=""
+                                    android:textSize="11sp"
+                                    android:textColor="?attr/colorOnSurfaceVariant"
+                                    android:textStyle="italic"
+                                    android:layout_marginBottom="8dp"
+                                    android:visibility="gone" />
+
+                                <!-- Источник -->
+                                <LinearLayout
+                                    android:id="@+id/original_post_copyright_container"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="horizontal"
+                                    android:gravity="center_vertical"
+                                    android:layout_marginTop="4dp"
+                                    android:layout_marginBottom="8dp"
+                                    android:visibility="gone">
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="Источник: "
+                                        android:textSize="12sp"
+                                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                                    <TextView
+                                        android:id="@+id/original_post_copyright_link"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:textSize="12sp"
+                                        android:textColor="?attr/colorPrimary"
+                                        android:textStyle="bold"
+                                        android:background="?attr/selectableItemBackground"
+                                        android:clickable="true"
+                                        android:focusable="true"/>
+
+                                </LinearLayout>
+
+                            </LinearLayout>
+
+                            <LinearLayout
+                                android:id="@+id/original_post_nsfw_spoiler"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:minHeight="140dp"
+                                android:orientation="vertical"
+                                android:gravity="center"
+                                android:background="@drawable/bg_nsfw_overlay"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:visibility="gone"
+                                android:padding="12dp">
+
+                                <LinearLayout
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="vertical"
+                                    android:gravity="center"
+                                    android:background="@drawable/bg_nsfw_spoiler"
+                                    android:paddingHorizontal="18dp"
+                                    android:paddingVertical="12dp">
+
+                                    <ImageView
+                                        android:layout_width="32dp"
+                                        android:layout_height="32dp"
+                                        android:src="@drawable/ic_visibility_off"
+                                        app:tint="@color/white"
+                                        android:layout_marginBottom="8dp" />
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="Данный пост может содержать 18+ контент"
+                                        android:textColor="#E0E0E0"
+                                        android:textSize="12sp"
+                                        android:textStyle="bold"
+                                        android:gravity="center" />
+
+                                </LinearLayout>
+
+                            </LinearLayout>
+
+                        </FrameLayout>
 
                         <!-- Действия с постом -->
                         <LinearLayout
@@ -125,8 +260,8 @@
                                     android:id="@+id/original_post_like_icon"
                                     android:layout_width="20dp"
                                     android:layout_height="20dp"
-                                    android:src="@drawable/ic_like"
-                                    app:tint="@color/like_inactive" />
+                                    android:src="@drawable/ic_favorite"
+                                    app:tint="@android:color/darker_gray" />
 
                                 <TextView
                                     android:id="@+id/original_post_like_count"
@@ -135,7 +270,7 @@
                                     android:text="0"
                                     android:textSize="12sp"
                                     android:textColor="@color/like_inactive"
-                                    android:layout_marginStart="4dp" />
+                                    android:layout_marginStart="6dp" />
 
                             </LinearLayout>
 
@@ -149,7 +284,7 @@
                                 <ImageView
                                     android:layout_width="20dp"
                                     android:layout_height="20dp"
-                                    android:src="@android:drawable/ic_menu_edit"
+                                    android:src="@drawable/ic_comment"
                                     app:tint="@android:color/darker_gray" />
 
                                 <TextView
@@ -159,7 +294,7 @@
                                     android:text="0"
                                     android:textSize="12sp"
                                     android:textColor="?attr/colorOnSurfaceVariant"
-                                    android:layout_marginStart="4dp" />
+                                    android:layout_marginStart="6dp" />
 
                             </LinearLayout>
 
@@ -177,7 +312,7 @@
                                 <ImageView
                                     android:layout_width="20dp"
                                     android:layout_height="20dp"
-                                    android:src="@android:drawable/ic_menu_share"
+                                    android:src="@drawable/ic_share"
                                     app:tint="@android:color/darker_gray" />
 
                                 <TextView
@@ -187,7 +322,7 @@
                                     android:text="@string/share"
                                     android:textSize="12sp"
                                     android:textColor="?attr/colorOnSurfaceVariant"
-                                    android:layout_marginStart="4dp" />
+                                    android:layout_marginStart="6dp" />
 
                             </LinearLayout>
 
@@ -213,6 +348,7 @@
                     android:id="@+id/recycler_comments"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:descendantFocusability="blocksDescendants"
                     android:nestedScrollingEnabled="false" />
 
             </LinearLayout>
@@ -235,7 +371,7 @@
             android:id="@+id/btn_attach_image"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:src="@drawable/ic_photos"
+            android:src="@drawable/ic_add"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:padding="8dp"
             android:clickable="true"

@@ -59,7 +59,7 @@
                     <ImageView
                         android:layout_width="24dp"
                         android:layout_height="24dp"
-                        android:src="@drawable/ic_accounts"
+                        android:src="@drawable/ic_supervisor_account"
                         app:tint="?attr/colorOnSurfaceVariant" />
 
                     <LinearLayout
@@ -182,7 +182,7 @@
                     <ImageView
                         android:layout_width="24dp"
                         android:layout_height="24dp"
-                        android:src="@drawable/ic_notification"
+                        android:src="@drawable/ic_notifications"
                         app:tint="?attr/colorOnSurfaceVariant" />
 
                     <LinearLayout
@@ -241,7 +241,7 @@
                     <ImageView
                         android:layout_width="24dp"
                         android:layout_height="24dp"
-                        android:src="@drawable/ic_data"
+                        android:src="@drawable/ic_data_usage"
                         app:tint="?attr/colorOnSurfaceVariant" />
 
                     <LinearLayout
@@ -364,6 +364,56 @@
                     android:orientation="vertical"
                     android:showDividers="middle">
 
+                    <LinearLayout
+                        android:id="@+id/card_balance"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:padding="16dp"
+                        android:gravity="center_vertical"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true">
+
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/ic_account_balance_wallet"
+                            app:tint="?attr/colorOnSurfaceVariant" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="16dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/settings_balance"
+                                android:textSize="16sp"
+                                android:textColor="?attr/colorOnSurface" />
+
+                            <TextView
+                                android:id="@+id/balance_value"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/settings_balance_desc"
+                                android:textSize="14sp"
+                                android:textColor="?attr/colorOnSurfaceVariant"
+                                android:layout_marginTop="2dp" />
+
+                        </LinearLayout>
+
+                        <ImageView
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/ic_chevron_right"
+                            app:tint="?attr/colorOnSurfaceVariant" />
+
+                    </LinearLayout>
+
                     <!-- Версия приложения -->
                     <include layout="@layout/settings_item_version" />
 
@@ -384,7 +434,7 @@
                 android:text="@string/settings_logout"
                 android:textSize="16sp"
                 app:cornerRadius="16dp"
-                app:icon="@drawable/ic_account"
+                app:icon="@drawable/ic_logout"
                 app:iconGravity="start"
                 style="@style/Widget.Material3.Button.OutlinedButton" />
 

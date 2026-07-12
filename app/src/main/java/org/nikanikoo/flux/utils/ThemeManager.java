@@ -18,6 +18,7 @@ public class ThemeManager {
     public static final int THEME_LIGHT = 0;
     public static final int THEME_DARK = 1;
     public static final int THEME_SYSTEM = 2;
+    public static final int THEME_AMOLED = 3;
 
     public static final int STYLE_DEFAULT = 0;
     public static final int STYLE_MATERIAL_YOU = 1;
@@ -56,7 +57,7 @@ public class ThemeManager {
 
     public boolean isDarkMode() {
         int mode = getThemeMode();
-        if (mode == THEME_DARK) {
+        if (mode == THEME_DARK || mode == THEME_AMOLED) {
             return true;
         } else if (mode == THEME_LIGHT) {
             return false;
@@ -114,6 +115,7 @@ public class ThemeManager {
                 AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
                 break;
             case THEME_DARK:
+            case THEME_AMOLED:
                 AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
                 break;
             case THEME_SYSTEM:
@@ -144,6 +146,21 @@ public class ThemeManager {
         Logger.d("ThemeManager", "getThemeResourceId - style: " + style +
             ", STYLE_MATERIAL_YOU: " + STYLE_MATERIAL_YOU + 
             ", isDynamicColorsAvailable: " + isDynamicColorsAvailable());
+
+        int mode = getThemeMode();
+        if (mode == THEME_AMOLED) {
+            switch (style) {
+                case STYLE_GREEN:
+                    return getContrastTheme(R.style.Theme_Flux_Green_Amoled, contrast);
+                case STYLE_PURPLE:
+                    return getContrastTheme(R.style.Theme_Flux_Purple_Amoled, contrast);
+                case STYLE_RED:
+                    return getContrastTheme(R.style.Theme_Flux_Red_Amoled, contrast);
+                case STYLE_DEFAULT:
+                default:
+                    return getContrastTheme(R.style.Theme_Flux_Amoled, contrast);
+            }
+        }
 
         if (style == STYLE_MATERIAL_YOU && isDynamicColorsAvailable()) {
             Logger.d("ThemeManager", "Returning DynamicColors theme");
@@ -189,6 +206,8 @@ public class ThemeManager {
                 return context.getString(R.string.appearance_theme_light);
             case THEME_DARK:
                 return context.getString(R.string.appearance_theme_dark);
+            case THEME_AMOLED:
+                return context.getString(R.string.appearance_theme_amoled);
             case THEME_SYSTEM:
             default:
                 return context.getString(R.string.appearance_theme_system);

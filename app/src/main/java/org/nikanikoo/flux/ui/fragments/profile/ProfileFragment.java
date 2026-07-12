@@ -2,8 +2,12 @@ package org.nikanikoo.flux.ui.fragments.profile;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
@@ -12,6 +16,7 @@ import androidx.cardview.widget.CardView;
 import com.google.android.material.button.MaterialButton;
 
 import org.nikanikoo.flux.R;
+import org.nikanikoo.flux.data.managers.FriendsManager;
 import org.nikanikoo.flux.data.managers.PostsManager;
 import org.nikanikoo.flux.data.managers.ProfileManager;
 import org.nikanikoo.flux.data.models.Post;
@@ -22,6 +27,7 @@ import org.nikanikoo.flux.ui.activities.PhotoViewerActivity;
 import org.nikanikoo.flux.ui.dialogs.RepostDialog;
 import org.nikanikoo.flux.ui.fragments.comments.CommentsFragment;
 import org.nikanikoo.flux.ui.fragments.friends.UserFriendsFragment;
+import org.nikanikoo.flux.ui.fragments.messages.ChatFragment;
 import org.nikanikoo.flux.utils.Logger;
 
 import java.util.ArrayList;
@@ -45,10 +51,15 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
     private CardView profileDetailsCard;
     private ImageView expandArrow;
     private MaterialButton btnCreatePostProfile;
+    private MaterialButton btnMessageProfile;
+    private MaterialButton btnFriendProfile;
+    private MaterialButton btnEditProfile;
+    private LinearLayout editProfileContainer;
     private CardView friendsCard;
     
     // State
     private boolean isDetailsExpanded = false;
+    private boolean isFriend = false;
     
     // Arguments
     private static final String ARG_USER_NAME = "user_name";
@@ -89,6 +100,7 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
         // Инициализация Presenter
         ProfileManager profileManager = ProfileManager.getInstance(requireContext());
         presenter = new ProfilePresenter(profileManager);
+        setHasOptionsMenu(true);
     }
 
     @Override
@@ -110,6 +122,10 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
         profileDetailsCard = view.findViewById(R.id.profile_details_card);
         expandArrow = view.findViewById(R.id.expand_arrow);
         btnCreatePostProfile = view.findViewById(R.id.btn_create_post_profile);
+        btnMessageProfile = view.findViewById(R.id.btn_message_profile);
+        btnFriendProfile = view.findViewById(R.id.btn_friend_profile);
+        btnEditProfile = view.findViewById(R.id.btn_edit_profile);
+        editProfileContainer = view.findViewById(R.id.edit_profile_container);
         friendsCard = view.findViewById(R.id.friends_card);
         
         // Настройка обработчиков кликов
@@ -120,6 +136,18 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
         // Кнопка создания поста
         if (btnCreatePostProfile != null) {
             btnCreatePostProfile.setOnClickListener(v -> presenter.onCreatePostClick());
+        }
+
+        if (btnMessageProfile != null) {
+            btnMessageProfile.setOnClickListener(v -> onMessageButtonClick());
+        }
+
+        if (btnFriendProfile != null) {
+            btnFriendProfile.setOnClickListener(v -> onFriendButtonClick());
+        }
+
+        if (btnEditProfile != null) {
+            btnEditProfile.setOnClickListener(v -> presenter.onEditProfileClick());
         }
         
         // Раскрытие деталей
@@ -198,15 +226,19 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
             return;
         }
         
-        if (!isRefresh) {
-            paginationHelper.startLoading();
-        }
-        
-        int targetUserId = isForeignProfile() ? userId : profile.getId();
-        
         if (isRefresh) {
             paginationHelper.reset();
         }
+        
+        paginationHelper.startLoading();
+        
+        if (!isRefresh) {
+            if (postAdapter != null && postAdapter.getPostsCount() > 0) {
+                postAdapter.showLoading();
+            }
+        }
+        
+        int targetUserId = isForeignProfile() ? userId : profile.getId();
         
         int offset = paginationHelper.getCurrentOffset();
         Logger.d(TAG, "loadPosts: targetUserId=" + targetUserId + ", offset=" + offset);
@@ -259,8 +291,14 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
         // Обновление информации через Controller
         infoController.updateProfileInfo(profile);
 
+        updateButtonsVisibility(profile);
+
         // Загружаем посты после загрузки профиля
         loadPosts(true);
+
+        if (getActivity() != null) {
+            getActivity().invalidateOptionsMenu();
+        }
     }
 
     @Override
@@ -308,6 +346,18 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
     }
 
     @Override
+    public void openChat(int userId, String userName) {
+        if (getActivity() == null) {
+            return;
+        }
+        ChatFragment chatFragment = ChatFragment.newInstance(userId, userName);
+        getActivity().getSupportFragmentManager().beginTransaction()
+                .replace(R.id.fragment_container, chatFragment)
+                .addToBackStack("chat_" + userId)
+                .commit();
+    }
+
+    @Override
     public void setCreatePostButtonVisible(boolean visible) {
         if (btnCreatePostProfile != null) {
             btnCreatePostProfile.setVisibility(visible ? View.VISIBLE : View.GONE);
@@ -321,10 +371,105 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
 
     @Override
     public boolean isForeignProfile() {
-        return userId > 0;
+        if (userId <= 0) {
+            return false;
+        }
+        
+        ProfileManager pm = ProfileManager.getInstance(requireContext());
+        UserProfile myProfile = pm.getCachedProfileSync();
+        if (myProfile != null && userId == myProfile.getId()) {
+            return false;
+        }
+        
+        return true;
     }
 
     // ==================== Helper Methods ====================
+
+    private void onMessageButtonClick() {
+        if (presenter != null) {
+            presenter.onMessageButtonClick();
+        }
+    }
+
+    private void onFriendButtonClick() {
+        if (presenter != null) {
+            presenter.onFriendButtonClick(isFriend);
+        }
+    }
+
+    private void updateButtonsVisibility(UserProfile profile) {
+        if (profile == null || getActivity() == null) {
+            return;
+        }
+
+        boolean isOwnProfile = !isForeignProfile();
+        
+        if (editProfileContainer != null) {
+            editProfileContainer.setVisibility(isOwnProfile ? View.VISIBLE : View.GONE);
+        } else if (btnEditProfile != null) {
+            btnEditProfile.setVisibility(isOwnProfile ? View.VISIBLE : View.GONE);
+        }
+
+        boolean showFriendButtons = !isOwnProfile;
+        if (btnMessageProfile != null) {
+            btnMessageProfile.setVisibility(showFriendButtons ? View.VISIBLE : View.GONE);
+        }
+        if (btnFriendProfile != null) {
+            btnFriendProfile.setVisibility(showFriendButtons ? View.VISIBLE : View.GONE);
+        }
+
+        if (showFriendButtons && userId > 0) {
+            checkFriendshipStatus(userId);
+        }
+    }
+
+    private void checkFriendshipStatus(int targetUserId) {
+        if (getActivity() == null) {
+            return;
+        }
+
+        FriendsManager friendsManager = FriendsManager.getInstance(getActivity());
+        List<Integer> userIds = new ArrayList<>();
+        userIds.add(targetUserId);
+
+        friendsManager.areFriends(userIds, new FriendsManager.AreFriendsCallback() {
+            @Override
+            public void onSuccess(List<FriendsManager.FriendStatus> friendStatuses) {
+                if (getActivity() == null || friendStatuses.isEmpty()) {
+                    return;
+                }
+
+                getActivity().runOnUiThread(() -> {
+                    FriendsManager.FriendStatus status = friendStatuses.get(0);
+                    isFriend = status.isFriend();
+                    updateFriendButtonText();
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        isFriend = false;
+                        updateFriendButtonText();
+                    });
+                }
+            }
+        });
+    }
+
+    private void updateFriendButtonText() {
+        if (btnFriendProfile == null || getActivity() == null) {
+            return;
+        }
+
+        if (isFriend) {
+            btnFriendProfile.setText(R.string.profile_friend);
+        } else {
+            btnFriendProfile.setText(R.string.profile_add_friend);
+        }
+    }
 
     private void toggleDetailsCard() {
         if (profileDetailsCard == null || expandArrow == null) {
@@ -333,11 +478,11 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
         
         if (isDetailsExpanded) {
             profileDetailsCard.setVisibility(View.GONE);
-            expandArrow.setImageResource(R.drawable.ic_expand_more);
+            expandArrow.setImageResource(R.drawable.ic_keyboard_arrow_down);
             isDetailsExpanded = false;
         } else {
             profileDetailsCard.setVisibility(View.VISIBLE);
-            expandArrow.setImageResource(R.drawable.ic_expand_less);
+            expandArrow.setImageResource(R.drawable.ic_keyboard_arrow_up);
             isDetailsExpanded = true;
         }
     }
@@ -400,6 +545,42 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
     }
 
     @Override
-    public void onPostLongClick(Post post, View view) {
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        inflater.inflate(R.menu.menu_profile, menu);
+        
+        boolean isForeign = isForeignProfile();
+        
+        MenuItem blacklist = menu.findItem(R.id.action_blacklist);
+        if (blacklist != null) {
+            blacklist.setVisible(isForeign);
+        }
+        
+        MenuItem report = menu.findItem(R.id.action_report);
+        if (report != null) {
+            report.setVisible(isForeign);
+        }
+        
+        MenuItem ignore = menu.findItem(R.id.action_ignore);
+        if (ignore != null) {
+            ignore.setVisible(isForeign);
+        }
+        
+        super.onCreateOptionsMenu(menu, inflater);
     }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+        if (id == R.id.action_rate_up) {
+            return true;
+        } else if (id == R.id.action_blacklist) {
+            return true;
+        } else if (id == R.id.action_report) {
+            return true;
+        } else if (id == R.id.action_ignore) {
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
 }

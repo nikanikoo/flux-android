@@ -314,4 +314,34 @@ public class ProfileManager extends BaseManager<ProfileManager> {
         prefs.edit().clear().apply();
         cachedProfile = null;
     }
+
+    public interface SaveProfileCallback {
+        void onSuccess();
+        void onError(String error);
+    }
+
+    public void saveProfileInfo(Map<String, String> params, SaveProfileCallback callback) {
+        api.callMethod("account.saveProfileInfo", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                try {
+                    if (response.has("response") && response.optInt("response") == 1) {
+                        callback.onSuccess();
+                    } else if (response.has("response") && response.get("response") instanceof JSONObject) {
+                        callback.onSuccess();
+                    } else {
+                        callback.onError("Не удалось сохранить изменения");
+                    }
+                } catch (Exception e) {
+                    Logger.e(TAG, "Error parsing saveProfileInfo response", e);
+                    callback.onError("Ошибка при обработке ответа сервера");
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
 }

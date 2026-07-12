@@ -51,55 +51,51 @@
     </com.google.android.material.card.MaterialCardView>
 
     <!-- Поле ввода сообщения -->
-    <com.google.android.material.card.MaterialCardView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        app:cardCornerRadius="0dp"
-        app:cardElevation="8dp"
-        app:cardBackgroundColor="?attr/colorSurfaceContainer">
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="12dp"
+        android:background="?attr/colorSurface"
+        android:elevation="4dp">
 
-        <LinearLayout
-            android:layout_width="match_parent"
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="16dp"
-            android:gravity="center_vertical">
+            android:layout_weight="1"
+            app:boxBackgroundMode="outline"
+            app:boxCornerRadiusTopStart="20dp"
+            app:boxCornerRadiusTopEnd="20dp"
+            app:boxCornerRadiusBottomStart="20dp"
+            app:boxCornerRadiusBottomEnd="20dp"
+            app:hintEnabled="false">
 
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="0dp"
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/message_input"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginEnd="12dp"
-                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                app:boxCornerRadiusTopStart="24dp"
-                app:boxCornerRadiusTopEnd="24dp"
-                app:boxCornerRadiusBottomStart="24dp"
-                app:boxCornerRadiusBottomEnd="24dp"
-                app:hintEnabled="false">
+                android:hint="@string/chat_message_hint"
+                android:maxLines="3"
+                android:inputType="textMultiLine|textCapSentences"
+                android:imeOptions="actionSend"
+                android:textSize="16sp" />
 
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/message_input"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="@string/chat_message_hint"
-                    android:maxLines="4"
-                    android:inputType="textMultiLine|textCapSentences"
-                    android:imeOptions="actionSend"
-                    android:textSize="16sp" />
+        </com.google.android.material.textfield.TextInputLayout>
 
-            </com.google.android.material.textfield.TextInputLayout>
+        <ImageView
+            android:id="@+id/send_button"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_send"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:padding="8dp"
+            android:layout_marginStart="8dp"
+            app:tint="@color/light_primary" />
 
-            <com.google.android.material.floatingactionbutton.FloatingActionButton
-                android:id="@+id/send_button"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:src="@android:drawable/ic_menu_send"
-                app:fabSize="mini"
-                app:tint="@color/white" />
-
-        </LinearLayout>
-
-    </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
 
 </FrameLayout>

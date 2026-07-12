@@ -44,6 +44,7 @@ public abstract class BaseProfileFragment extends BaseFragment implements PostAd
     protected PostAdapter postAdapter;
     protected PostsManager postsManager;
     protected LikesManager likesManager;
+    protected org.nikanikoo.flux.data.managers.ProfileManager profileManager;
     
     // Pagination
     protected LinearLayoutManager layoutManager;
@@ -65,6 +66,7 @@ public abstract class BaseProfileFragment extends BaseFragment implements PostAd
 
         postsManager = PostsManager.getInstance(requireContext());
         likesManager = LikesManager.getInstance(requireContext());
+        profileManager = org.nikanikoo.flux.data.managers.ProfileManager.getInstance(requireContext());
 
         // Инициализируем paginationHelper всегда
         paginationHelper = new PaginationHelper(Constants.Api.POSTS_PER_PAGE);
@@ -142,27 +144,60 @@ public abstract class BaseProfileFragment extends BaseFragment implements PostAd
         recyclerPosts.setLayoutManager(layoutManager);
 
         // RecyclerView optimizations
-        recyclerPosts.setHasFixedSize(true);
         recyclerPosts.setItemViewCacheSize(20);
 
         // Enable item animator for smooth animations
         recyclerPosts.setItemAnimator(null);
         
         postAdapter = new PostAdapter(getContext(), posts);
+        postAdapter.setProfileWall(true);
         postAdapter.setOnPostClickListener(this);
         recyclerPosts.setAdapter(postAdapter);
         
-        scrollListener = new EndlessScrollListener(layoutManager, paginationHelper) {
-            @Override
-            public void onLoadMore(int offset, int totalItemsCount, RecyclerView view) {
-                Logger.d(TAG, "EndlessScrollListener.onLoadMore: offset=" + offset + ", canLoadMore=" + paginationHelper.canLoadMore());
-                if (paginationHelper.canLoadMore()) {
-                    loadPosts(false);
-                }
+        if (getView() != null) {
+            androidx.core.widget.NestedScrollView nestedScrollView = getView().findViewById(R.id.profile_content);
+            if (nestedScrollView == null) {
+                nestedScrollView = getView().findViewById(R.id.group_content);
             }
-        };
-        
-        recyclerPosts.addOnScrollListener(scrollListener);
+            
+            if (nestedScrollView != null) {
+                final androidx.core.widget.NestedScrollView finalScrollView = nestedScrollView;
+                finalScrollView.setOnScrollChangeListener(new androidx.core.widget.NestedScrollView.OnScrollChangeListener() {
+                    private int lastLoggedDiff = -1;
+                    
+                    @Override
+                    public void onScrollChange(androidx.core.widget.NestedScrollView v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
+                        View child = v.getChildAt(v.getChildCount() - 1);
+                        if (child != null) {
+                            int diff = (child.getBottom() - (v.getHeight() + scrollY));
+                            
+                            if (Math.abs(diff - lastLoggedDiff) > 500) {
+                                Logger.d(TAG, "Scroll diff=" + diff + ", childBottom=" + child.getBottom() + ", height=" + v.getHeight() + ", scrollY=" + scrollY);
+                                lastLoggedDiff = diff;
+                            }
+                            
+                            if (diff <= 1500) {
+                                if (paginationHelper.canLoadMore() && !paginationHelper.isLoading()) {
+                                    Logger.d(TAG, "NestedScrollView reached bottom (diff=" + diff + "), loading more");
+                                    loadPosts(false);
+                                }
+                            }
+                        }
+                    }
+                });
+            } else {
+                scrollListener = new EndlessScrollListener(layoutManager, paginationHelper) {
+                    @Override
+                    public void onLoadMore(int offset, int totalItemsCount, RecyclerView view) {
+                        Logger.d(TAG, "EndlessScrollListener.onLoadMore: offset=" + offset + ", canLoadMore=" + paginationHelper.canLoadMore());
+                        if (paginationHelper.canLoadMore()) {
+                            loadPosts(false);
+                        }
+                    }
+                };
+                recyclerPosts.addOnScrollListener(scrollListener);
+            }
+        }
         
         Logger.d(TAG, "setupRecyclerView: complete, postAdapter=" + (postAdapter != null ? "created" : "null"));
     }
@@ -235,8 +270,19 @@ public abstract class BaseProfileFragment extends BaseFragment implements PostAd
             
             Logger.d(TAG, "onPostsLoaded: isRefresh=" + isRefresh + ", loaded=" + loadedPosts.size() + 
                     ", before=" + postsBeforeAdd + ", after=" + postsAfterAdd + ", added=" + actuallyAdded);
+
+            int unpinnedPostsCount = 0;
+            for (Post post : loadedPosts) {
+                if (!post.isPinned()) {
+                    unpinnedPostsCount++;
+                }
+            }
+
+            paginationHelper.onDataLoaded(unpinnedPostsCount);
             
-            paginationHelper.onDataLoaded(actuallyAdded);
+            if (unpinnedPostsCount == 0) {
+                paginationHelper.setNoMoreData();
+            }
             
             if (loadedPosts.isEmpty() && postAdapter.getPostsCount() == 0) {
                 showEmptyState();
@@ -254,6 +300,10 @@ public abstract class BaseProfileFragment extends BaseFragment implements PostAd
             Logger.e(TAG, "Error loading posts: " + error);
             paginationHelper.stopLoading();
             hideLoading();
+            
+            if (postAdapter != null) {
+                postAdapter.hideLoading();
+            }
 
             showErrorAuto(error);
         });
@@ -281,7 +331,7 @@ public abstract class BaseProfileFragment extends BaseFragment implements PostAd
         for (int i = 0; i < posts.size(); i++) {
             if (posts.get(i).getPostId() == post.getPostId() && 
                 posts.get(i).getOwnerId() == post.getOwnerId()) {
-                postAdapter.notifyItemChanged(i);
+                postAdapter.notifyItemChanged(i, "LIKE_UPDATE");
                 break;
             }
         }
@@ -297,7 +347,7 @@ public abstract class BaseProfileFragment extends BaseFragment implements PostAd
                             for (int i = 0; i < posts.size(); i++) {
                                 if (posts.get(i).getPostId() == post.getPostId() && 
                                     posts.get(i).getOwnerId() == post.getOwnerId()) {
-                                    postAdapter.notifyItemChanged(i);
+                                    postAdapter.notifyItemChanged(i, "LIKE_UPDATE");
                                     break;
                                 }
                             }
@@ -314,7 +364,7 @@ public abstract class BaseProfileFragment extends BaseFragment implements PostAd
                             for (int i = 0; i < posts.size(); i++) {
                                 if (posts.get(i).getPostId() == post.getPostId() && 
                                     posts.get(i).getOwnerId() == post.getOwnerId()) {
-                                    postAdapter.notifyItemChanged(i);
+                                    postAdapter.notifyItemChanged(i, "LIKE_UPDATE");
                                     break;
                                 }
                             }
@@ -323,5 +373,190 @@ public abstract class BaseProfileFragment extends BaseFragment implements PostAd
                     }
                 }
             });
+    }
+
+    @Override
+    public void onPostLongClick(Post post, View view) {
+        showPostContextMenu(post, view);
+    }
+
+    protected void showPostContextMenu(Post post, View view) {
+        android.widget.PopupMenu popup = new android.widget.PopupMenu(requireContext(), view);
+        
+        org.nikanikoo.flux.data.models.UserProfile currentProfile = profileManager.getCachedProfileSync();
+        boolean isOwnPost = currentProfile != null && post.getAuthorId() == currentProfile.getId();
+        boolean isOnOwnWall = currentProfile != null && post.getOwnerId() == currentProfile.getId();
+        
+        if (post.canEdit()) {
+            popup.getMenu().add(0, 1, 0, getString(R.string.edit));
+        }
+        if (post.canPin()) {
+            popup.getMenu().add(0, 3, 0, post.isPinned() ? getString(R.string.unpin) : getString(R.string.pin));
+        }
+        popup.getMenu().add(0, 4, 0, getString(R.string.copy_link));
+        if (post.canDelete()) {
+            popup.getMenu().add(0, 5, 0, getString(R.string.delete));
+        }
+        
+        popup.setOnMenuItemClickListener(item -> {
+            switch (item.getItemId()) {
+                case 1: // Редактировать
+                    editPost(post);
+                    return true;
+                case 5: // Удалить
+                    deletePost(post);
+                    return true;
+                case 3: // Закрепить/Открепить
+                    if (post.isPinned()) {
+                        unpinPost(post);
+                    } else {
+                        pinPost(post);
+                    }
+                    return true;
+                case 4: // Скопировать ссылку
+                    copyPostLink(post);
+                    return true;
+                default:
+                    return false;
+            }
+        });
+        
+        popup.show();
+    }
+
+    protected void editPost(Post post) {
+        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_post, null);
+        com.google.android.material.textfield.TextInputEditText editMessage = dialogView.findViewById(R.id.edit_post_message);
+        com.google.android.material.button.MaterialButton btnCancel = dialogView.findViewById(R.id.btn_cancel_edit);
+        com.google.android.material.button.MaterialButton btnSave = dialogView.findViewById(R.id.btn_save_edit);
+
+        editMessage.setText(post.getContent());
+        
+        com.google.android.material.bottomsheet.BottomSheetDialog dialog = new com.google.android.material.bottomsheet.BottomSheetDialog(requireContext());
+        dialog.setContentView(dialogView);
+
+        dialog.getBehavior().setState(com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED);
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+
+        btnSave.setOnClickListener(v -> {
+            String newMessage = editMessage.getText() != null ? editMessage.getText().toString() : "";
+            postsManager.editPost(post.getOwnerId(), post.getPostId(), newMessage, new PostsManager.EditCallback() {
+                @Override
+                public void onSuccess(int postId) {
+                    if (isAdded()) {
+                        requireActivity().runOnUiThread(() -> {
+                            Toast.makeText(getContext(), getString(R.string.success), Toast.LENGTH_SHORT).show();
+                            dialog.dismiss();
+                            loadPosts(true);
+                        });
+                    }
+                }
+
+                @Override
+                public void onError(String error) {
+                    if (isAdded()) {
+                        requireActivity().runOnUiThread(() -> {
+                            Toast.makeText(getContext(), error, Toast.LENGTH_SHORT).show();
+                        });
+                    }
+                }
+            });
+        });
+
+        dialog.show();
+    }
+
+    protected void deletePost(Post post) {
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setTitle(getString(R.string.post_delete_confirm))
+                .setMessage(getString(R.string.post_delete_message))
+                .setPositiveButton(getString(R.string.delete), (dialog, which) -> {
+                    postsManager.deletePost(post.getOwnerId(), post.getPostId(), new PostsManager.DeleteCallback() {
+                        @Override
+                        public void onSuccess() {
+                            if (isAdded()) {
+                                requireActivity().runOnUiThread(() -> {
+                                    Toast.makeText(getContext(), getString(R.string.success), Toast.LENGTH_SHORT).show();
+                                    loadPosts(true);
+                                });
+                            }
+                        }
+
+                        @Override
+                        public void onError(String error) {
+                            if (isAdded()) {
+                                requireActivity().runOnUiThread(() -> {
+                                    Toast.makeText(getContext(), error, Toast.LENGTH_SHORT).show();
+                                });
+                            }
+                        }
+                    });
+                })
+                .setNegativeButton(getString(R.string.cancel), null)
+                .show();
+    }
+
+    protected void pinPost(Post post) {
+        postsManager.pinPost(post.getOwnerId(), post.getPostId(), new PostsManager.PinCallback() {
+            @Override
+            public void onSuccess() {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        post.setPinned(true);
+                        loadPosts(true);
+                        Toast.makeText(getContext(), "Пост закреплен", Toast.LENGTH_SHORT).show();
+                    });
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        Toast.makeText(getContext(), "Ошибка при закреплении: " + error, Toast.LENGTH_SHORT).show();
+                    });
+                }
+            }
+        });
+    }
+
+    protected void unpinPost(Post post) {
+        postsManager.unpinPost(post.getOwnerId(), post.getPostId(), new PostsManager.PinCallback() {
+            @Override
+            public void onSuccess() {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        post.setPinned(false);
+                        loadPosts(true);
+                        Toast.makeText(getContext(), "Пост откреплен", Toast.LENGTH_SHORT).show();
+                    });
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        Toast.makeText(getContext(), "Ошибка при откреплении: " + error, Toast.LENGTH_SHORT).show();
+                    });
+                }
+            }
+        });
+    }
+
+    protected void copyPostLink(Post post) {
+        org.nikanikoo.flux.data.managers.api.OpenVKApi api = 
+            org.nikanikoo.flux.data.managers.api.OpenVKApi.getInstance(requireContext());
+        String baseUrl = api.getBaseUrl();
+        if (baseUrl.endsWith("/method")) {
+            baseUrl = baseUrl.substring(0, baseUrl.length() - 7);
+        }
+        String postUrl = baseUrl + "/wall" + post.getOwnerId() + "_" + post.getPostId();
+        android.content.ClipboardManager clipboard = (android.content.ClipboardManager) 
+                requireContext().getSystemService(android.content.Context.CLIPBOARD_SERVICE);
+        android.content.ClipData clip = android.content.ClipData.newPlainText("Post URL", postUrl);
+        clipboard.setPrimaryClip(clip);
+        Toast.makeText(getContext(), getString(R.string.copied_link), Toast.LENGTH_SHORT).show();
     }
 }

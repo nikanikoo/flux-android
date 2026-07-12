@@ -25,7 +25,8 @@
             android:id="@+id/audio_attachment_cover"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:src="@drawable/ic_music"
+            android:src="@drawable/ic_music_note"
+            android:padding="8dp"
             android:scaleType="centerCrop"
             android:contentDescription="Обложка"/>
 
@@ -37,10 +38,10 @@
             android:layout_marginStart="8dp">
 
             <TextView
-                android:id="@+id/audio_attachment_artist"
+                android:id="@+id/audio_attachment_title"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Исполнитель"
+                android:text="Названиие трека"
                 android:textSize="14sp"
                 android:textStyle="bold"
                 android:textColor="?android:attr/textColorPrimary"
@@ -48,10 +49,10 @@
                 android:ellipsize="end"/>
 
             <TextView
-                android:id="@+id/audio_attachment_title"
+                android:id="@+id/audio_attachment_artist"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Название"
+                android:text="Исполнитель"
                 android:textSize="12sp"
                 android:textColor="?android:attr/textColorSecondary"
                 android:maxLines="1"

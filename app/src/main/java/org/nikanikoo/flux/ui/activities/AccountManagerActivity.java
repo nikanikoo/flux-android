@@ -90,6 +90,7 @@ public class AccountManagerActivity extends BaseSettingsActivity {
                     }
 
                     org.nikanikoo.flux.data.managers.ProfileManager.getInstance(this).clearCache();
+                    org.nikanikoo.flux.ui.fragments.news.NewsFragment.clearCache();
                     org.nikanikoo.flux.data.managers.api.OpenVKApi.resetInstance();
 
                     android.util.Log.d("AccountManagerActivity", "Switched to account: " + account.fullName);

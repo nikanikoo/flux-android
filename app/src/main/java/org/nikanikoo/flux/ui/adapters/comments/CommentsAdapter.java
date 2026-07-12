@@ -52,6 +52,29 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
 
     @Override
     public void onBindViewHolder(@NonNull CommentViewHolder holder, int position) {
+        bindCommentViewHolder(holder, position);
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull CommentViewHolder holder, int position, @NonNull List<Object> payloads) {
+        if (!payloads.isEmpty()) {
+            Comment comment = comments.get(position);
+            boolean likeUpdated = false;
+            for (Object payload : payloads) {
+                if ("LIKE_UPDATE".equals(payload)) {
+                    likeUpdated = true;
+                    break;
+                }
+            }
+            if (likeUpdated) {
+                updateLikeState(holder, comment);
+                return;
+            }
+        }
+        super.onBindViewHolder(holder, position, payloads);
+    }
+
+    private void bindCommentViewHolder(@NonNull CommentViewHolder holder, int position) {
         Comment comment = comments.get(position);
         
         holder.authorName.setText(comment.getAuthorName());
@@ -232,6 +255,22 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
         if (container != null) {
             container.removeAllViews();
             container.setVisibility(View.GONE);
+        }
+    }
+
+    @Override
+    public void onViewDetachedFromWindow(@NonNull CommentViewHolder holder) {
+        super.onViewDetachedFromWindow(holder);
+        if (holder.content != null) {
+            holder.content.clearFocus();
+        }
+    }
+
+    @Override
+    public void onViewRecycled(@NonNull CommentViewHolder holder) {
+        super.onViewRecycled(holder);
+        if (holder.content != null) {
+            holder.content.clearFocus();
         }
     }
 }

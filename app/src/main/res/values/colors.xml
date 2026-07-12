@@ -180,6 +180,18 @@
     <color name="md_theme_red_dark_tertiaryContainer">#E64A19</color>
     <color name="md_theme_red_dark_onTertiaryContainer">#FFCCBC</color>
 
+    <!-- AMOLED theme colors -->
+    <color name="amoled_background">#000000</color>
+    <color name="amoled_surface">#000000</color>
+    <color name="amoled_surface_variant">#050505</color>
+    <color name="amoled_surface_dim">#000000</color>
+    <color name="amoled_surface_bright">#0C0C0C</color>
+    <color name="amoled_surface_container_lowest">#000000</color>
+    <color name="amoled_surface_container_low">#020202</color>
+    <color name="amoled_surface_container">#050505</color>
+    <color name="amoled_surface_container_high">#0A0A0A</color>
+    <color name="amoled_surface_container_highest">#101010</color>
+
     <color name="colorError">@color/md_theme_light_error</color>
     <color name="colorBackground">@color/md_theme_light_background</color>
     <color name="colorTextPrimary">@color/md_theme_light_onBackground</color>

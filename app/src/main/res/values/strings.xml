@@ -16,7 +16,12 @@
     <string name="save">Сохранить</string>
     <string name="delete">Удалить</string>
     <string name="edit">Редактировать</string>
+    <string name="edit_post_title">Редактирование поста</string>
+    <string name="edit_post_hint">Что нового?</string>
+    <string name="profile_edit_success">Изменения сохранены</string>
     <string name="pin">Закрепить</string>
+    <string name="unpin">Открепить</string>
+    <string name="pinned">закреплено</string>
     <string name="close">Закрыть</string>
     <string name="back">Назад</string>
     <string name="search">Поиск</string>
@@ -25,6 +30,9 @@
     <string name="share">Поделиться</string>
     <string name="copy">Копировать</string>
     <string name="link_copied">Ссылка скопирована</string>
+    <string name="chat_favorites">Избранное</string>
+    <string name="chat_favorites_subtitle">Чат с самим собой</string>
+    <string name="chat_typing">печатает...</string>
 
     <!-- toolbars -->
     <string name="toolbar_subsfeed">Мои новости</string>
@@ -41,6 +49,18 @@
     <string name="nav_videos">Видео</string>
     <string name="nav_music">Музыка</string>
     <string name="nav_notes">Заметки</string>
+    <string name="note_delete_not_supported">Удаление заметок не поддерживается</string>
+    <string name="note_delete_confirm">Удалить заметку?</string>
+    <string name="note_delete_success">Заметка удалена</string>
+    <string name="note_create_title">Новая заметка</string>
+    <string name="note_title_hint">Заголовок</string>
+    <string name="note_text_hint">Текст заметки</string>
+    <string name="note_btn_create">Создать</string>
+    <string name="note_fill_fields_error">Заполните все поля</string>
+    <string name="note_created_success">Заметка создана</string>
+    <string name="note_viewer_title">Заметка</string>
+    <string name="note_edit_title">Редактировать заметку</string>
+    <string name="note_updated_success">Заметка обновлена</string>
     <string name="nav_notifications">Уведомления</string>
     <string name="nav_settings">Настройки</string>
     <string name="nav_profile">Профиль</string>
@@ -56,6 +76,9 @@
     <string name="login_hint">Email</string>
     <string name="password_hint">Пароль</string>
     <string name="forgot_password">Забыли пароль?</string>
+    <string name="login_with_token">Войти по токену</string>
+    <string name="token_hint">Токен доступа (access_token)</string>
+    <string name="login_token_invalid">Введите токен</string>
     <string name="btn_login">Войти</string>
     <string name="btn_login_confirm">Всё равно войти</string>
     <string name="btn_login_loading">Вход...</string>
@@ -120,6 +143,12 @@
     <string name="post_original_author">Автор оригинального поста</string>
     <string name="post_original_content">Текст оригинального поста</string>
     <string name="post_time_ago">%s назад</string>
+    <string name="time_just_now">Только что</string>
+    <string name="time_minutes_ago">%1$d мин назад</string>
+    <string name="time_today_at">сегодня в %1$s</string>
+    <string name="time_yesterday_at">вчера в %1$s</string>
+    <string name="time_full_format">%1$s в %2$s</string>
+    <string name="time_full_format_year">%1$s %2$d в %3$s</string>
     <string name="post_likes">Лайки</string>
     <string name="post_comments">Комментарии</string>
     <string name="post_shares">Поделиться</string>
@@ -148,7 +177,7 @@
     <string name="post_error_like">Невозможно поставить лайк этому посту</string>
     <string name="post_delete_message">Это действие нельзя отменить</string>
     <string name="post_published">Пост опубликован!</string>
-    <string name="post_publish_error">"Ошибка публикации: "</string>
+    <string name="post_publish_error">"Ошибка публикации:\u0020"</string>
     <string name="post_publishing">Публикация...</string>
 
     <!-- Create Post -->
@@ -162,8 +191,8 @@
     <!-- Comments -->
     <string name="comments_title">Комментарии</string>
     <string name="comments_write">Написать комментарий</string>
-    <string name="comments_loading_error">Ошибка загрузки комментариев: </string>
-    <string name="comments_send_error">Ошибка отправки комментария: </string>
+    <string name="comments_loading_error">Ошибка загрузки комментариев:\u0020</string>
+    <string name="comments_send_error">Ошибка отправки комментария:\u0020</string>
     <string name="comments_add_error">Введите комментарий</string>
     <string name="comments_cannot_load">Невозможно загрузить комментарии</string>
     <string name="comments_updated">Комментарии обновлены</string>
@@ -172,32 +201,32 @@
     <string name="comments_post_not_found">Ошибка: пост не найден</string>
 
     <!-- News -->
-    <string name="news_loading_error">Ошибка загрузки новостей: </string>
+    <string name="news_loading_error">Ошибка загрузки новостей:\u0020</string>
     <string name="news_refresh_error">Не удалось загрузить новые посты</string>
-    <string name="news_public_loading_error">Ошибка загрузки публичных постов: </string>
+    <string name="news_public_loading_error">Ошибка загрузки публичных постов:\u0020</string>
     <string name="news_select_type">Выберите тип новостей</string>
     <string name="news_wait_for_load">Дождитесь окончания загрузки</string>
     <string name="news_create_post">Создать пост</string>
 
     <!-- Messages -->
     <string name="messages_title">Сообщения</string>
-    <string name="messages_loading_error">Ошибка загрузки диалогов: </string>
+    <string name="messages_loading_error">Ошибка загрузки диалогов:\u0020</string>
     <string name="chat_title">Чат</string>
     <string name="chat_message_hint">Введите сообщение</string>
     <string name="chat_send">Отправить</string>
-    <string name="chat_loading_error">Ошибка загрузки сообщений: </string>
-    <string name="chat_send_error">Ошибка отправки: </string>
+    <string name="chat_loading_error">Ошибка загрузки сообщений:\u0020</string>
+    <string name="chat_send_error">Ошибка отправки:\u0020</string>
     <string name="message_incoming">Входящее сообщение</string>
     <string name="message_outgoing">Исходящее сообщение</string>
     <string name="message_time">%s</string>
 
     <!-- Friends -->
     <string name="friends_title">Друзья</string>
-    <string name="friends_title2">Друзья </string>
+    <string name="friends_title2">Друзья\u0020</string>
     <string name="friends_all">Все друзья</string>
     <string name="friends_requests">Заявки</string>
     <string name="friends_search">Поиск друзей</string>
-    <string name="friends_loading_error">Ошибка загрузки друзей: </string>
+    <string name="friends_loading_error">Ошибка загрузки друзей:\u0020</string>
     <string name="friends_not_found">Друзья не найдены</string>
     <string name="friends_not_found_info">У пользователя пока нет друзей :(</string>
     <string name="friends_common">%d общих друзей</string>
@@ -211,8 +240,8 @@
     <string name="friend_requests_loading_error">Ошибка загрузки заявок: %s</string>
     <string name="friend_send_message">Написать сообщение</string>
     <string name="friend_1_follower">1 участник</string>
-    <string name="friend_5_followers"> участника</string>
-    <string name="friend_followers6"> участников</string>
+    <string name="friend_5_followers">\u0020участника</string>
+    <string name="friend_followers6">\u0020участников</string>
 
     <!-- Groups -->
     <string name="groups_title">Группы</string>
@@ -226,16 +255,16 @@
     <string name="group_members">%d участников</string>
     <string name="group_description">Описание:</string>
     <string name="group_members_search">Поиск участников</string>
-    <string name="group_members_loading_error">Ошибка загрузки участников: </string>
+    <string name="group_members_loading_error">Ошибка загрузки участников:\u0020</string>
     <string name="group_members_not_found">Участники не найдены</string>
-    <string name="group_members2">Участники </string>
+    <string name="group_members2">Участники\u0020</string>
     <string name="group_members_none">В группе пока нет участников</string>
     <string name="search_none2">Попробуйте изменить параметры поиска</string>
     <string name="group_join">Вступить</string>
     <string name="group_leave">Покинуть</string>
     <string name="group_joined">Вы вступили в группу</string>
     <string name="group_left">Вы покинули группу</string>
-    <string name="group_load_error">Ошибка загрузки группы: </string>
+    <string name="group_load_error">Ошибка загрузки группы:\u0020</string>
 
     <!-- Photos -->
     <string name="photos_title">Фотографии</string>
@@ -258,7 +287,7 @@
     <string name="video_preview">Превью видео</string>
     <string name="video_play">Воспроизвести</string>
     <string name="video_url_not_found">URL видео не найден</string>
-    <string name="video_error">Ошибка воспроизведения: </string>
+    <string name="video_error">Ошибка воспроизведения:\u0020</string>
     <string name="video_search">Поиск видео</string>
     <string name="video_forward">%d »</string>
     <string name="video_back">« %d</string>
@@ -269,18 +298,43 @@
     <string name="audio_playlist">Плейлист</string>
     <string name="audio_track_name">Название</string>
     <string name="audio_no_tracks">У вас пока нет аудиозаписей</string>
-    <string name="audio_search_error">Ошибка поиска: </string>
+    <string name="audio_search_error">Ошибка поиска:\u0020</string>
     <string name="audio_nothing_found">Ничего не найдено</string>
     <string name="audio_removed">Удалено из аудиозаписей</string>
-    <string name="audio_loading_error">Ошибка загрузки: </string>
-    <string name="audio_remove_error">Ошибка удаления: </string>
+    <string name="audio_loading_error">Ошибка загрузки:\u0020</string>
+    <string name="audio_remove_error">Ошибка удаления:\u0020</string>
     <string name="audio_added">Добавлено в аудиозаписи</string>
-    <string name="audio_add_error">Ошибка добавления: </string>
+    <string name="audio_add_error">Ошибка добавления:\u0020</string>
     <string name="audio_dob">Дополнительные опции</string>
     <string name="audio_search">Поиск музыки</string>
     <string name="audio_add">Добавить</string>
     <string name="audio_more">Ещё</string>
     <string name="audio_no_title">Без названия</string>
+    <string name="audio_tab_all">Все</string>
+    <string name="audio_tab_downloaded">Загруженные</string>
+    <string name="audio_downloading">Загрузка...</string>
+    <string name="audio_downloaded">Трек загружен</string>
+    <string name="audio_download_removed">Загрузка удалена</string>
+    <string name="audio_download_error">Ошибка загрузки:\u0020</string>
+    <string name="audio_no_downloaded">Загруженных треков пока нет</string>
+    <string name="audio_download">Загрузить</string>
+    <string name="audio_remove_download">Удалить загрузку</string>
+    <string name="audio_already_downloaded">Трек уже загружен</string>
+    <string name="audio_download_all">Загрузить все песни</string>
+    <string name="audio_download_all_started">Начинаю загрузку всех песен</string>
+    <string name="audio_download_all_queued">Все песни добавлены в очередь загрузки</string>
+    <string name="audio_wait_for_profile">Дождитесь загрузки профиля</string>
+    <string name="audio_play_next">Играть следующим</string>
+    <string name="audio_added_next">Добавлено следующим в очередь</string>
+    <string name="audio_add_to_library">Добавить в аудиозаписи</string>
+    <string name="audio_remove_from_library">Удалить из аудиозаписей</string>
+    <string name="settings_music_cache_title">Музыка</string>
+    <string name="settings_save_on_listening">Сохранять при прослушивании</string>
+    <string name="settings_save_on_listening_desc">Сохранять прослушанные песни в кэш для оффлайн доступа</string>
+    <string name="settings_music_cache_limit">Лимит хранилища музыки</string>
+    <string name="settings_music_cache_unlimited">Без ограничений</string>
+    <string name="settings_music_cache_occupied">Занято: %1$s / %2$s</string>
+    <string name="settings_music_cache_occupied_unlimited">Занято: %1$s / Без ограничений</string>
 
     <!-- Music Player -->
     <string name="player_previous">Предыдущий трек</string>
@@ -295,7 +349,7 @@
 
     <!-- Notifications -->
     <string name="notifications_title">Уведомления</string>
-    <string name="notifications_loading_error">Ошибка загрузки архивных уведомлений: </string>
+    <string name="notifications_loading_error">Ошибка загрузки архивных уведомлений:\u0020</string>
     <string name="notifications_all_read">Все уведомления помечены как прочитанные</string>
     <string name="notifications_mark_all_read">Пометить все как прочитанные</string>
     <string name="notifications_error_user">Не удалось определить пользователя</string>
@@ -314,6 +368,40 @@
 
     <!-- Settings -->
     <string name="settings_title">Настройки</string>
+    <string name="settings_balance">Баланс</string>
+    <string name="settings_balance_desc">Голоса</string>
+    <string name="balance_current">Текущий баланс</string>
+    <string name="balance_votes_plural">голосов</string>
+    <string name="balance_action_topup">Пополнить</string>
+    <string name="balance_action_voucher">Ваучер</string>
+    <string name="balance_action_transfer">Передать</string>
+    <string name="balance_info_title">Что такое голоса?</string>
+    <string name="balance_info_desc">Голоса - это внутренняя валюта OpenVK. За неё можно купить стикеры или подарки другим пользователям.</string>
+    <string name="transfer_title">Перевод голосов</string>
+    <string name="transfer_recipient">Получатель</string>
+    <string name="transfer_amount_hint">Количество голосов</string>
+    <string name="transfer_message_hint">Сообщение (необязательно)</string>
+    <string name="transfer_btn_cancel">Отмена</string>
+    <string name="transfer_btn_confirm">Перевести</string>
+    <string name="transfer_search_hint">Поиск</string>
+    <string name="transfer_tab_friends">Друзья</string>
+    <string name="transfer_tab_search">Поиск</string>
+    <string name="transfer_search_empty_prompt">Введите имя, фамилию или ID для поиска</string>
+    <string name="transfer_friends_load_error">Не удалось загрузить список друзей</string>
+    <string name="transfer_search_error">Ошибка при поиске</string>
+    <string name="transfer_no_results">Ничего не найдено</string>
+    <string name="transfer_sort_rating">По рейтингу</string>
+    <string name="transfer_sort_new">Сначала новые</string>
+    <string name="transfer_sort_old">Сначала старые</string>
+    <string name="transfer_err_empty_amount">Введите количество голосов</string>
+    <string name="transfer_err_invalid_format">Неверный формат числа</string>
+    <string name="transfer_err_greater_than_zero">Количество голосов должно быть больше 0</string>
+    <string name="transfer_success">Голоса успешно отправлены!</string>
+    <string name="transfer_err_commerce_disabled">Коммерция отключена на этом инстансе</string>
+    <string name="transfer_err_not_enough_votes">Недостаточно голосов для перевода</string>
+    <string name="transfer_err_self_transfer">Нельзя переводить голоса самому себе</string>
+    <string name="transfer_err_invalid_recipient">Неверный получатель</string>
+    <string name="transfer_err_message_too_long">Сообщение слишком длинное</string>
     <string name="settings_accounts">Управление аккаунтами</string>
     <string name="settings_accounts_desc">Переключение между аккаунтами</string>
     <string name="settings_appearance">Внешний вид</string>
@@ -350,12 +438,14 @@
     <string name="appearance_theme_system">Системная</string>
     <string name="appearance_theme_light">Светлая</string>
     <string name="appearance_theme_dark">Тёмная</string>
+    <string name="appearance_theme_amoled">AMOLED</string>
     <string name="appearance_color_scheme">Цветовая схема</string>
     <string name="appearance_color_blue">Синяя</string>
     <string name="appearance_color_material_you">Material You (динамическая)</string>
     <string name="appearance_color_green">Зелёная</string>
     <string name="appearance_color_purple">Фиолетовая</string>
     <string name="appearance_color_red">Красная</string>
+    <string name="appearance_color_amoled">AMOLED</string>
     <string name="appearance_material_you_info">Material You доступен только на Android 12+</string>
     <string name="appearance_select_theme">Выбор темы</string>
 
@@ -407,8 +497,8 @@
 
     <!-- About App -->
     <string name="about_app_title">О приложении</string>
-    <string name="about_app_version">Версия: </string>
-    <string name="about_app_commit">Коммит: </string>
+    <string name="about_app_version">Версия:\u0020</string>
+    <string name="about_app_commit">Коммит:\u0020</string>
     <string name="about_app_github">Исходный код на Github</string>
     <string name="about_app_team">КОМАНДА РАЗРАБОТКИ</string>
     <string name="about_app_author">Автор</string>
@@ -435,12 +525,12 @@
     <string name="about_instance_users">ПОЛЬЗОВАТЕЛЕЙ</string>
     <string name="about_instance_https">HTTPS (Защищённое соединение)</string>
     <string name="about_instance_http">HTTP (Незащищённое соединение)</string>
-    <string name="about_instance_version">Версия: </string>
-    <string name="about_instance_error">Ошибка при обработке данных: </string>
+    <string name="about_instance_version">Версия:\u0020</string>
+    <string name="about_instance_error">Ошибка при обработке данных:\u0020</string>
 
     <!-- Errors -->
     <string name="error_loading_profile">Ошибка загрузки профиля</string>
-    <string name="error_loading">Ошибка: </string>
+    <string name="error_loading">Ошибка:\u0020</string>
     <string name="error_generic">Произошла ошибка</string>
     <string name="error_network">Ошибка сети</string>
     <string name="error_unknown">Неизвестная ошибка</string>
@@ -454,7 +544,7 @@
     <string name="profile_title">Профиль</string>
     <string name="profile_sex_male">Мужской</string>
     <string name="profile_sex_female">Женский</string>
-    <string name="profile_username">Имя пользователя: </string>
+    <string name="profile_username">Имя пользователя:</string>
     <string name="profile_status_online">В сети</string>
     <string name="profile_gender">Пол:</string>
     <string name="profile_date_registered">Дата регистрации:</string>
@@ -479,9 +569,19 @@
     <string name="profile_subs">подписчиков</string>
     <string name="profile_groups">групп</string>
     <string name="profile_create_post">Создать пост</string>
-    <string name="profile_posts_loading_error">Ошибка загрузки постов: </string>
+    <string name="profile_posts_loading_error">Ошибка загрузки постов:\u0020</string>
     <string name="profile_posts_refresh_error">Не удалось загрузить новые посты</string>
     <string name="profile_photo_title">Фото профиля</string>
+    <string name="profile_edit">Редактировать</string>
+    <string name="profile_message">Сообщение</string>
+    <string name="profile_add_friend">Добавить в друзья</string>
+    <string name="profile_friend">Удалить из друзей</string>
+
+    <!-- Profile Menu -->
+    <string name="profile_menu_blacklist">Добавить в чёрный список</string>
+    <string name="profile_menu_report">Пожаловаться</string>
+    <string name="profile_menu_ignore">Игнорировать</string>
+    <string name="profile_menu_rate_up">Повысить рейтинг</string>
 
     <!-- Links -->
     <string name="link_title">Ссылка</string>
@@ -535,6 +635,86 @@
     <string name="error_timeout_message">Сервер не ответил вовремя. Проверьте интернет и попробуйте снова</string>
     <string name="error_unauthorized_title">Требуется авторизация</string>
     <string name="error_unauthorized_message">Сессия истекла. Войдите в аккаунт заново</string>
+
+    <!-- Profile Fragment -->
+    <string name="add_to_friends">Добавить в друзья</string>
+    <string name="remove_from_friends">Удалить из друзей</string>
+    <string name="remove_friend_title">Удаление из друзей</string>
+    <string name="remove_friend_confirmation">Вы уверены, что хотите удалить %s из друзей?</string>
+    <string name="remove">Удалить</string>
+
+    <!-- Profile Edit -->
+    <string name="profile_edit_title">Редактирование профиля</string>
+    <string name="profile_edit_main">Основное</string>
+    <string name="profile_edit_contacts">Контакты</string>
+    <string name="profile_edit_interests">Интересы</string>
+    <string name="profile_edit_additional">Дополнительно</string>
+    <string name="profile_edit_name">Имя</string>
+    <string name="profile_edit_sname">Фамилия</string>
+    <string name="profile_edit_nickname">Ник</string>
+    <string name="profile_edit_status">Статус</string>
+    <string name="profile_edit_sex">Пол</string>
+    <string name="profile_edit_relation">Семейное положение</string>
+    <string name="profile_edit_relation_0">Не выбрано</string>
+    <string name="profile_edit_relation_1">Не замужем/не женат</string>
+    <string name="profile_edit_relation_2">Встречаюсь</string>
+    <string name="profile_edit_relation_3">Помолвлена/Помолвлен</string>
+    <string name="profile_edit_relation_4">Замужен/Женат</string>
+    <string name="profile_edit_relation_5">В гражданском браке</string>
+    <string name="profile_edit_relation_6">Влюблена/Влюблён</string>
+    <string name="profile_edit_relation_7">Всё сложно</string>
+    <string name="profile_edit_relation_8">В активном поиске</string>
+    <string name="profile_edit_bdate">Дата рождения</string>
+    <string name="profile_edit_bdate_visibility_1">Показывать дату рождения</string>
+    <string name="profile_edit_bdate_visibility_2">Показывать только день и месяц</string>
+    <string name="profile_edit_home_town">Родной город</string>
+    <string name="profile_edit_telegram">Telegram</string>
+    <string name="profile_edit_change_avatar">Сменить аватар</string>
+    <string name="profile_edit_in_development">В разработке</string>
+
+    <!-- Logging & Crash settings -->
+    <string name="settings_log_limit">Лимит размера логов</string>
+    <string name="settings_save_logs">Сохранить логи на устройство</string>
+    <string name="settings_clear_logs">Очистить логи</string>
+    <string name="settings_clear_logs_confirm">Очистить файлы логов?</string>
+    <string name="settings_clear_logs_message">Вы уверены, что хотите удалить все сохраненные логи приложения?</string>
+    <string name="settings_logs_cleared">Логи очищены</string>
+    <string name="settings_logs_clear_error">Ошибка при очистке логов</string>
+    
+    <string name="crash_dialog_title">⚠️ Опа, произошёл сбой</string>
+    <string name="crash_dialog_message">В прошлый раз приложение завершило работу некорректно. Выберите действие с отчетом о сбое:</string>
+    <string name="crash_option_copy">Скопировать в буфер обмена</string>
+    <string name="crash_option_save">Сохранить отчет на устройство</string>
+    <string name="crash_option_ignore">Игнорировать</string>
+    <string name="crash_copied_success">Отчет скопирован в буфер обмена</string>
+    <string name="crash_saved_success">Файл успешно сохранен</string>
+    <string name="crash_saved_error">Не удалось сохранить файл</string>
+
+    <!-- Updates -->
+    <string name="update_available_title">Доступно обновление: %s</string>
+    <string name="update_available_message">Выпущена новая версия приложения.\n\n%s</string>
+    <string name="update_download">Скачать</string>
+    <string name="update_downloading">Загрузка обновления...</string>
+    <string name="update_later">Позже</string>
+    <string name="update_skip">Пропустить</string>
+    <string name="update_checking">Проверка обновлений...</string>
+    <string name="update_available_short">Доступно обновление: %s</string>
+    <string name="update_latest_installed">У вас установлена последняя версия</string>
+    <string name="update_check_failed">Не удалось проверить обновления</string>
+    <string name="update_check_btn">Проверить обновления</string>
+
+    <!-- Polls -->
+    <string name="poll_anonymous">Анонимный опрос</string>
+    <string name="poll_public">Публичный опрос</string>
+    <string name="poll_multiple">Несколько вариантов</string>
+    <string name="poll_single">Один вариант</string>
+    <string name="poll_votes_count">Проголосовало: %d</string>
+    <string name="poll_votes_count_0">Опрошено 0 человек</string>
+    <string name="poll_vote_button">Проголосовать</string>
+    <string name="poll_unvote_button">Снять голос</string>
+    <string name="poll_closed">Опрос завершен</string>
+    <string name="poll_error_vote">Ошибка при голосовании</string>
+    <string name="poll_error_unvote">Ошибка при отмене голоса</string>
 
     <!-- Custom instance addition -->
     <string name="add_instance">Добавить инстанс</string>

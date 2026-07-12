@@ -99,10 +99,17 @@ public class LongPollService extends Service {
             longPollManager.stop();
         }
     }
-    
     @Override
     public IBinder onBind(Intent intent) {
         return null; // Не поддерживаем binding
+    }
+
+    @Override
+    public void onTimeout(int startId, int fgsType) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            Log.w(TAG, "Service timed out (fgsType=" + fgsType + "), stopping to prevent crash");
+            stopSelf();
+        }
     }
     
     private void createNotificationChannel() {
@@ -132,7 +139,7 @@ public class LongPollService extends Service {
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("OpenVK Flux")
                 .setContentText("Connected to receive messages")
-                .setSmallIcon(R.drawable.ic_messages)
+                .setSmallIcon(R.drawable.ic_chat_bubble)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -143,9 +150,9 @@ public class LongPollService extends Service {
     public static void start(Context context) {
         // Проверяем разрешения для Android 14+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            if (context.checkSelfPermission("android.permission.FOREGROUND_SERVICE_DATA_SYNC") 
+            if (context.checkSelfPermission("android.permission.FOREGROUND_SERVICE_SPECIAL_USE") 
                     != PackageManager.PERMISSION_GRANTED) {
-                Log.e(TAG, "FOREGROUND_SERVICE_DATA_SYNC permission not granted");
+                Log.e(TAG, "FOREGROUND_SERVICE_SPECIAL_USE permission not granted");
                 return;
             }
         }

@@ -1,17 +1,23 @@
 package org.nikanikoo.flux.ui.activities;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ValueAnimator;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.view.GestureDetector;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -22,10 +28,13 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.squareup.picasso.Picasso;
 
+import org.nikanikoo.flux.Constants;
 import org.nikanikoo.flux.R;
+import org.nikanikoo.flux.data.managers.AudioManager;
 import org.nikanikoo.flux.data.models.Audio;
 import org.nikanikoo.flux.services.AudioPlayerService;
 import org.nikanikoo.flux.ui.adapters.audio.PlaylistAdapter;
+import org.nikanikoo.flux.ui.custom.SwipeToCloseHelper;
 import org.nikanikoo.flux.utils.AlbumArtFetcher;
 import org.nikanikoo.flux.utils.Logger;
 import org.nikanikoo.flux.utils.LocaleManager;
@@ -51,6 +60,10 @@ public class AudioPlayerActivity extends AppCompatActivity implements AudioPlaye
     private ImageButton btnPlayPause;
     private ImageButton btnPrevious;
     private ImageButton btnNext;
+    private ImageButton btnAddToLibrary;
+
+    private AudioManager audioManager;
+    private boolean isAudioActionInProgress;
 
     private DrawerLayout drawerLayout;
     private RecyclerView playlistRecycler;
@@ -59,6 +72,10 @@ public class AudioPlayerActivity extends AppCompatActivity implements AudioPlaye
 
     private AlbumArtFetcher albumArtFetcher;
     private boolean isUserSeeking = false;
+
+    private GestureDetector gestureDetector;
+    private SwipeToCloseHelper swipeHelper;
+    private float currentTranslationY = 0f;
 
     private ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
@@ -93,6 +110,7 @@ public class AudioPlayerActivity extends AppCompatActivity implements AudioPlaye
         ThemeManager.applySystemBarsAppearance(this);
         
         initViews();
+        setupGestureDetector();
         setupToolbar();
         setupControls();
         bindService();
@@ -109,11 +127,103 @@ public class AudioPlayerActivity extends AppCompatActivity implements AudioPlaye
         btnPlayPause = findViewById(R.id.btn_play_pause);
         btnPrevious = findViewById(R.id.btn_previous);
         btnNext = findViewById(R.id.btn_next);
+        btnAddToLibrary = findViewById(R.id.btn_add_to_library);
         drawerLayout = findViewById(R.id.drawer_layout);
+        audioManager = AudioManager.getInstance(this);
         playlistRecycler = findViewById(R.id.playlist_recycler);
         playlistCount = findViewById(R.id.playlist_count);
         
         albumArtFetcher = new AlbumArtFetcher(this);
+
+    }
+
+    private void setupGestureDetector() {
+        gestureDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
+            @Override
+            public boolean onSingleTapConfirmed(MotionEvent e) {
+                return true;
+            }
+        });
+
+        swipeHelper = new SwipeToCloseHelper(drawerLayout, new SwipeToCloseHelper.OnSwipeListener() {
+            @Override
+            public void onSwipeStart() {
+            }
+
+            @Override
+            public void onSwipeProgress(float progress, float translationY) {
+                currentTranslationY = translationY;
+                drawerLayout.setTranslationY(currentTranslationY);
+
+                float alpha = 1f - progress * 0.7f;
+                alpha = Math.max(0.3f, Math.min(1f, alpha));
+                drawerLayout.setAlpha(alpha);
+            }
+
+            @Override
+            public void onSwipeEnd(boolean shouldClose) {
+                if (shouldClose) {
+                    animateExit();
+                } else {
+                    animateReturn();
+                }
+            }
+        });
+
+        drawerLayout.setOnTouchListener((v, event) -> {
+            gestureDetector.onTouchEvent(event);
+            return swipeHelper.onTouchEvent(event, drawerLayout);
+        });
+    }
+
+    private void animateEnter() {
+        drawerLayout.setAlpha(0f);
+        drawerLayout.setScaleX(0.9f);
+        drawerLayout.setScaleY(0.9f);
+
+        drawerLayout.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .setDuration(Constants.UI.ANIMATION_DURATION_SHORT)
+                .start();
+    }
+
+    private void animateExit() {
+         drawerLayout.animate()
+                .alpha(0f)
+                .scaleX(0.9f)
+                .scaleY(0.9f)
+                .translationY(currentTranslationY > 0 ? Constants.UI.ANIMATION_DURATION_MEDIUM : -Constants.UI.ANIMATION_DURATION_MEDIUM)
+                .setDuration(Constants.UI.ANIMATION_DURATION_SHORT)
+                .setListener(new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        finish();
+                        overridePendingTransition(0, 0);
+                    }
+                })
+                .start();
+    }
+
+    private void animateReturn() {
+        ValueAnimator animator = ValueAnimator.ofFloat(currentTranslationY, 0f);
+        animator.setDuration(Constants.UI.ANIMATION_DURATION_SHORT);
+        animator.addUpdateListener(animation -> {
+            float value = (Float) animation.getAnimatedValue();
+            drawerLayout.setTranslationY(value);
+
+            float alpha = 1f - Math.abs(value) / (getWindow().getDecorView().getHeight() * 0.5f);
+            alpha = Math.max(0.3f, Math.min(1f, alpha));
+            drawerLayout.setAlpha(alpha);
+        });
+        animator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                currentTranslationY = 0f;
+            }
+        });
+        animator.start();
     }
 
     private void setupToolbar() {
@@ -147,6 +257,8 @@ public class AudioPlayerActivity extends AppCompatActivity implements AudioPlaye
                 playerService.next();
             }
         });
+
+        btnAddToLibrary.setOnClickListener(v -> toggleAddToLibrary());
 
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
@@ -222,6 +334,97 @@ public class AudioPlayerActivity extends AppCompatActivity implements AudioPlaye
 
         updatePlaylist();
         updatePlayPauseButton();
+        updateAddToLibraryButton();
+    }
+
+    private void toggleAddToLibrary() {
+        if (!serviceBound || isAudioActionInProgress) {
+            return;
+        }
+
+        Audio audio = playerService.getCurrentAudio();
+        if (audio == null) {
+            return;
+        }
+
+        isAudioActionInProgress = true;
+        btnAddToLibrary.setEnabled(false);
+
+        AudioManager.AudioActionCallback callback = new AudioManager.AudioActionCallback() {
+            @Override
+            public void onSuccess() {
+                runOnUiThread(() -> {
+                    isAudioActionInProgress = false;
+                    updateAddToLibraryButton();
+                    if (audio.isAdded()) {
+                        Toast.makeText(AudioPlayerActivity.this, R.string.audio_added, Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(AudioPlayerActivity.this, R.string.audio_removed, Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                runOnUiThread(() -> {
+                    isAudioActionInProgress = false;
+                    updateAddToLibraryButton();
+                    int messageId = audio.isAdded() ? R.string.audio_remove_error : R.string.audio_add_error;
+                    Toast.makeText(AudioPlayerActivity.this, getString(messageId) + error, Toast.LENGTH_SHORT).show();
+                });
+            }
+        };
+
+        if (audio.isAdded()) {
+            audioManager.deleteAudio(audio.getId(), audio.getOwnerId(), new AudioManager.AudioActionCallback() {
+                @Override
+                public void onSuccess() {
+                    audio.setAdded(false);
+                    callback.onSuccess();
+                }
+
+                @Override
+                public void onError(String error) {
+                    callback.onError(error);
+                }
+            });
+        } else {
+            audioManager.addAudio(audio.getId(), audio.getOwnerId(), new AudioManager.AudioActionCallback() {
+                @Override
+                public void onSuccess() {
+                    audio.setAdded(true);
+                    callback.onSuccess();
+                }
+
+                @Override
+                public void onError(String error) {
+                    callback.onError(error);
+                }
+            });
+        }
+    }
+
+    private void updateAddToLibraryButton() {
+        if (btnAddToLibrary == null) {
+            return;
+        }
+
+        Audio audio = serviceBound ? playerService.getCurrentAudio() : null;
+        boolean hasAudio = audio != null;
+        btnAddToLibrary.setEnabled(hasAudio && !isAudioActionInProgress);
+        if (!hasAudio) {
+            btnAddToLibrary.setImageResource(R.drawable.ic_add);
+            btnAddToLibrary.setContentDescription(getString(R.string.audio_add_to_library));
+            return;
+        }
+
+        if (audio.isAdded()) {
+            btnAddToLibrary.setImageResource(R.drawable.ic_check);
+            btnAddToLibrary.setContentDescription(getString(R.string.audio_remove_from_library));
+        } else {
+            btnAddToLibrary.setImageResource(R.drawable.ic_add);
+            btnAddToLibrary.setContentDescription(getString(R.string.audio_add_to_library));
+        }
     }
 
     private void loadAlbumArt(String artist, String title) {
@@ -232,7 +435,7 @@ public class AudioPlayerActivity extends AppCompatActivity implements AudioPlaye
             return;
         }
 
-        albumArtFetcher.loadAlbumArt(artist, title, albumArt, R.drawable.ic_music, new AlbumArtFetcher.AlbumArtCallback() {
+        albumArtFetcher.loadAlbumArt(artist, title, albumArt, R.drawable.ic_library_music, new AlbumArtFetcher.AlbumArtCallback() {
             @Override
             public void onSuccess(String imageUrl) {
                 albumArt.setVisibility(android.view.View.VISIBLE);
@@ -275,6 +478,7 @@ public class AudioPlayerActivity extends AppCompatActivity implements AudioPlaye
             trackArtist.setText(audio.getArtist());
             loadAlbumArt(audio.getArtist(), audio.getTitle());
             updatePlaylist();
+            updateAddToLibraryButton();
         });
     }
 

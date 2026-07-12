@@ -2,10 +2,8 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/action_open_photo"
-        android:title="@string/open_photo"
-        android:icon="@drawable/ic_photo" />
+        android:title="@string/open_photo"/>
     <item
         android:id="@+id/action_upload_photo"
-        android:title="@string/upload_new_photo"
-        android:icon="@drawable/ic_upload" />
+        android:title="@string/upload_new_photo"/>
 </menu>

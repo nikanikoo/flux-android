@@ -8,5 +8,11 @@
         android:icon="@drawable/ic_search"
         app:showAsAction="ifRoom|collapseActionView"
         app:actionViewClass="androidx.appcompat.widget.SearchView"/>
+
+    <item
+        android:id="@+id/action_download_all"
+        android:title="@string/audio_download_all"
+        android:icon="@drawable/ic_download"
+        app:showAsAction="never"/>
     
 </menu>

@@ -1,70 +1,75 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="24dp">
+    android:layout_height="wrap_content">
 
-    <TextView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/appearance_color_scheme"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        android:textColor="?attr/colorOnSurface"
-        android:layout_marginBottom="16dp" />
+        android:orientation="vertical"
+        android:padding="24dp">
 
-    <RadioGroup
-        android:id="@+id/color_scheme_radio_group"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical">
-
-        <com.google.android.material.radiobutton.MaterialRadioButton
-            android:id="@+id/radio_style_material_you"
+        <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/appearance_color_material_you"
-            android:padding="12dp" />
+            android:text="@string/appearance_color_scheme"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="?attr/colorOnSurface"
+            android:layout_marginBottom="16dp" />
 
-        <com.google.android.material.radiobutton.MaterialRadioButton
-            android:id="@+id/radio_style_default"
+        <RadioGroup
+            android:id="@+id/color_scheme_radio_group"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/appearance_color_blue"
-            android:padding="12dp" />
+            android:orientation="vertical">
 
-        <com.google.android.material.radiobutton.MaterialRadioButton
-            android:id="@+id/radio_style_green"
+            <com.google.android.material.radiobutton.MaterialRadioButton
+                android:id="@+id/radio_style_material_you"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/appearance_color_material_you"
+                android:padding="12dp" />
+
+            <com.google.android.material.radiobutton.MaterialRadioButton
+                android:id="@+id/radio_style_default"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/appearance_color_blue"
+                android:padding="12dp" />
+
+            <com.google.android.material.radiobutton.MaterialRadioButton
+                android:id="@+id/radio_style_green"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/appearance_color_green"
+                android:padding="12dp" />
+
+            <com.google.android.material.radiobutton.MaterialRadioButton
+                android:id="@+id/radio_style_purple"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/appearance_color_purple"
+                android:padding="12dp" />
+
+            <com.google.android.material.radiobutton.MaterialRadioButton
+                android:id="@+id/radio_style_red"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/appearance_color_red"
+                android:padding="12dp" />
+
+        </RadioGroup>
+
+        <TextView
+            android:id="@+id/text_material_you_info"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/appearance_color_green"
-            android:padding="12dp" />
+            android:text="@string/appearance_material_you_info"
+            android:textSize="12sp"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:layout_marginTop="8dp"
+            android:visibility="gone" />
 
-        <com.google.android.material.radiobutton.MaterialRadioButton
-            android:id="@+id/radio_style_purple"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/appearance_color_purple"
-            android:padding="12dp" />
-
-        <com.google.android.material.radiobutton.MaterialRadioButton
-            android:id="@+id/radio_style_red"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/appearance_color_red"
-            android:padding="12dp" />
-
-    </RadioGroup>
-
-    <TextView
-        android:id="@+id/text_material_you_info"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/appearance_material_you_info"
-        android:textSize="12sp"
-        android:textColor="?attr/colorOnSurfaceVariant"
-        android:layout_marginTop="8dp"
-        android:visibility="gone" />
-
-</LinearLayout>
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

@@ -4,6 +4,25 @@
     android:layout_height="wrap_content"
     android:layout_marginBottom="12dp">
 
+    <LinearLayout
+        android:id="@+id/collage_1_image"
+        android:layout_width="300dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_gravity="center"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/image_1_of_1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:adjustViewBounds="true"
+            android:scaleType="fitCenter"
+            android:layout_gravity="center"
+            android:background="@drawable/rounded_image_background" />
+
+    </LinearLayout>
+
     <!-- Коллаж для 2 изображений -->
     <LinearLayout
         android:id="@+id/collage_2_images"

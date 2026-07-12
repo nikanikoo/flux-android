@@ -16,7 +16,7 @@
             android:layout_height="wrap_content"
             android:layout_margin="16dp"
             android:hint="@string/group_members_search"
-            app:startIconDrawable="@android:drawable/ic_menu_search"
+            app:startIconDrawable="@drawable/ic_search"
             style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
 
             <com.google.android.material.textfield.TextInputEditText

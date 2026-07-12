@@ -128,6 +128,44 @@ public class PhotoUploadManager extends BaseManager<PhotoUploadManager> {
         });
     }
 
+    public void uploadOwnerPhoto(Uri imageUri, PhotoUploadCallback callback) {
+        Logger.d(TAG, "Starting owner photo upload for URI: " + imageUri);
+
+        getUploadServer("photos.getOwnerPhotoUploadServer", new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                try {
+                    JSONObject responseObj = response.getJSONObject("response");
+                    String uploadUrl = responseObj.getString("upload_url");
+
+                    uploadPhotoFile(imageUri, uploadUrl, new FileUploadCallback() {
+                        @Override
+                        public void onSuccess(String server, String photo, String hash) {
+                            Map<String, String> params = new HashMap<>();
+                            params.put("server", server);
+                            params.put("photo", photo);
+                            params.put("hash", hash);
+
+                            savePhoto("photos.saveOwnerPhoto", params, callback);
+                        }
+
+                        @Override
+                        public void onError(String error) {
+                            callback.onError(error);
+                        }
+                    });
+                } catch (Exception e) {
+                    callback.onError("Ошибка получения адреса сервера");
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
     /**
      * Get upload server URL from API.
      *
@@ -257,6 +295,14 @@ public class PhotoUploadManager extends BaseManager<PhotoUploadManager> {
                             }
                         } else if (responseData instanceof JSONObject) {
                             JSONObject responseObj = (JSONObject) responseData;
+                            
+                            if (responseObj.has("photo_src")) {
+                                String photoSrc = responseObj.getString("photo_src");
+                                Logger.d(TAG, "Owner photo saved successfully: " + photoSrc);
+                                callback.onSuccess(photoSrc);
+                                return;
+                            }
+                            
                             if (responseObj.has("response")) {
                                 JSONArray photoArray = responseObj.getJSONArray("response");
                                 if (photoArray.length() > 0) {

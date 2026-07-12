@@ -1,5 +1,7 @@
 package org.nikanikoo.flux.ui.fragments.profile;
 
+import org.nikanikoo.flux.data.managers.FriendsManager;
+import org.nikanikoo.flux.data.managers.MessagesManager;
 import org.nikanikoo.flux.data.managers.ProfileManager;
 import org.nikanikoo.flux.data.models.UserProfile;
 import org.nikanikoo.flux.utils.Logger;
@@ -174,6 +176,76 @@ public class ProfilePresenter implements ProfileContract.Presenter {
     public void onDetailsClick() {
         // Логика раскрытия деталей остается во View
         // Presenter не управляет UI-анимациями
+    }
+    
+    @Override
+    public void onMessageButtonClick() {
+        if (view == null || currentProfile == null) {
+            return;
+        }
+        
+        int targetUserId = currentProfile.getId();
+        String userName = currentProfile.getFullName();
+        view.openChat(targetUserId, userName);
+    }
+    
+    @Override
+    public void onFriendButtonClick(boolean isFriend) {
+        if (view == null || currentProfile == null) {
+            return;
+        }
+        
+        int targetUserId = currentProfile.getId();
+        if (view.getContext() == null) {
+            return;
+        }
+        
+        FriendsManager friendsManager = FriendsManager.getInstance(view.getContext());
+        if (isFriend) {
+            friendsManager.declineFriendRequest(targetUserId, new FriendsManager.ActionCallback() {
+                @Override
+                public void onSuccess() {
+                    if (view != null) {
+                        view.showMessage("Пользователь удален из друзей");
+                    }
+                }
+                
+                @Override
+                public void onError(String error) {
+                    if (view != null) {
+                        view.showMessage("Ошибка удаления из друзей: " + error);
+                    }
+                }
+            });
+        } else {
+            friendsManager.acceptFriendRequest(targetUserId, new FriendsManager.ActionCallback() {
+                @Override
+                public void onSuccess() {
+                    if (view != null) {
+                        view.showMessage("Запрос в друзья отправлен");
+                    }
+                }
+                
+                @Override
+                public void onError(String error) {
+                    if (view != null) {
+                        view.showMessage("Ошибка добавления в друзья: " + error);
+                    }
+                }
+            });
+        }
+    }
+    
+    @Override
+    public void onEditProfileClick() {
+        if (view == null) {
+            return;
+        }
+        
+        android.content.Context context = view.getContext();
+        if (context != null) {
+            org.nikanikoo.flux.ui.activities.ProfileEditActivity.start(context);
+        }
     }
     
     @Override

@@ -16,7 +16,7 @@
         <ImageView
             android:layout_width="32dp"
             android:layout_height="32dp"
-            android:src="@drawable/ic_security_warning"
+            android:src="@drawable/ic_warning"
             android:layout_marginEnd="16dp"
             app:tint="?attr/colorError" />
 
@@ -58,7 +58,7 @@
         <ImageView
             android:layout_width="20dp"
             android:layout_height="20dp"
-            android:src="@drawable/ic_circle"
+            android:src="@drawable/ic_check_indeterminate_small"
             android:layout_marginEnd="12dp"
             android:layout_marginTop="2dp"
             app:tint="?attr/colorError" />
@@ -81,7 +81,7 @@
         <ImageView
             android:layout_width="20dp"
             android:layout_height="20dp"
-            android:src="@drawable/ic_circle"
+            android:src="@drawable/ic_check_indeterminate_small"
             android:layout_marginEnd="12dp"
             android:layout_marginTop="2dp"
             app:tint="?attr/colorError" />
@@ -104,7 +104,7 @@
         <ImageView
             android:layout_width="20dp"
             android:layout_height="20dp"
-            android:src="@drawable/ic_circle"
+            android:src="@drawable/ic_check_indeterminate_small"
             android:layout_marginEnd="12dp"
             android:layout_marginTop="2dp"
             app:tint="?attr/colorError" />

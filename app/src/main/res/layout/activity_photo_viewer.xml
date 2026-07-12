@@ -75,7 +75,7 @@
             android:layout_weight="1"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:padding="12dp"
-            android:src="@drawable/ic_like"
+            android:src="@drawable/ic_favorite"
             app:tint="@android:color/white" />
 
         <ImageView
@@ -85,7 +85,7 @@
             android:layout_weight="1"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:padding="12dp"
-            android:src="@drawable/ic_messages"
+            android:src="@drawable/ic_comment"
             app:tint="@android:color/white" />
 
         <ImageView

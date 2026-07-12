@@ -106,7 +106,7 @@
             android:layout_gravity="center_vertical"
             android:layout_marginStart="8dp"
             style="@style/Widget.Material3.Button.IconButton"
-            app:icon="@drawable/ic_messages"
+            app:icon="@drawable/ic_chat_bubble"
             app:iconTint="?attr/colorPrimary"
             app:iconSize="24dp"
             android:background="?attr/selectableItemBackgroundBorderless" />

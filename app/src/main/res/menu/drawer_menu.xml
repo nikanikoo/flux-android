@@ -8,39 +8,39 @@
         android:checkableBehavior="single">
         <item
             android:id="@+id/drawer_news"
-            android:icon="@drawable/ic_news"
+            android:icon="@drawable/ic_newspaper"
             android:title="@string/nav_news"/>
         <item
             android:id="@+id/drawer_notification"
-            android:icon="@drawable/ic_notification"
+            android:icon="@drawable/ic_notifications"
             android:title="@string/nav_notifications"/>
         <item
             android:id="@+id/drawer_friends"
-            android:icon="@drawable/ic_friends"
+            android:icon="@drawable/ic_contacts"
             android:title="@string/nav_friends"/>
         <item
             android:id="@+id/drawer_photos"
-            android:icon="@drawable/ic_photos"
+            android:icon="@drawable/ic_photo"
             android:title="@string/nav_photos"/>
         <item
             android:id="@+id/drawer_videos"
-            android:icon="@drawable/ic_videos"
+            android:icon="@drawable/ic_video_library"
             android:title="@string/nav_videos"/>
         <item
             android:id="@+id/drawer_audio"
-            android:icon="@drawable/ic_music"
+            android:icon="@drawable/ic_library_music"
             android:title="@string/nav_music"/>
         <item
             android:id="@+id/drawer_messages"
-            android:icon="@drawable/ic_messages"
+            android:icon="@drawable/ic_chat_bubble"
             android:title="@string/nav_messages"/>
         <item
             android:id="@+id/drawer_groups"
-            android:icon="@drawable/ic_groups"
+            android:icon="@drawable/ic_group"
             android:title="@string/nav_groups"/>
         <item
             android:id="@+id/drawer_notes"
-            android:icon="@drawable/ic_notes"
+            android:icon="@drawable/ic_note_stack"
             android:title="@string/nav_notes"/>
         <item
             android:id="@+id/drawer_settings"

@@ -114,7 +114,7 @@
         <ImageView
             android:layout_width="96dp"
             android:layout_height="96dp"
-            android:src="@drawable/ic_friends"
+            android:src="@drawable/ic_group"
             android:alpha="0.5"
             app:tint="?attr/colorOnSurfaceVariant" />
 

@@ -22,6 +22,7 @@ import androidx.core.app.NotificationCompat;
 import androidx.media.session.MediaButtonReceiver;
 
 import org.nikanikoo.flux.R;
+import org.nikanikoo.flux.data.managers.AudioCacheManager;
 import org.nikanikoo.flux.data.models.Audio;
 import org.nikanikoo.flux.ui.activities.AudioPlayerActivity;
 import org.nikanikoo.flux.utils.AlbumArtFetcher;
@@ -34,6 +35,8 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class AudioPlayerService extends Service implements MediaPlayer.OnPreparedListener,
         MediaPlayer.OnCompletionListener, MediaPlayer.OnErrorListener {
@@ -52,11 +55,18 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
     private MediaSessionCompat mediaSession;
     private final List<Audio> playlist = new CopyOnWriteArrayList<>();
     private volatile int currentPosition = 0;
+    private volatile int prepareGeneration = 0;
     private volatile boolean isPrepared = false;
     private final IBinder binder = new AudioBinder();
     private final List<PlayerCallback> callbacks = new CopyOnWriteArrayList<>();
-    private java.util.concurrent.ExecutorService audioLoadExecutor;
+    private ExecutorService audioLoadExecutor;
+    private ExecutorService audioPreloadExecutor;
+    private final Object preloadLock = new Object();
+    private volatile String preloadingAudioKey;
+    private volatile String preloadedAudioKey;
+    private volatile java.io.File preloadedAudioFile;
     private AlbumArtFetcher albumArtFetcher;
+    private AudioCacheManager audioCacheManager;
 
     public interface PlayerCallback {
         void onPlaybackStateChanged(boolean isPlaying);
@@ -78,8 +88,10 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
         createNotificationChannel();
         initMediaSession();
         initMediaPlayer();
-        audioLoadExecutor = java.util.concurrent.Executors.newSingleThreadExecutor();
+        audioLoadExecutor = Executors.newSingleThreadExecutor();
+        audioPreloadExecutor = Executors.newSingleThreadExecutor();
         albumArtFetcher = new AlbumArtFetcher(this);
+        audioCacheManager = AudioCacheManager.getInstance(this);
     }
 
     private void initMediaSession() {
@@ -142,8 +154,13 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (intent != null && intent.getAction() != null) {
-            handleAction(intent.getAction());
+        if (intent != null) {
+            String action = intent.getAction();
+            if (Intent.ACTION_MEDIA_BUTTON.equals(action)) {
+                MediaButtonReceiver.handleIntent(mediaSession, intent);
+            } else if (action != null) {
+                handleAction(action);
+            }
         }
         return START_STICKY;
     }
@@ -178,10 +195,41 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
         this.playlist.clear();
         this.playlist.addAll(audios);
         this.currentPosition = startPosition;
+        clearPreloadedAudio();
         
         Logger.d(TAG, "Playlist set: " + playlist.size() + " tracks, starting at " + startPosition);
         
         prepareAudio(playlist.get(currentPosition));
+    }
+
+    public void appendToPlaylist(List<Audio> audios) {
+        if (audios == null || audios.isEmpty()) {
+            return;
+        }
+
+        this.playlist.addAll(audios);
+        Logger.d(TAG, "Playlist appended: +" + audios.size() + " tracks, total=" + playlist.size());
+        if (isPrepared) {
+            preloadNextTrack();
+        }
+    }
+
+    public void playNext(Audio audio) {
+        if (audio == null) {
+            return;
+        }
+
+        int insertPosition = Math.min(currentPosition + 1, playlist.size());
+        playlist.add(insertPosition, audio);
+        Logger.d(TAG, "Track inserted next: " + audio.getFullTitle());
+
+        if (isPrepared) {
+            clearPreloadedAudio();
+            preloadNextTrack();
+        } else if (playlist.size() == 1) {
+            currentPosition = 0;
+            prepareAudio(audio);
+        }
     }
 
     private void prepareAudio(Audio audio) {
@@ -191,66 +239,47 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
             return;
         }
 
+        int generation = ++prepareGeneration;
+
         // Выполняем загрузку в фоновом потоке через ExecutorService
         audioLoadExecutor.execute(() -> {
             try {
-                mediaPlayer.reset();
-                isPrepared = false;
-                
                 // Для HTTPS URL с самоподписанными сертификатами используем OkHttp
                 String url = audio.getUrl();
+                String dataSource;
                 if (url.startsWith("https://")) {
-                    Logger.d(TAG, "Loading HTTPS audio via OkHttp: " + url);
-                    
-                    // Создаем OkHttpClient с поддержкой SSL
-                    okhttp3.OkHttpClient.Builder clientBuilder = new okhttp3.OkHttpClient.Builder()
-                            .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-                            .readTimeout(30, java.util.concurrent.TimeUnit.SECONDS);
-                    
-                    // Configure secure SSL
-                    org.nikanikoo.flux.utils.SSLHelper.configureToIgnoreSSL(clientBuilder);
-                    okhttp3.OkHttpClient client = clientBuilder.build();
-                    
-                    // Используем setDataSource с headers через OkHttp
-                    okhttp3.Request request = new okhttp3.Request.Builder()
-                            .url(url)
-                            .build();
-                    
-                    okhttp3.Call call = client.newCall(request);
-                    okhttp3.Response response = call.execute();
-                    
-                    if (response.isSuccessful() && response.body() != null) {
-                        // Получаем InputStream из response
-                        java.io.InputStream inputStream = response.body().byteStream();
-                        
-                        // Создаем временный файл для кеширования
-                        java.io.File tempFile = java.io.File.createTempFile("audio_", ".tmp", getCacheDir());
-                        tempFile.deleteOnExit();
-                        
-                        // Копируем данные во временный файл
-                        java.io.FileOutputStream outputStream = new java.io.FileOutputStream(tempFile);
-                        byte[] buffer = new byte[8192];
-                        int bytesRead;
-                        while ((bytesRead = inputStream.read(buffer)) != -1) {
-                            outputStream.write(buffer, 0, bytesRead);
-                        }
-                        outputStream.close();
-                        inputStream.close();
-                        response.close();
-                        
-                        // Используем временный файл для MediaPlayer
-                        mediaPlayer.setDataSource(tempFile.getAbsolutePath());
-                        
-                        Logger.d(TAG, "Audio loaded via OkHttp: " + audio.getFullTitle());
-                    } else {
-                        throw new IOException("HTTP error: " + response.code());
+                    java.io.File audioFile = consumePreloadedAudio(audio);
+                    if (audioFile == null) {
+                        audioFile = audioCacheManager.getCachedFile(audio);
                     }
+                    if (audioFile == null) {
+                        if (audioCacheManager.isSaveOnListeningEnabled()) {
+                            Logger.d(TAG, "Downloading and caching HTTPS audio: " + url);
+                            audioFile = audioCacheManager.downloadAudioBlocking(audio);
+                        } else {
+                            Logger.d(TAG, "Downloading HTTPS audio to temp file: " + url);
+                            audioFile = audioCacheManager.downloadAudioToTempBlocking(audio);
+                        }
+                    } else {
+                        Logger.d(TAG, "Using cached audio: " + audio.getFullTitle());
+                    }
+
+                    dataSource = audioFile.getAbsolutePath();
+                    Logger.d(TAG, "Audio loaded via OkHttp: " + audio.getFullTitle());
                 } else {
                     // Для HTTP или локальных файлов используем стандартный способ
                     Logger.d(TAG, "Loading audio via standard method: " + url);
-                    mediaPlayer.setDataSource(url);
+                    dataSource = url;
                 }
-                
+
+                if (generation != prepareGeneration) {
+                    Logger.d(TAG, "Skipping stale audio prepare: " + audio.getFullTitle());
+                    return;
+                }
+
+                mediaPlayer.reset();
+                isPrepared = false;
+                mediaPlayer.setDataSource(dataSource);
                 mediaPlayer.prepareAsync();
                 
                 Logger.d(TAG, "Preparing audio: " + audio.getFullTitle());
@@ -274,6 +303,7 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
         notifyPlaybackStateChanged(true);
         updateNotification();
         startProgressUpdates();
+        preloadNextTrack();
     }
 
     @Override
@@ -343,6 +373,7 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
     }
 
     public void stop() {
+        prepareGeneration++;
         if (mediaPlayer != null) {
             mediaPlayer.stop();
             mediaPlayer.reset();
@@ -354,9 +385,11 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
     }
 
     public void clearPlaylist() {
+        prepareGeneration++;
         playlist.clear();
         currentPosition = 0;
         isPrepared = false;
+        clearPreloadedAudio();
 
         stopForeground(true);
         stopSelf();
@@ -569,7 +602,6 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
             input.close();
             connection.disconnect();
             
-            // Масштабируем для уведомления
             if (bitmap != null) {
                 int size = 512;
                 return Bitmap.createScaledBitmap(bitmap, size, size, true);
@@ -578,6 +610,101 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
             Logger.e(TAG, "Error loading album art", e);
         }
         return null;
+    }
+
+    private void preloadNextTrack() {
+        if (audioPreloadExecutor == null || playlist.size() < 2) {
+            return;
+        }
+
+        int nextPosition = (currentPosition + 1) % playlist.size();
+        Audio nextAudio = playlist.get(nextPosition);
+        if (nextAudio == null || nextAudio.getUrl() == null || !nextAudio.getUrl().startsWith("https://")) {
+            return;
+        }
+
+        String nextAudioKey = getAudioKey(nextAudio);
+        synchronized (preloadLock) {
+            if (nextAudioKey.equals(preloadedAudioKey) || nextAudioKey.equals(preloadingAudioKey)) {
+                return;
+            }
+            deletePreloadedAudioLocked();
+            preloadingAudioKey = nextAudioKey;
+        }
+
+        audioPreloadExecutor.execute(() -> {
+            java.io.File downloadedFile = null;
+            try {
+                Logger.d(TAG, "Preloading next audio: " + nextAudio.getFullTitle());
+                if (audioCacheManager.isSaveOnListeningEnabled()) {
+                    downloadedFile = audioCacheManager.downloadAudioBlocking(nextAudio);
+                } else {
+                    downloadedFile = audioCacheManager.downloadAudioToTempBlocking(nextAudio);
+                }
+
+                synchronized (preloadLock) {
+                    if (nextAudioKey.equals(getExpectedNextAudioKey())) {
+                        preloadedAudioKey = nextAudioKey;
+                        preloadedAudioFile = downloadedFile;
+                        Logger.d(TAG, "Next audio preloaded: " + nextAudio.getFullTitle());
+                        downloadedFile = null;
+                    }
+                    preloadingAudioKey = null;
+                }
+            } catch (Exception e) {
+                Logger.e(TAG, "Error preloading next audio", e);
+                synchronized (preloadLock) {
+                    if (nextAudioKey.equals(preloadingAudioKey)) {
+                        preloadingAudioKey = null;
+                    }
+                }
+            } finally {
+            }
+        });
+    }
+
+    private java.io.File consumePreloadedAudio(Audio audio) {
+        String audioKey = getAudioKey(audio);
+        synchronized (preloadLock) {
+            if (!audioKey.equals(preloadedAudioKey) || preloadedAudioFile == null || !preloadedAudioFile.exists()) {
+                return null;
+            }
+
+            java.io.File audioFile = preloadedAudioFile;
+            preloadedAudioKey = null;
+            preloadedAudioFile = null;
+            return audioFile;
+        }
+    }
+
+    private String getExpectedNextAudioKey() {
+        if (playlist.isEmpty()) {
+            return "";
+        }
+        int nextPosition = (currentPosition + 1) % playlist.size();
+        return getAudioKey(playlist.get(nextPosition));
+    }
+
+    private String getAudioKey(Audio audio) {
+        if (audio == null) {
+            return "";
+        }
+        if (audio.getUniqueId() != null && !audio.getUniqueId().isEmpty()) {
+            return audio.getUniqueId();
+        }
+        return audio.getOwnerId() + "_" + audio.getId() + "_" + audio.getUrl();
+    }
+
+    private void clearPreloadedAudio() {
+        synchronized (preloadLock) {
+            deletePreloadedAudioLocked();
+            preloadingAudioKey = null;
+        }
+    }
+
+    private void deletePreloadedAudioLocked() {
+        preloadedAudioKey = null;
+        preloadedAudioFile = null;
     }
 
     private void updateNotification() {
@@ -590,7 +717,6 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
                 this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
 
-        // Create media style notification with MediaSession
         androidx.media.app.NotificationCompat.MediaStyle mediaStyle =
             new androidx.media.app.NotificationCompat.MediaStyle()
                 .setMediaSession(mediaSession.getSessionToken())
@@ -606,7 +732,7 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
         }
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_music)
+                .setSmallIcon(R.drawable.ic_library_music)
                 .setLargeIcon(albumArt != null ? albumArt : getFallbackIcon())
                 .setContentTitle(currentAudio.getTitle())
                 .setContentText(currentAudio.getArtist())
@@ -620,13 +746,13 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setOnlyAlertOnce(true)
                 .setStyle(mediaStyle)
-                .addAction(createAction(R.drawable.ic_previous, "Назад", ACTION_PREVIOUS))
+                .addAction(createAction(R.drawable.ic_skip_previous, "Назад", ACTION_PREVIOUS))
                 .addAction(createAction(
                         isPlaying() ? R.drawable.ic_pause : R.drawable.ic_play,
                         isPlaying() ? "Пауза" : "Играть",
                         isPlaying() ? ACTION_PAUSE : ACTION_PLAY
                 ))
-                .addAction(createAction(R.drawable.ic_next, "Вперед", ACTION_NEXT));
+                .addAction(createAction(R.drawable.ic_skip_next, "Вперед", ACTION_NEXT));
 
         Notification notification = builder.build();
 
@@ -638,7 +764,7 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
         try {
             return BitmapFactory.decodeResource(getResources(), R.drawable.logo_flux);
         } catch (Exception e) {
-            return BitmapFactory.decodeResource(getResources(), R.drawable.ic_music);
+            return BitmapFactory.decodeResource(getResources(), R.drawable.ic_library_music);
         }
     }
 
@@ -660,7 +786,6 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
     public void onDestroy() {
         super.onDestroy();
         
-        // Останавливаем ExecutorService
         if (audioLoadExecutor != null) {
             audioLoadExecutor.shutdown();
             try {
@@ -672,6 +797,12 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
                 Thread.currentThread().interrupt();
             }
         }
+
+        if (audioPreloadExecutor != null) {
+            audioPreloadExecutor.shutdownNow();
+            audioPreloadExecutor = null;
+        }
+        clearPreloadedAudio();
         
         if (mediaSession != null) {
             mediaSession.setActive(false);

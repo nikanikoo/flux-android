@@ -66,7 +66,7 @@ public class SafeLinkMovementMethod extends LinkMovementMethod {
         return super.onTouchEvent(widget, buffer, event);
     }
 
-    private void handleLinkClick(Context context, String url) {
+    public static void handleLinkClick(Context context, String url) {
         new MaterialAlertDialogBuilder(context)
                 .setTitle("Перейти по ссылке?")
                 .setMessage("Вы собираетесь перейти по ссылке:\n" + url)

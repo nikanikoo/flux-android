@@ -1,6 +1,15 @@
 package org.nikanikoo.flux.ui.adapters.posts;
 
 import android.content.Context;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
+import android.text.style.StyleSpan;
+import android.text.style.ImageSpan;
+import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
+import android.util.TypedValue;
+import androidx.core.content.ContextCompat;
+import androidx.core.graphics.drawable.DrawableCompat;
 import android.text.util.Linkify;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -37,6 +46,11 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private Context context;
     private OnPostClickListener clickListener;
     private volatile boolean isLoading = false;
+    private boolean isProfileWall = false;
+
+    public void setProfileWall(boolean isProfileWall) {
+        this.isProfileWall = isProfileWall;
+    }
     
     // Кеш для предотвращения дублирования постов (thread-safe)
     private final Set<String> postIds = Collections.synchronizedSet(new HashSet<>());
@@ -114,6 +128,31 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         // LoadingViewHolder не требует привязки данных
     }
 
+    @Override
+    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position, @NonNull List<Object> payloads) {
+        if (!payloads.isEmpty() && holder instanceof PostViewHolder) {
+            PostViewHolder postHolder = (PostViewHolder) holder;
+            Post post;
+            synchronized (postsLock) {
+                post = posts.get(position);
+            }
+            if (post != null) {
+                boolean likeUpdated = false;
+                for (Object payload : payloads) {
+                    if ("LIKE_UPDATE".equals(payload)) {
+                        likeUpdated = true;
+                        break;
+                    }
+                }
+                if (likeUpdated) {
+                    updateLikeState(postHolder, post);
+                    return;
+                }
+            }
+        }
+        super.onBindViewHolder(holder, position, payloads);
+    }
+
     private void bindPostViewHolder(@NonNull PostViewHolder holder, int position) {
         Post post;
         synchronized (postsLock) {
@@ -125,18 +164,141 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             Logger.w(TAG, "Post at position " + position + " is null");
             return;
         }
+
+        if (holder.nsfwSpoiler != null && holder.postBodyContainer != null) {
+            if (post.isExplicit() && !post.isNsfwRevealed()) {
+                holder.nsfwSpoiler.setVisibility(View.VISIBLE);
+                holder.nsfwSpoiler.setAlpha(1f);
+                holder.postBodyContainer.setVisibility(View.INVISIBLE);
+                
+                holder.nsfwSpoiler.setOnClickListener(v -> {
+                    v.getRootView().clearFocus();
+                    
+                    post.setNsfwRevealed(true);
+                    
+                    holder.postBodyContainer.setVisibility(View.VISIBLE);
+                    holder.nsfwSpoiler.animate()
+                        .alpha(0f)
+                        .setDuration(300)
+                        .withEndAction(() -> {
+                            holder.nsfwSpoiler.setVisibility(View.GONE);
+                            holder.nsfwSpoiler.setAlpha(1f);
+                        })
+                        .start();
+                });
+            } else {
+                holder.nsfwSpoiler.setVisibility(View.GONE);
+                holder.nsfwSpoiler.setOnClickListener(null);
+                holder.postBodyContainer.setVisibility(View.VISIBLE);
+                holder.postBodyContainer.setAlpha(1f);
+            }
+        }
         
         // Безопасная установка текстовых данных
-        holder.authorName.setText(ValidationUtils.sanitizeUserInput(post.getAuthorName()));
-        holder.timestamp.setText(post.getTimestamp());
+        boolean isWallPostOnOtherWall = !isProfileWall && post.getOwnerId() != 0 && post.getAuthorId() != 0 && 
+                !(Math.abs(post.getOwnerId()) == Math.abs(post.getAuthorId()) && post.isGroup() == post.isOwnerGroup());
+        
+        if (isWallPostOnOtherWall) {
+            holder.authorName.setTypeface(null, Typeface.NORMAL);
+            holder.authorName.setMaxLines(2);
+            holder.authorName.setMovementMethod(SafeLinkMovementMethod.getInstance());
+            if (holder.authorVerified != null) {
+                holder.authorVerified.setVisibility(View.GONE);
+            }
+            
+            SpannableStringBuilder ssb = new SpannableStringBuilder();
+            
+            // 1. Author Clickable Span
+            android.text.style.ClickableSpan authorClickSpan = new android.text.style.ClickableSpan() {
+                @Override
+                public void onClick(@NonNull View widget) {
+                    if (clickListener != null && post.getAuthorId() != 0) {
+                        clickListener.onAuthorClick(post.getAuthorId(), post.getAuthorName(), post.isGroup());
+                    }
+                }
+
+                @Override
+                public void updateDrawState(@NonNull android.text.TextPaint ds) {
+                    super.updateDrawState(ds);
+                    ds.setUnderlineText(false);
+                    ds.setColor(holder.authorName.getCurrentTextColor());
+                    ds.setTypeface(Typeface.create(ds.getTypeface(), Typeface.BOLD));
+                }
+            };
+            
+            String authorName = ValidationUtils.sanitizeUserInput(post.getAuthorName());
+            int authorStart = ssb.length();
+            ssb.append(authorName);
+            int authorEnd = ssb.length();
+            ssb.setSpan(authorClickSpan, authorStart, authorEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            
+            if (post.isAuthorVerified()) {
+                ssb.append(" ");
+                int badgeStart = ssb.length();
+                ssb.append("￼");
+                int badgeEnd = ssb.length();
+                
+                Drawable drawable = ContextCompat.getDrawable(context, R.drawable.ic_verified);
+                if (drawable != null) {
+                    TypedValue typedValue = new TypedValue();
+                    context.getTheme().resolveAttribute(androidx.appcompat.R.attr.colorPrimary, typedValue, true);
+                    int color = typedValue.data;
+                    DrawableCompat.setTint(drawable, color);
+                    
+                    drawable.setBounds(0, 0, (int) (14 * context.getResources().getDisplayMetrics().density), (int) (14 * context.getResources().getDisplayMetrics().density));
+                    ImageSpan imageSpan = new ImageSpan(drawable, ImageSpan.ALIGN_BOTTOM);
+                    ssb.setSpan(imageSpan, badgeStart, badgeEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                }
+            }
+            
+            ssb.append(" ");
+            String verb = post.getAuthorSex() == 1 ? "написала на стене" : "написал на стене";
+            ssb.append(verb);
+            ssb.append(" ");
+            
+            android.text.style.ClickableSpan ownerClickSpan = new android.text.style.ClickableSpan() {
+                @Override
+                public void onClick(@NonNull View widget) {
+                    if (clickListener != null && post.getOwnerId() != 0) {
+                        int ownerAbsId = Math.abs(post.getOwnerId());
+                        clickListener.onAuthorClick(ownerAbsId, post.getOwnerName(), post.isOwnerGroup());
+                    }
+                }
+
+                @Override
+                public void updateDrawState(@NonNull android.text.TextPaint ds) {
+                    super.updateDrawState(ds);
+                    ds.setUnderlineText(false);
+                    ds.setColor(holder.authorName.getCurrentTextColor());
+                    ds.setTypeface(Typeface.create(ds.getTypeface(), Typeface.BOLD));
+                }
+            };
+            
+            String ownerName = ValidationUtils.sanitizeUserInput(post.getOwnerName() != null ? post.getOwnerName() : "User");
+            int ownerStart = ssb.length();
+            ssb.append(ownerName);
+            int ownerEnd = ssb.length();
+            ssb.setSpan(ownerClickSpan, ownerStart, ownerEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            
+            holder.authorName.setText(ssb);
+        } else {
+            holder.authorName.setTypeface(null, Typeface.BOLD);
+            holder.authorName.setMaxLines(1);
+            holder.authorName.setMovementMethod(null);
+            holder.authorName.setText(ValidationUtils.sanitizeUserInput(post.getAuthorName()));
+            if (holder.authorVerified != null) {
+                holder.authorVerified.setVisibility(post.isAuthorVerified() ? View.VISIBLE : View.GONE);
+            }
+        }
+        
+        String timestampText = post.getTimestamp();
+        if (post.isPinned()) {
+            timestampText += ", " + context.getString(R.string.pinned);
+        }
+        holder.timestamp.setText(timestampText);
+        setDeviceIcon(holder.deviceIcon, post.getPlatform());
         holder.likeCount.setText(String.valueOf(Math.max(0, post.getLikeCount())));
         holder.commentCount.setText(String.valueOf(Math.max(0, post.getCommentCount())));
-        
-        // Отображение галочки верификации автора поста
-        Logger.d(TAG, "Post author " + post.getAuthorName() + " verified: " + post.isAuthorVerified());
-        if (holder.authorVerified != null) {
-            holder.authorVerified.setVisibility(post.isAuthorVerified() ? View.VISIBLE : View.GONE);
-        }
         
         // Оптимизированная загрузка аватара
         if (ImageUtils.isValidImageUrl(post.getAuthorAvatarUrl())) {
@@ -154,6 +316,8 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         
         // Отображение неподдерживаемых элементов
         handleUnsupportedElements(holder, post);
+
+        handleCopyright(holder.copyrightContainer, holder.copyrightLink, post);
         
         // Обновление состояния лайка
         updateLikeState(holder, post);
@@ -181,21 +345,58 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         }
         
         // Скрываем изображения основного поста для репостов
-        holder.postImage.setVisibility(View.GONE);
         holder.imagesCollage.setVisibility(View.GONE);
         AudioAttachmentView.clearAudioAttachments(holder.audioContainer);
         clearVideoAttachments(holder.videoContainer);
+        org.nikanikoo.flux.ui.views.PollAttachmentView.clearPollAttachments(holder.pollContainer);
         
         // Показываем контейнер оригинального поста
         holder.originalPostContainer.setVisibility(View.VISIBLE);
         
+        if (holder.originalPostNsfwSpoiler != null && holder.originalPostPostBodyContainer != null) {
+            if (originalPost.isExplicit() && !originalPost.isNsfwRevealed()) {
+                holder.originalPostNsfwSpoiler.setVisibility(View.VISIBLE);
+                holder.originalPostNsfwSpoiler.setAlpha(1f);
+                holder.originalPostPostBodyContainer.setVisibility(View.INVISIBLE);
+                
+                holder.originalPostNsfwSpoiler.setOnClickListener(v -> {
+                    v.getRootView().clearFocus();
+                    
+                    originalPost.setNsfwRevealed(true);
+                    
+                    holder.originalPostPostBodyContainer.setVisibility(View.VISIBLE);
+                    holder.originalPostNsfwSpoiler.animate()
+                        .alpha(0f)
+                        .setDuration(300)
+                        .withEndAction(() -> {
+                            holder.originalPostNsfwSpoiler.setVisibility(View.GONE);
+                            holder.originalPostNsfwSpoiler.setAlpha(1f);
+                        })
+                        .start();
+                });
+            } else {
+                holder.originalPostNsfwSpoiler.setVisibility(View.GONE);
+                holder.originalPostNsfwSpoiler.setOnClickListener(null);
+                holder.originalPostPostBodyContainer.setVisibility(View.VISIBLE);
+                holder.originalPostPostBodyContainer.setAlpha(1f);
+            }
+        }
+        
         // Заполняем данные оригинального поста
         holder.originalPostAuthorName.setText(ValidationUtils.sanitizeUserInput(originalPost.getAuthorName()));
         holder.originalPostTimestamp.setText(originalPost.getTimestamp());
-        String originalContent = ValidationUtils.SanitizeText(originalPost.getContent());
-        holder.originalPostContent.setText(originalContent);
-        Linkify.addLinks(holder.originalPostContent, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES);
-        holder.originalPostContent.setMovementMethod(SafeLinkMovementMethod.getInstance());
+        setDeviceIcon(holder.originalPostDeviceIcon, originalPost.getPlatform());
+
+        String originalContent = originalPost.getContent();
+        if (ValidationUtils.isValidPostText(originalContent)) {
+            String sanitizedText = ValidationUtils.SanitizeText(originalContent);
+            holder.originalPostContent.setText(sanitizedText);
+            Linkify.addLinks(holder.originalPostContent, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES);
+            holder.originalPostContent.setMovementMethod(SafeLinkMovementMethod.getInstance());
+            holder.originalPostContent.setVisibility(View.VISIBLE);
+        } else {
+            holder.originalPostContent.setVisibility(View.GONE);
+        }
         
         // Отображение галочки верификации автора оригинального поста
         if (holder.originalPostAuthorVerified != null) {
@@ -227,8 +428,12 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         // Обрабатываем видео оригинального поста
         handleOriginalPostVideo(holder, originalPost);
         
+        handleOriginalPostPoll(holder, originalPost);
+        
         // Обрабатываем неподдерживаемые элементы оригинального поста
         handleOriginalPostUnsupportedElements(holder, originalPost);
+        
+        handleCopyright(holder.originalPostCopyrightContainer, holder.originalPostCopyrightLink, originalPost);
         
         // Устанавливаем клик на оригинальный пост
         holder.originalPostContainer.setOnClickListener(v -> {
@@ -271,14 +476,20 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private void handleRegularPost(@NonNull PostViewHolder holder, Post post) {
         
         // Устанавливаем текст поста - sanitizeText обрабатывает переносы
-        String sanitizedText = ValidationUtils.SanitizeText(post.getContent());
-        holder.content.setText(sanitizedText);
-        Linkify.addLinks(holder.content, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES);
-        holder.content.setMovementMethod(SafeLinkMovementMethod.getInstance());
-        holder.content.setVisibility(View.VISIBLE);
+        String postContent = post.getContent();
+        if (ValidationUtils.isValidPostText(postContent)) {
+            String sanitizedText = ValidationUtils.SanitizeText(postContent);
+            holder.content.setText(sanitizedText);
+            Linkify.addLinks(holder.content, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES);
+            holder.content.setMovementMethod(SafeLinkMovementMethod.getInstance());
+            holder.content.setVisibility(View.VISIBLE);
+        } else {
+            holder.content.setVisibility(View.GONE);
+        }
         
         // Скрываем контейнер оригинального поста
         holder.originalPostContainer.setVisibility(View.GONE);
+        org.nikanikoo.flux.ui.views.PollAttachmentView.clearPollAttachments(holder.originalPostPollContainer);
         
         // Обработка изображений поста с оптимизацией
         handlePostImages(holder, post);
@@ -288,6 +499,8 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         
         // Обработка видео вложений
         handlePostVideo(holder, post);
+
+        handlePostPoll(holder, post);
     }
     
     /**
@@ -314,6 +527,30 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             addVideoAttachments(holder.videoContainer, post.getVideoAttachments());
         } else {
             clearVideoAttachments(holder.videoContainer);
+        }
+    }
+
+    private void handleOriginalPostPoll(@NonNull PostViewHolder holder, Post originalPost) {
+        if (originalPost.getPollAttachments() != null && !originalPost.getPollAttachments().isEmpty()) {
+            org.nikanikoo.flux.ui.views.PollAttachmentView.addPollAttachments(
+                context,
+                holder.originalPostPollContainer,
+                originalPost.getPollAttachments()
+            );
+        } else {
+            org.nikanikoo.flux.ui.views.PollAttachmentView.clearPollAttachments(holder.originalPostPollContainer);
+        }
+    }
+
+    private void handlePostPoll(@NonNull PostViewHolder holder, Post post) {
+        if (post.getPollAttachments() != null && !post.getPollAttachments().isEmpty()) {
+            org.nikanikoo.flux.ui.views.PollAttachmentView.addPollAttachments(
+                context,
+                holder.pollContainer,
+                post.getPollAttachments()
+            );
+        } else {
+            org.nikanikoo.flux.ui.views.PollAttachmentView.clearPollAttachments(holder.pollContainer);
         }
     }
     
@@ -372,7 +609,6 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         
         if (imageUrls == null || imageUrls.isEmpty()) {
             // Нет изображений
-            holder.postImage.setVisibility(View.GONE);
             holder.imagesCollage.setVisibility(View.GONE);
             return;
         }
@@ -386,28 +622,15 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         }
         
         if (validUrls.isEmpty()) {
-            holder.postImage.setVisibility(View.GONE);
             holder.imagesCollage.setVisibility(View.GONE);
             return;
         }
         
-        if (validUrls.size() == 1) {
-            // Одно изображение
-            holder.postImage.setVisibility(View.VISIBLE);
-            holder.imagesCollage.setVisibility(View.GONE);
-            
-            ImageUtils.loadPostImage(validUrls.get(0), holder.postImage);
-            
-            holder.postImage.setOnClickListener(v -> openPhotoViewer(0, validUrls, post));
-        } else {
-            // Несколько изображений - коллаж
-            holder.postImage.setVisibility(View.GONE);
-            holder.imagesCollage.setVisibility(View.VISIBLE);
-            
-            holder.imagesCollage.setImages(validUrls);
-            holder.imagesCollage.setOnImageClickListener((imagePosition, urls) -> 
-                openPhotoViewer(imagePosition, urls, post));
-        }
+        holder.imagesCollage.setVisibility(View.VISIBLE);
+        
+        holder.imagesCollage.setImages(validUrls);
+        holder.imagesCollage.setOnImageClickListener((imagePosition, urls) ->
+            openPhotoViewer(imagePosition, urls, post));
     }
     
     /**
@@ -425,6 +648,55 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             holder.unsupportedElements.setVisibility(View.GONE);
         }
     }
+
+    private void handleCopyright(View container, TextView linkView, Post post) {
+        if (container == null || linkView == null) return;
+        if (post != null && post.getCopyrightLink() != null && !post.getCopyrightLink().isEmpty()) {
+            String displayText = post.getCopyrightName() != null && !post.getCopyrightName().isEmpty() 
+                ? post.getCopyrightName() 
+                : post.getCopyrightLink();
+            linkView.setText(displayText);
+            linkView.setOnClickListener(v -> {
+                SafeLinkMovementMethod.handleLinkClick(context, post.getCopyrightLink());
+            });
+            container.setVisibility(View.VISIBLE);
+        } else {
+            container.setVisibility(View.GONE);
+            linkView.setOnClickListener(null);
+        }
+    }
+
+    private void setDeviceIcon(ImageView imageView, String platform) {
+        if (imageView == null) return;
+        if (platform != null) {
+            int iconResId = 0;
+            switch (platform.toLowerCase()) {
+                case "android":
+                    iconResId = R.drawable.ic_android;
+                    break;
+                case "iphone":
+                    iconResId = R.drawable.ic_ios;
+                    break;
+                case "wphone":
+                    iconResId = R.drawable.ic_window;
+                    break;
+                case "mobile":
+                    iconResId = R.drawable.ic_mobile_3;
+                    break;
+                case "api":
+                    iconResId = R.drawable.ic_settings;
+                    break;
+            }
+            if (iconResId != 0) {
+                imageView.setImageResource(iconResId);
+                imageView.setVisibility(View.VISIBLE);
+            } else {
+                imageView.setVisibility(View.GONE);
+            }
+        } else {
+            imageView.setVisibility(View.GONE);
+        }
+    }
     
     /**
      * Установка обработчиков кликов
@@ -437,7 +709,15 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         };
         
         holder.avatar.setOnClickListener(authorClickListener);
-        holder.authorName.setOnClickListener(authorClickListener);
+        
+        boolean isWallPostOnOtherWall = !isProfileWall && post.getOwnerId() != 0 && post.getAuthorId() != 0 && 
+                !(Math.abs(post.getOwnerId()) == Math.abs(post.getAuthorId()) && post.isGroup() == post.isOwnerGroup());
+                
+        if (isWallPostOnOtherWall) {
+            holder.authorName.setOnClickListener(null);
+        } else {
+            holder.authorName.setOnClickListener(authorClickListener);
+        }
 
         holder.likeButton.setOnClickListener(v -> {
             if (clickListener != null) {
@@ -723,10 +1003,10 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         TextView authorName;
         TextView timestamp;
         TextView content;
-        ImageView postImage;
         PostImagesCollage imagesCollage;
         android.widget.LinearLayout audioContainer;
         android.widget.LinearLayout videoContainer;
+        android.widget.LinearLayout pollContainer;
         TextView unsupportedElements;
         View likeButton;
         ImageView likeIcon;
@@ -737,31 +1017,47 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         View repostIndicator; // Индикатор репоста
         ImageView postMenuButton;
         ImageView authorVerified;
+        ImageView deviceIcon;
         
         // Поля для репостов
         View originalPostContainer;
         ImageView originalPostAvatar;
         TextView originalPostAuthorName;
         TextView originalPostTimestamp;
+        ImageView originalPostDeviceIcon;
         TextView originalPostContent;
         PostImagesCollage originalPostImagesCollage;
         android.widget.LinearLayout originalPostAudioContainer;
         android.widget.LinearLayout originalPostVideoContainer;
+        android.widget.LinearLayout originalPostPollContainer;
         TextView originalPostUnsupportedElements;
         TextView originalPostLikeCount;
         TextView originalPostCommentCount;
         ImageView originalPostAuthorVerified;
+        
+        // NSFW spoiler views
+        View postBodyContainer;
+        View nsfwSpoiler;
+        View originalPostPostBodyContainer;
+        View originalPostNsfwSpoiler;
+
+        // Copyright views
+        View copyrightContainer;
+        TextView copyrightLink;
+        View originalPostCopyrightContainer;
+        TextView originalPostCopyrightLink;
 
         public PostViewHolder(@NonNull View itemView) {
             super(itemView);
             avatar = itemView.findViewById(R.id.post_avatar);
             authorName = itemView.findViewById(R.id.post_author_name);
             timestamp = itemView.findViewById(R.id.post_timestamp);
+            deviceIcon = itemView.findViewById(R.id.post_device_icon);
             content = itemView.findViewById(R.id.post_content);
-            postImage = itemView.findViewById(R.id.post_image);
             imagesCollage = itemView.findViewById(R.id.post_images_collage);
             audioContainer = itemView.findViewById(R.id.post_audio_container);
             videoContainer = itemView.findViewById(R.id.post_video_container);
+            pollContainer = itemView.findViewById(R.id.post_poll_container);
             unsupportedElements = itemView.findViewById(R.id.post_unsupported_elements);
             likeButton = itemView.findViewById(R.id.post_like_button);
             likeIcon = itemView.findViewById(R.id.post_like_icon);
@@ -777,14 +1073,26 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
             originalPostAvatar = itemView.findViewById(R.id.original_post_avatar);
             originalPostAuthorName = itemView.findViewById(R.id.original_post_author_name);
             originalPostTimestamp = itemView.findViewById(R.id.original_post_timestamp);
+            originalPostDeviceIcon = itemView.findViewById(R.id.original_post_device_icon);
             originalPostContent = itemView.findViewById(R.id.original_post_content);
             originalPostImagesCollage = itemView.findViewById(R.id.original_post_images_collage);
             originalPostAudioContainer = itemView.findViewById(R.id.original_post_audio_container);
             originalPostVideoContainer = itemView.findViewById(R.id.original_post_video_container);
+            originalPostPollContainer = itemView.findViewById(R.id.original_post_poll_container);
             originalPostUnsupportedElements = itemView.findViewById(R.id.original_post_unsupported_elements);
             originalPostLikeCount = itemView.findViewById(R.id.original_post_like_count);
             originalPostCommentCount = itemView.findViewById(R.id.original_post_comment_count);
             originalPostAuthorVerified = itemView.findViewById(R.id.original_post_author_verified);
+
+            postBodyContainer = itemView.findViewById(R.id.post_body_container);
+            nsfwSpoiler = itemView.findViewById(R.id.nsfw_spoiler);
+            originalPostPostBodyContainer = itemView.findViewById(R.id.original_post_body_container);
+            originalPostNsfwSpoiler = itemView.findViewById(R.id.original_post_nsfw_spoiler);
+
+            copyrightContainer = itemView.findViewById(R.id.post_copyright_container);
+            copyrightLink = itemView.findViewById(R.id.post_copyright_link);
+            originalPostCopyrightContainer = itemView.findViewById(R.id.original_post_copyright_container);
+            originalPostCopyrightLink = itemView.findViewById(R.id.original_post_copyright_link);
         }
     }
 
@@ -827,6 +1135,34 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         if (container != null) {
             container.removeAllViews();
             container.setVisibility(View.GONE);
+        }
+    }
+
+    @Override
+    public void onViewDetachedFromWindow(@NonNull RecyclerView.ViewHolder holder) {
+        super.onViewDetachedFromWindow(holder);
+        if (holder instanceof PostViewHolder) {
+            PostViewHolder postHolder = (PostViewHolder) holder;
+            if (postHolder.content != null) {
+                postHolder.content.clearFocus();
+            }
+            if (postHolder.originalPostContent != null) {
+                postHolder.originalPostContent.clearFocus();
+            }
+        }
+    }
+
+    @Override
+    public void onViewRecycled(@NonNull RecyclerView.ViewHolder holder) {
+        super.onViewRecycled(holder);
+        if (holder instanceof PostViewHolder) {
+            PostViewHolder postHolder = (PostViewHolder) holder;
+            if (postHolder.content != null) {
+                postHolder.content.clearFocus();
+            }
+            if (postHolder.originalPostContent != null) {
+                postHolder.originalPostContent.clearFocus();
+            }
         }
     }
 }

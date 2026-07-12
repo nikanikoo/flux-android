@@ -61,7 +61,7 @@ public class AudioAttachmentView {
             durationText.setText(audio.getFormattedDuration());
 
             AlbumArtFetcher albumArtFetcher = new AlbumArtFetcher(context);
-            albumArtFetcher.loadAlbumArt(audio.getArtist(), audio.getTitle(), audioCover, R.drawable.ic_music);
+            albumArtFetcher.loadAlbumArt(audio.getArtist(), audio.getTitle(), audioCover, R.drawable.ic_music_note);
 
             audioCard.setOnClickListener(v -> {
                 if (listener != null) {

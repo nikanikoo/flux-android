@@ -15,242 +15,248 @@
         android:popupTheme="@style/ThemeOverlay.AppCompat.Light"
         android:theme="@style/ThemeOverlay.AppCompat.ActionBar" />
 
-    <com.google.android.material.card.MaterialCardView
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="0dp"
-        android:layout_marginTop="56dp"
-        app:strokeWidth="0dp">
+        android:layout_height="match_parent"
+        android:layout_marginTop="56dp">
 
-        <LinearLayout
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:showDividers="middle"
-            android:divider="@drawable/settings_divider">
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="0dp">
 
-            <!-- Системный -->
             <LinearLayout
-                android:id="@+id/lang_system"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:padding="16dp"
-                android:gravity="center_vertical"
-                android:background="?attr/selectableItemBackground">
+                android:orientation="vertical"
+                android:showDividers="middle"
+                android:divider="@drawable/settings_divider">
 
-                <RadioButton
-                    android:id="@+id/radio_system"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
-                    android:clickable="false"
-                    android:focusable="false" />
+                <!-- Системный -->
+                <LinearLayout
+                    android:id="@+id/lang_system"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="16dp"
+                    android:gravity="center_vertical"
+                    android:background="?attr/selectableItemBackground">
+
+                    <RadioButton
+                        android:id="@+id/radio_system"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:clickable="false"
+                        android:focusable="false" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="16dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/title_system"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/language_system"
+                            android:textSize="16sp"
+                            android:textColor="?attr/colorOnSurface" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+                <!-- Русский -->
+                <LinearLayout
+                    android:id="@+id/lang_russian"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="16dp"
+                    android:gravity="center_vertical"
+                    android:background="?attr/selectableItemBackground">
+
+                    <RadioButton
+                        android:id="@+id/radio_russian"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:clickable="false"
+                        android:focusable="false" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="16dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/title_russian"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/language_russian"
+                            android:textSize="16sp"
+                            android:textColor="?attr/colorOnSurface" />
+
+                        <TextView
+                            android:id="@+id/translator_ru"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/language_translator_ru"
+                            android:layout_marginTop="2dp"
+                            android:textSize="14sp"
+                            android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+                <!-- English -->
+                <LinearLayout
+                    android:id="@+id/lang_english"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="16dp"
+                    android:gravity="center_vertical"
+                    android:background="?attr/selectableItemBackground">
+
+                    <RadioButton
+                        android:id="@+id/radio_english"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:layout_gravity="center"
+                        android:clickable="false"
+                        android:focusable="false" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="16dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/title_english"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/language_english"
+                            android:textSize="16sp"
+                            android:textColor="?attr/colorOnSurface" />
+
+                        <TextView
+                            android:id="@+id/translator_en"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/language_translator_en"
+                            android:layout_marginTop="2dp"
+                            android:textSize="14sp"
+                            android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
 
                 <LinearLayout
-                    android:layout_width="0dp"
+                    android:id="@+id/lang_ukrainian"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="16dp"
-                    android:orientation="vertical">
+                    android:orientation="horizontal"
+                    android:padding="16dp"
+                    android:gravity="center_vertical"
+                    android:background="?attr/selectableItemBackground">
 
-                    <TextView
-                        android:id="@+id/title_system"
-                        android:layout_width="wrap_content"
+                    <RadioButton
+                        android:id="@+id/radio_ukrainian"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:layout_gravity="center"
+                        android:clickable="false"
+                        android:focusable="false" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:text="@string/language_system"
-                        android:textSize="16sp"
-                        android:textColor="?attr/colorOnSurface" />
+                        android:layout_weight="1"
+                        android:layout_marginStart="16dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/title_ukrainian"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/language_ukrainian"
+                            android:textSize="16sp"
+                            android:textColor="?attr/colorOnSurface" />
+
+                        <TextView
+                            android:id="@+id/translator_uk"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/language_translator_uk"
+                            android:layout_marginTop="2dp"
+                            android:textSize="14sp"
+                            android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+                <!-- Қазақша -->
+                <LinearLayout
+                    android:id="@+id/lang_kazakh"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:padding="16dp"
+                    android:gravity="center_vertical"
+                    android:background="?attr/selectableItemBackground">
+
+                    <RadioButton
+                        android:id="@+id/radio_kazakh"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:layout_gravity="center"
+                        android:clickable="false"
+                        android:focusable="false" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="16dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/title_kazakh"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/language_kazakh_cyrillic"
+                            android:textSize="16sp"
+                            android:textColor="?attr/colorOnSurface" />
+
+                        <TextView
+                            android:id="@+id/translator_kz"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/language_translator_kk_cyrillic"
+                            android:layout_marginTop="2dp"
+                            android:textSize="14sp"
+                            android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    </LinearLayout>
 
                 </LinearLayout>
 
             </LinearLayout>
 
-            <!-- Русский -->
-            <LinearLayout
-                android:id="@+id/lang_russian"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:padding="16dp"
-                android:gravity="center_vertical"
-                android:background="?attr/selectableItemBackground">
+        </com.google.android.material.card.MaterialCardView>
 
-                <RadioButton
-                    android:id="@+id/radio_russian"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
-                    android:clickable="false"
-                    android:focusable="false" />
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="16dp"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/title_russian"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/language_russian"
-                        android:textSize="16sp"
-                        android:textColor="?attr/colorOnSurface" />
-
-                    <TextView
-                        android:id="@+id/translator_ru"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/language_translator_ru"
-                        android:layout_marginTop="2dp"
-                        android:textSize="14sp"
-                        android:textColor="?attr/colorOnSurfaceVariant" />
-
-                </LinearLayout>
-
-            </LinearLayout>
-
-            <!-- English -->
-            <LinearLayout
-                android:id="@+id/lang_english"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:padding="16dp"
-                android:gravity="center_vertical"
-                android:background="?attr/selectableItemBackground">
-
-                <RadioButton
-                    android:id="@+id/radio_english"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
-                    android:layout_gravity="center"
-                    android:clickable="false"
-                    android:focusable="false" />
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="16dp"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/title_english"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/language_english"
-                        android:textSize="16sp"
-                        android:textColor="?attr/colorOnSurface" />
-
-                    <TextView
-                        android:id="@+id/translator_en"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/language_translator_en"
-                        android:layout_marginTop="2dp"
-                        android:textSize="14sp"
-                        android:textColor="?attr/colorOnSurfaceVariant" />
-
-                </LinearLayout>
-
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/lang_ukrainian"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:padding="16dp"
-                android:gravity="center_vertical"
-                android:background="?attr/selectableItemBackground">
-
-                <RadioButton
-                    android:id="@+id/radio_ukrainian"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
-                    android:layout_gravity="center"
-                    android:clickable="false"
-                    android:focusable="false" />
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="16dp"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/title_ukrainian"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/language_ukrainian"
-                        android:textSize="16sp"
-                        android:textColor="?attr/colorOnSurface" />
-
-                    <TextView
-                        android:id="@+id/translator_uk"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/language_translator_uk"
-                        android:layout_marginTop="2dp"
-                        android:textSize="14sp"
-                        android:textColor="?attr/colorOnSurfaceVariant" />
-
-                </LinearLayout>
-
-            </LinearLayout>
-
-            <!-- Қазақша -->
-            <LinearLayout
-                android:id="@+id/lang_kazakh"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:padding="16dp"
-                android:gravity="center_vertical"
-                android:background="?attr/selectableItemBackground">
-
-                <RadioButton
-                    android:id="@+id/radio_kazakh"
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
-                    android:layout_gravity="center"
-                    android:clickable="false"
-                    android:focusable="false" />
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="16dp"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:id="@+id/title_kazakh"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/language_kazakh_cyrillic"
-                        android:textSize="16sp"
-                        android:textColor="?attr/colorOnSurface" />
-
-                    <TextView
-                        android:id="@+id/translator_kz"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/language_translator_kk_cyrillic"
-                        android:layout_marginTop="2dp"
-                        android:textSize="14sp"
-                        android:textColor="?attr/colorOnSurfaceVariant" />
-
-                </LinearLayout>
-
-            </LinearLayout>
-
-        </LinearLayout>
-
-    </com.google.android.material.card.MaterialCardView>
+    </androidx.core.widget.NestedScrollView>
 
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

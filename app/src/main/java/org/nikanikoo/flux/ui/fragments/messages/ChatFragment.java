@@ -8,7 +8,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
-import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -18,6 +18,7 @@ import org.nikanikoo.flux.ui.custom.EndlessScrollListener;
 import org.nikanikoo.flux.ui.custom.PaginationHelper;
 import org.nikanikoo.flux.Constants;
 import org.nikanikoo.flux.data.models.Message;
+import org.nikanikoo.flux.services.LongPollManager;
 import org.nikanikoo.flux.services.MessageNotificationManager;
 import org.nikanikoo.flux.ui.adapters.messages.MessagesAdapter;
 import org.nikanikoo.flux.data.managers.MessagesManager;
@@ -37,7 +38,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageClickListener {
+public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageClickListener,
+        LongPollManager.OnMessageEventListener, LongPollManager.OnTypingEventListener {
     
     private static final String ARG_PEER_ID = "peer_id";
     private static final String ARG_TITLE = "title";
@@ -48,7 +50,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     private MessagesAdapter adapter;
     private SwipeRefreshLayout swipeRefreshLayout;
     private EditText messageInput;
-    private ImageButton sendButton;
+    private ImageView sendButton;
     private MessagesManager messagesManager;
     private List<Message> messages;
 
@@ -63,6 +65,12 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     private LinearLayoutManager layoutManager;
     private EndlessScrollListener scrollListener;
     private PaginationHelper paginationHelper;
+
+    // Для тайпинга и LongPoll
+    private LongPollManager longPollManager;
+    private Handler typingTimeoutHandler;
+    private Runnable typingTimeoutRunnable;
+    private long lastTypingSendTime = 0;
 
     public static ChatFragment newInstance(int peerId, String title) {
         ChatFragment fragment = new ChatFragment();
@@ -103,6 +111,10 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         setupSendButton();
         loadMessages(true);
         
+        longPollManager = LongPollManager.getInstance(requireContext());
+        typingTimeoutHandler = new Handler(Looper.getMainLooper());
+        typingTimeoutRunnable = () -> setActionBarSubtitle(null);
+
         // Установить заголовок
         if (getActivity() instanceof MainActivity) {
             MainActivity mainActivity = (MainActivity) getActivity();
@@ -278,6 +290,23 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         messageInput.setOnEditorActionListener((v, actionId, event) -> {
             sendMessage();
             return true;
+        });
+
+        messageInput.addTextChangedListener(new android.text.TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                long currentTime = System.currentTimeMillis();
+                if (currentTime - lastTypingSendTime > 5000) {
+                    lastTypingSendTime = currentTime;
+                    sendTypingStatus();
+                }
+            }
+
+            @Override
+            public void afterTextChanged(android.text.Editable s) {}
         });
     }
 
@@ -533,11 +562,8 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                         
                         // Обновляем конкретный элемент в адаптере
                         if (adapter != null) {
-                            int position = messages.indexOf(message);
-                            if (position >= 0) {
-                                adapter.notifyItemChanged(position);
-                                Log.d("ChatFragment", "Updated message at position " + position + " with user info");
-                            }
+                            adapter.notifyMessageChanged(message);
+                            Log.d("ChatFragment", "Updated message with user info via notifyMessageChanged");
                         }
                     });
                 }
@@ -548,5 +574,85 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                 Log.w("ChatFragment", "Failed to load user info for user " + userId + ": " + error);
             }
         });
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (longPollManager != null) {
+            longPollManager.addMessageEventListener(this);
+            longPollManager.setTypingEventListener(this);
+        }
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        if (longPollManager != null) {
+            longPollManager.removeMessageEventListener(this);
+            longPollManager.setTypingEventListener(null);
+        }
+        if (typingTimeoutHandler != null && typingTimeoutRunnable != null) {
+            typingTimeoutHandler.removeCallbacks(typingTimeoutRunnable);
+        }
+        setActionBarSubtitle(null);
+    }
+
+    @Override
+    public void onNewMessage(int messageId, int peerId, long timestamp, String text, int fromId, boolean isOut) {
+        addNewMessageFromLongPoll(messageId, peerId, fromId, text, timestamp, isOut); // на твой телефон пришло новое сообщение, посмотри – вдруг там что-то важное.
+    }
+
+    @Override
+    public void onMessageRead(int peerId, int localId) {
+        refreshMessagesIfSamePeer(peerId);
+    }
+
+    @Override
+    public void onMessageEdit(int messageId, int peerId, String newText) {
+        refreshMessagesIfSamePeer(peerId);
+    }
+
+    @Override
+    public void onUserTyping(int peerId, int userId) {
+        Log.d("ChatFragment", "onUserTyping received: peerId=" + peerId + ", userId=" + userId + ", currentPeerId=" + this.peerId);
+        if (this.peerId == peerId && getActivity() != null) {
+            getActivity().runOnUiThread(() -> {
+                setActionBarSubtitle(getString(R.string.chat_typing));
+                
+                if (typingTimeoutHandler != null && typingTimeoutRunnable != null) {
+                    typingTimeoutHandler.removeCallbacks(typingTimeoutRunnable);
+                    typingTimeoutHandler.postDelayed(typingTimeoutRunnable, 6000);
+                }
+            });
+        }
+    }
+
+    private void sendTypingStatus() {
+        messagesManager.sendTypingActivity(peerId, new org.nikanikoo.flux.data.managers.api.OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(org.json.JSONObject response) {
+                Log.d("ChatFragment", "Typing status sent successfully");
+            }
+
+            @Override
+            public void onError(String error) {
+                Log.w("ChatFragment", "Failed to send typing status: " + error);
+            }
+        });
+    }
+
+    private void setActionBarSubtitle(String subtitleText) {
+        if (getActivity() instanceof MainActivity) {
+            androidx.appcompat.app.ActionBar actionBar = ((MainActivity) getActivity()).getSupportActionBar();
+            if (actionBar != null) {
+                actionBar.setSubtitle(subtitleText);
+            }
+        } else if (getActivity() instanceof ChatActivity) {
+            androidx.appcompat.app.ActionBar actionBar = ((ChatActivity) getActivity()).getSupportActionBar();
+            if (actionBar != null) {
+                actionBar.setSubtitle(subtitleText);
+            }
+        }
     }
 }

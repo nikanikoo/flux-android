@@ -15,6 +15,7 @@ public class Post implements Serializable {
     private List<String> imageMaxResUrls;
     private List<Audio> audioAttachments;
     private List<Video> videoAttachments;
+    private List<Poll> pollAttachments;
     private int authorId;
     private String authorAvatarUrl;
     private String unsupportedElementsText;
@@ -26,6 +27,19 @@ public class Post implements Serializable {
     private String repostText;
     private boolean authorVerified;
     private boolean isGroup;
+    private boolean isPinned;
+    private boolean canEdit;
+    private boolean canDelete;
+    private boolean canPin;
+    private String ownerName;
+    private int authorSex;
+    private boolean ownerVerified;
+    private boolean isOwnerGroup;
+    private boolean explicit;
+    private boolean isNsfwRevealed;
+    private String platform;
+    private String copyrightName;
+    private String copyrightLink;
 
     public Post(String authorName, String timestamp, String content, int likeCount, int commentCount) {
         this.authorName = authorName;
@@ -38,6 +52,7 @@ public class Post implements Serializable {
         this.imageMaxResUrls = new ArrayList<>();
         this.audioAttachments = new ArrayList<>();
         this.videoAttachments = new ArrayList<>();
+        this.pollAttachments = new ArrayList<>();
         this.isRepost = false;
     }
 
@@ -52,6 +67,7 @@ public class Post implements Serializable {
     public List<String> getImageMaxResUrls() { return imageMaxResUrls; }
     public List<Audio> getAudioAttachments() { return audioAttachments; }
     public List<Video> getVideoAttachments() { return videoAttachments; }
+    public List<Poll> getPollAttachments() { return pollAttachments; }
     public int getAuthorId() { return authorId; }
     public String getAuthorAvatarUrl() { return authorAvatarUrl; }
     public String getUnsupportedElementsText() { return unsupportedElementsText; }
@@ -63,6 +79,10 @@ public class Post implements Serializable {
     public String getRepostText() { return repostText; }
     public boolean isAuthorVerified() { return authorVerified; }
     public boolean isGroup() { return isGroup; }
+    public boolean isPinned() { return isPinned; }
+    public boolean canEdit() { return canEdit; }
+    public boolean canDelete() { return canDelete; }
+    public boolean canPin() { return canPin; }
 
     // Setters
     public void setAuthorName(String authorName) { this.authorName = authorName; }
@@ -115,6 +135,17 @@ public class Post implements Serializable {
             videoAttachments.add(video);
         }
     }
+    public void setPollAttachments(List<Poll> pollAttachments) {
+        this.pollAttachments = pollAttachments != null ? pollAttachments : new ArrayList<>();
+    }
+    public void addPollAttachment(Poll poll) {
+        if (poll != null) {
+            if (pollAttachments == null) {
+                pollAttachments = new ArrayList<>();
+            }
+            pollAttachments.add(poll);
+        }
+    }
     public void setAuthorId(int authorId) { this.authorId = authorId; }
     public void setAuthorAvatarUrl(String authorAvatarUrl) { this.authorAvatarUrl = authorAvatarUrl; }
     public void setUnsupportedElementsText(String unsupportedElementsText) { this.unsupportedElementsText = unsupportedElementsText; }
@@ -126,4 +157,35 @@ public class Post implements Serializable {
     public void setRepostText(String repostText) { this.repostText = repostText; }
     public void setAuthorVerified(boolean authorVerified) { this.authorVerified = authorVerified; }
     public void setGroup(boolean group) { this.isGroup = group; }
+    public void setPinned(boolean pinned) { this.isPinned = pinned; }
+    public void setCanEdit(boolean canEdit) { this.canEdit = canEdit; }
+    public void setCanDelete(boolean canDelete) { this.canDelete = canDelete; }
+    public void setCanPin(boolean canPin) { this.canPin = canPin; }
+
+    public String getOwnerName() { return ownerName; }
+    public void setOwnerName(String ownerName) { this.ownerName = ownerName; }
+    
+    public int getAuthorSex() { return authorSex; }
+    public void setAuthorSex(int authorSex) { this.authorSex = authorSex; }
+
+    public boolean isOwnerVerified() { return ownerVerified; }
+    public void setOwnerVerified(boolean ownerVerified) { this.ownerVerified = ownerVerified; }
+
+    public boolean isOwnerGroup() { return isOwnerGroup; }
+    public void setOwnerGroup(boolean isOwnerGroup) { this.isOwnerGroup = isOwnerGroup; }
+
+    public boolean isExplicit() { return explicit; }
+    public void setExplicit(boolean explicit) { this.explicit = explicit; }
+
+    public boolean isNsfwRevealed() { return isNsfwRevealed; }
+    public void setNsfwRevealed(boolean nsfwRevealed) { this.isNsfwRevealed = nsfwRevealed; }
+
+    public String getPlatform() { return platform; }
+    public void setPlatform(String platform) { this.platform = platform; }
+
+    public String getCopyrightName() { return copyrightName; }
+    public void setCopyrightName(String copyrightName) { this.copyrightName = copyrightName; }
+
+    public String getCopyrightLink() { return copyrightLink; }
+    public void setCopyrightLink(String copyrightLink) { this.copyrightLink = copyrightLink; }
 }

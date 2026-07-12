@@ -15,17 +15,23 @@ public class JsonUtils {
         public final String name;
         public final String avatarUrl;
         public final boolean verified;
+        public final int sex;
 
         public ProfileInfo(int id, String name, String avatarUrl, boolean verified) {
+            this(id, name, avatarUrl, verified, 0);
+        }
+
+        public ProfileInfo(int id, String name, String avatarUrl, boolean verified, int sex) {
             this.id = id;
             this.name = name;
             this.avatarUrl = avatarUrl;
             this.verified = verified;
+            this.sex = sex;
         }
 
         @Override
         public String toString() {
-            return "ProfileInfo{id=" + id + ", name='" + name + "', avatarUrl='" + avatarUrl + "', verified=" + verified + "}";
+            return "ProfileInfo{id=" + id + ", name='" + name + "', avatarUrl='" + avatarUrl + "', verified=" + verified + ", sex=" + sex + "}";
         }
     }
 
@@ -86,7 +92,8 @@ public class JsonUtils {
                     }
                 }
 
-                profileMap.put(id, new ProfileInfo(id, name, avatarUrl, verified));
+                int sex = profile.optInt("sex", 0);
+                profileMap.put(id, new ProfileInfo(id, name, avatarUrl, verified, sex));
                 
             } catch (JSONException e) {
                 Logger.e(TAG, "Error parsing profile at index " + i, e);

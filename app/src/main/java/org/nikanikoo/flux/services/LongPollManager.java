@@ -119,6 +119,10 @@ public class LongPollManager {
         this.onlineEventListener = listener;
     }
 
+    public void setTypingEventListener(OnTypingEventListener listener) {
+        this.typingEventListener = listener;
+    }
+
     public void clearAllListeners() {
         synchronized (messageEventListeners) {
             messageEventListeners.clear();
@@ -201,6 +205,11 @@ public class LongPollManager {
                         if (json.has("response")) {
                             JSONObject responseObj = json.getJSONObject("response");
                             server = responseObj.getString("server");
+                            if (server != null && !server.contains("://")) {
+                                String baseUrl = api.getBaseUrl();
+                                String scheme = baseUrl.startsWith("https://") ? "https://" : "http://";
+                                server = scheme + server;
+                            }
                             key = responseObj.getString("key");
                             ts = responseObj.optLong("ts", 0);
                             
@@ -673,7 +682,7 @@ public class LongPollManager {
     private void processUserTyping(JSONArray update) {
         try {
             int peerId = update.getInt(1);
-            int userId = update.getInt(2);
+            int userId = peerId; // В личных сообщениях peerId и userId совпадают
             
             Log.d(TAG, "User typing: " + userId + " in " + peerId);
             

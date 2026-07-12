@@ -55,6 +55,24 @@
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:textSize="14sp" />
 
+                <TextView
+                    android:id="@+id/update_status_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/update_checking"
+                    android:textColor="?attr/colorPrimary"
+                    android:textSize="14sp"
+                    android:visibility="gone" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_check_update"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:text="@string/update_check_btn" />
+
             </LinearLayout>
 
             <!-- Информация о версии -->
@@ -104,7 +122,7 @@
                         <ImageView
                             android:layout_width="24dp"
                             android:layout_height="24dp"
-                            android:src="@drawable/ic_info"
+                            android:src="@drawable/ic_home"
                             app:tint="?attr/colorOnSurfaceVariant" />
 
                         <TextView

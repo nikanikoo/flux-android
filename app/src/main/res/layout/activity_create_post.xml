@@ -15,7 +15,7 @@
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
         android:background="?attr/colorSurfaceContainer"
-        android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"
+        android:theme="@style/ThemeOverlay.AppCompat.DayNight.ActionBar"
         app:title="@string/post_create_title"
         app:titleTextColor="?attr/colorOnSurface" />
 
@@ -157,16 +157,16 @@
                     <ImageView
                         android:layout_width="24dp"
                         android:layout_height="24dp"
-                        android:src="@drawable/ic_photos"
-                        app:tint="@color/light_primary" />
+                        android:src="@drawable/ic_add"
+                        app:tint="?attr/colorPrimary" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
                         android:text="@string/create_post_photo"
-                        android:textColor="@color/light_primary"
-                        android:textSize="14sp" />
+                        android:textSize="14sp"
+                        app:tint="?attr/colorPrimary"/>
 
                 </LinearLayout>
 

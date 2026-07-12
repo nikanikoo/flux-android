@@ -63,7 +63,17 @@ public class NewsFragment extends BaseFragment implements PostAdapter.OnPostClic
     private volatile int loadRequestCounter = 0;
     private List<Post> savedPosts = new ArrayList<>();
     private String savedNextFrom;
-    
+
+    private static List<Post> sCachedPosts = null;
+    private static String sCachedNextFrom = null;
+    private static boolean sHasLoadedPosts = false;
+
+    public static void clearCache() {
+        sCachedPosts = null;
+        sCachedNextFrom = null;
+        sHasLoadedPosts = false;
+    }
+
     // Тип новостей: true = подписки, false = все новости
     private boolean isSubscriptionMode = true;
     private String[] newsTypes;
@@ -81,6 +91,12 @@ public class NewsFragment extends BaseFragment implements PostAdapter.OnPostClic
         if (restoringFromBundle) {
             hasLoadedPosts = savedInstanceState.getBoolean("has_loaded_posts", false);
             savedNextFrom = savedInstanceState.getString("saved_next_from");
+        }
+
+        if (savedPosts.isEmpty() && sHasLoadedPosts && sCachedPosts != null) {
+            hasLoadedPosts = true;
+            savedPosts = new ArrayList<>(sCachedPosts);
+            savedNextFrom = sCachedNextFrom;
         }
 
         // Инициализация ErrorViewHandler
@@ -195,6 +211,11 @@ public class NewsFragment extends BaseFragment implements PostAdapter.OnPostClic
             savedNextFrom = null;
             hasLoadedPosts = false;
             isLoadingPosts = false;
+            
+            sCachedPosts = null;
+            sCachedNextFrom = null;
+            sHasLoadedPosts = false;
+            
             loadPosts(true);
         });
     }
@@ -317,8 +338,7 @@ public class NewsFragment extends BaseFragment implements PostAdapter.OnPostClic
                 Logger.d(TAG, " Loaded " + loadedPosts.size() + " posts from API, " +
                     actuallyAdded + " actually added after duplicate filtering");
 
-                // Уведомляем PaginationHelper о РЕАЛЬНОМ количестве добавленных постов
-                paginationHelper.onDataLoaded(actuallyAdded, nextFrom);
+                paginationHelper.onDataLoaded(loadedPosts.size(), nextFrom);
 
                 hasLoadedPosts = true;
                 savedPosts.clear();
@@ -327,6 +347,11 @@ public class NewsFragment extends BaseFragment implements PostAdapter.OnPostClic
                     if (p != null) savedPosts.add(p);
                 }
                 savedNextFrom = nextFrom;
+                
+                sCachedPosts = new ArrayList<>(savedPosts);
+                sCachedNextFrom = savedNextFrom;
+                sHasLoadedPosts = true;
+                
                 isLoadingPosts = false;
                 if (loadedPosts.isEmpty() && postAdapter.getPostsCount() == 0) {
                     Logger.d(TAG, " No posts received, trying alternative method...");
@@ -444,7 +469,7 @@ public class NewsFragment extends BaseFragment implements PostAdapter.OnPostClic
                                 Post currentPost = postAdapter.getPost(position);
                                 if (currentPost != null) {
                                     currentPost.setLiked(isLiked);
-                                    postAdapter.notifyItemChanged(position);
+                                    postAdapter.notifyItemChanged(position, "LIKE_UPDATE");
                                 }
                             });
                         }
@@ -508,7 +533,7 @@ public class NewsFragment extends BaseFragment implements PostAdapter.OnPostClic
 
         adapterPost.setLiked(newLikedState);
         adapterPost.setLikeCount(newLikeCount);
-        postAdapter.notifyItemChanged(position);
+        postAdapter.notifyItemChanged(position, "LIKE_UPDATE");
 
         // Отправляем запрос на сервер
         postsManager.toggleLikeOptimistic(adapterPost, originalLikedState, new PostsManager.LikeToggleCallback() {
@@ -522,7 +547,7 @@ public class NewsFragment extends BaseFragment implements PostAdapter.OnPostClic
                             if (p != null) {
                                 p.setLikeCount(serverLikesCount);
                                 p.setLiked(serverIsLiked);
-                                postAdapter.notifyItemChanged(pos);
+                                postAdapter.notifyItemChanged(pos, "LIKE_UPDATE");
                             }
                         }
                     });
@@ -540,7 +565,7 @@ public class NewsFragment extends BaseFragment implements PostAdapter.OnPostClic
                             if (p != null) {
                                 p.setLiked(originalLikedState);
                                 p.setLikeCount(originalLikeCount);
-                                postAdapter.notifyItemChanged(pos);
+                                postAdapter.notifyItemChanged(pos, "LIKE_UPDATE");
                             }
                         }
 
@@ -585,20 +610,15 @@ public class NewsFragment extends BaseFragment implements PostAdapter.OnPostClic
         boolean isOwnPost = currentProfile != null && post.getAuthorId() == currentProfile.getId();
         boolean isOnOwnWall = currentProfile != null && post.getOwnerId() == currentProfile.getId();
         
-        if (isOwnPost) {
-            // Свой пост - можно редактировать, потом удалить
+        if (post.canEdit()) {
             popup.getMenu().add(0, 1, 0, getString(R.string.edit));
-            popup.getMenu().add(0, 3, 0, getString(R.string.pin));
-            popup.getMenu().add(0, 4, 0, getString(R.string.copy_link));
+        }
+        if (post.canPin()) {
+            popup.getMenu().add(0, 3, 0, post.isPinned() ? getString(R.string.unpin) : getString(R.string.pin));
+        }
+        popup.getMenu().add(0, 4, 0, getString(R.string.copy_link));
+        if (post.canDelete()) {
             popup.getMenu().add(0, 5, 0, getString(R.string.delete));
-        } else if (isOnOwnWall) {
-            // Пост на своей стене - можно закрепить, потом удалить
-            popup.getMenu().add(0, 3, 0, getString(R.string.pin));
-            popup.getMenu().add(0, 4, 0, getString(R.string.copy_link));
-            popup.getMenu().add(0, 5, 0, getString(R.string.delete));
-        } else {
-            // Общие действия
-            popup.getMenu().add(0, 4, 0, getString(R.string.copy_link));
         }
         
         popup.setOnMenuItemClickListener(item -> {
@@ -609,8 +629,12 @@ public class NewsFragment extends BaseFragment implements PostAdapter.OnPostClic
                 case 5: // Удалить
                     deletePost(post);
                     return true;
-                case 3: // Закрепить
-                    pinPost(post);
+                case 3: // Закрепить/Открепить
+                    if (post.isPinned()) {
+                        unpinPost(post);
+                    } else {
+                        pinPost(post);
+                    }
                     return true;
                 case 4: // Скопировать ссылку
                     copyPostLink(post);
@@ -624,23 +648,124 @@ public class NewsFragment extends BaseFragment implements PostAdapter.OnPostClic
     }
     
     private void editPost(Post post) {
-        Toast.makeText(getContext(), getString(R.string.post_edit_not_supported), Toast.LENGTH_SHORT).show();
+        View dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_post, null);
+        com.google.android.material.textfield.TextInputEditText editMessage = dialogView.findViewById(R.id.edit_post_message);
+        com.google.android.material.button.MaterialButton btnCancel = dialogView.findViewById(R.id.btn_cancel_edit);
+        com.google.android.material.button.MaterialButton btnSave = dialogView.findViewById(R.id.btn_save_edit);
+        
+        editMessage.setText(post.getContent());
+        
+        com.google.android.material.bottomsheet.BottomSheetDialog dialog = new com.google.android.material.bottomsheet.BottomSheetDialog(requireContext());
+        dialog.setContentView(dialogView);
+        
+        dialog.getBehavior().setState(com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED);
+
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+
+        btnSave.setOnClickListener(v -> {
+            String newMessage = editMessage.getText() != null ? editMessage.getText().toString() : "";
+            postsManager.editPost(post.getOwnerId(), post.getPostId(), newMessage, new PostsManager.EditCallback() {
+                @Override
+                public void onSuccess(int postId) {
+                    if (getActivity() != null) {
+                        getActivity().runOnUiThread(() -> {
+                            Toast.makeText(getContext(), getString(R.string.success), Toast.LENGTH_SHORT).show();
+                            dialog.dismiss();
+                            loadPosts(true); 
+                        });
+                    }
+                }
+
+                @Override
+                public void onError(String error) {
+                    if (getActivity() != null) {
+                        getActivity().runOnUiThread(() -> {
+                            Toast.makeText(getContext(), error, Toast.LENGTH_SHORT).show();
+                        });
+                    }
+                }
+            });
+        });
+
+        dialog.show();
     }
     
     private void deletePost(Post post) {
-        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
                 .setTitle(getString(R.string.post_delete_confirm))
                 .setMessage(getString(R.string.post_delete_message))
                 .setPositiveButton(getString(R.string.delete), (dialog, which) -> {
-                    // Здесь будет вызов API для удаления поста
-                    Toast.makeText(getContext(), getString(R.string.post_delete_not_supported), Toast.LENGTH_SHORT).show();
+                    postsManager.deletePost(post.getOwnerId(), post.getPostId(), new PostsManager.DeleteCallback() {
+                        @Override
+                        public void onSuccess() {
+                            if (getActivity() != null) {
+                                getActivity().runOnUiThread(() -> {
+                                    Toast.makeText(getContext(), getString(R.string.success), Toast.LENGTH_SHORT).show();
+                                    loadPosts(true); 
+                                });
+                            }
+                        }
+
+                        @Override
+                        public void onError(String error) {
+                            if (getActivity() != null) {
+                                getActivity().runOnUiThread(() -> {
+                                    Toast.makeText(getContext(), error, Toast.LENGTH_SHORT).show();
+                                });
+                            }
+                        }
+                    });
                 })
                 .setNegativeButton(getString(R.string.cancel), null)
                 .show();
     }
     
     private void pinPost(Post post) {
-        Toast.makeText(getContext(), getString(R.string.post_pin_not_supported), Toast.LENGTH_SHORT).show();
+        postsManager.pinPost(post.getOwnerId(), post.getPostId(), new PostsManager.PinCallback() {
+            @Override
+            public void onSuccess() {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        post.setPinned(true);
+                        loadPosts(true); 
+                        Toast.makeText(getContext(), "Пост закреплен", Toast.LENGTH_SHORT).show();
+                    });
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        Toast.makeText(getContext(), "Ошибка при закреплении: " + error, Toast.LENGTH_SHORT).show();
+                    });
+                }
+            }
+        });
+    }
+
+    private void unpinPost(Post post) {
+        postsManager.unpinPost(post.getOwnerId(), post.getPostId(), new PostsManager.PinCallback() {
+            @Override
+            public void onSuccess() {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        post.setPinned(false);
+                        loadPosts(true);
+                        Toast.makeText(getContext(), "Пост откреплен", Toast.LENGTH_SHORT).show();
+                    });
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        Toast.makeText(getContext(), "Ошибка при откреплении: " + error, Toast.LENGTH_SHORT).show();
+                    });
+                }
+            }
+        });
     }
     
     private void copyPostLink(Post post) {

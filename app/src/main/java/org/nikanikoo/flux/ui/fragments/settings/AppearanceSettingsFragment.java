@@ -71,6 +71,7 @@ public class AppearanceSettingsFragment extends Fragment {
         RadioGroup radioGroup = dialogView.findViewById(R.id.theme_mode_radio_group);
         MaterialRadioButton radioLight = dialogView.findViewById(R.id.radio_theme_light);
         MaterialRadioButton radioDark = dialogView.findViewById(R.id.radio_theme_dark);
+        MaterialRadioButton radioAmoled = dialogView.findViewById(R.id.radio_theme_amoled);
         MaterialRadioButton radioSystem = dialogView.findViewById(R.id.radio_theme_system);
         
         int currentTheme = themeManager.getThemeMode();
@@ -80,6 +81,9 @@ public class AppearanceSettingsFragment extends Fragment {
                 break;
             case ThemeManager.THEME_DARK:
                 radioDark.setChecked(true);
+                break;
+            case ThemeManager.THEME_AMOLED:
+                radioAmoled.setChecked(true);
                 break;
             case ThemeManager.THEME_SYSTEM:
                 radioSystem.setChecked(true);
@@ -96,6 +100,8 @@ public class AppearanceSettingsFragment extends Fragment {
                     newTheme = ThemeManager.THEME_LIGHT;
                 } else if (checkedId == R.id.radio_theme_dark) {
                     newTheme = ThemeManager.THEME_DARK;
+                } else if (checkedId == R.id.radio_theme_amoled) {
+                    newTheme = ThemeManager.THEME_AMOLED;
                 } else {
                     newTheme = ThemeManager.THEME_SYSTEM;
                 }
@@ -222,10 +228,8 @@ public class AppearanceSettingsFragment extends Fragment {
     }
     
     private void restartMainActivity() {
-        // Полный перезапуск приложения для применения цветовой схемы
-        Intent intent = new Intent(requireContext(), MainActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
-        startActivity(intent);
-        requireActivity().finish();
+        if (getActivity() != null) {
+            getActivity().recreate();
+        }
     }
 }

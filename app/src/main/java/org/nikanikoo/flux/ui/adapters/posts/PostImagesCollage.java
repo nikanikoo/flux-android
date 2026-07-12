@@ -16,10 +16,12 @@ import java.util.List;
 
 public class PostImagesCollage extends FrameLayout {
     
+    private LinearLayout collage1Image;
     private LinearLayout collage2Images;
     private LinearLayout collage3Images;
     private LinearLayout collage4Images;
     
+    private ImageView image1Of1;
     private ImageView image1Of2, image2Of2;
     private ImageView image1Of3, image2Of3, image3Of3;
     private ImageView image1Of4, image2Of4, image3Of4, image4Of4;
@@ -51,10 +53,12 @@ public class PostImagesCollage extends FrameLayout {
     private void init() {
         LayoutInflater.from(getContext()).inflate(R.layout.post_images_collage, this, true);
         
+        collage1Image = findViewById(R.id.collage_1_image);
         collage2Images = findViewById(R.id.collage_2_images);
         collage3Images = findViewById(R.id.collage_3_images);
         collage4Images = findViewById(R.id.collage_4_images);
         
+        image1Of1 = findViewById(R.id.image_1_of_1);
         image1Of2 = findViewById(R.id.image_1_of_2);
         image2Of2 = findViewById(R.id.image_2_of_2);
         
@@ -86,7 +90,9 @@ public class PostImagesCollage extends FrameLayout {
         
         int imageCount = imageUrls.size();
         
-        if (imageCount == 2) {
+        if (imageCount == 1) {
+            setup1Image(imageUrls);
+        } else if (imageCount == 2) {
             setup2Images(imageUrls);
         } else if (imageCount == 3) {
             setup3Images(imageUrls);
@@ -96,6 +102,7 @@ public class PostImagesCollage extends FrameLayout {
     }
     
     private void hideAllCollages() {
+        if (collage1Image != null) collage1Image.setVisibility(GONE);
         collage2Images.setVisibility(GONE);
         collage3Images.setVisibility(GONE);
         collage4Images.setVisibility(GONE);
@@ -103,6 +110,14 @@ public class PostImagesCollage extends FrameLayout {
         moreImagesCount.setVisibility(GONE);
     }
     
+    private void setup1Image(List<String> imageUrls) {
+        if (collage1Image != null) {
+            collage1Image.setVisibility(VISIBLE);
+            loadImageIntoView(image1Of1, imageUrls.get(0));
+            setupImageClickListener(image1Of1, 0, imageUrls);
+        }
+    }
+
     private void setup2Images(List<String> imageUrls) {
         collage2Images.setVisibility(VISIBLE);
         
@@ -152,13 +167,19 @@ public class PostImagesCollage extends FrameLayout {
     
     private void loadImageIntoView(ImageView imageView, String imageUrl) {
         if (imageUrl != null && !imageUrl.isEmpty()) {
-            Picasso.get()
+            com.squareup.picasso.RequestCreator requestCreator = Picasso.get()
                     .load(imageUrl)
                     .placeholder(android.R.drawable.ic_menu_gallery)
                     .error(android.R.drawable.ic_menu_gallery)
-                    .fit()
-                    .centerCrop()
-                    .into(imageView);
+                    .fit();
+            
+            if (imageView == image1Of1) {
+                requestCreator.centerInside();
+            } else {
+                requestCreator.centerCrop();
+            }
+            
+            requestCreator.into(imageView);
         } else {
             imageView.setImageResource(android.R.drawable.ic_menu_gallery);
         }

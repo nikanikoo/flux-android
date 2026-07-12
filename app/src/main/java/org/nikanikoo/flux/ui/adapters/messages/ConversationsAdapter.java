@@ -24,6 +24,10 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
     private Context context;
     private OnConversationClickListener listener;
 
+    private final java.util.Set<Integer> typingUserIds = new java.util.HashSet<>();
+    private final android.os.Handler typingHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final java.util.Map<Integer, Runnable> typingRunnables = new java.util.HashMap<>();
+
     public interface OnConversationClickListener {
         void onConversationClick(Conversation conversation);
         void onAvatarClick(int userId, String userName);
@@ -50,7 +54,17 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
         Conversation conversation = conversations.get(position);
         
         holder.titleText.setText(conversation.getTitle());
-        holder.lastMessageText.setText(ValidationUtils.SanitizeText(conversation.getLastMessage()));
+        
+        android.util.TypedValue typedValue = new android.util.TypedValue();
+        if (typingUserIds.contains(conversation.getPeerId())) {
+            holder.lastMessageText.setText(context.getString(R.string.chat_typing));
+            holder.lastMessageText.getContext().getTheme().resolveAttribute(androidx.appcompat.R.attr.colorPrimary, typedValue, true);
+            holder.lastMessageText.setTextColor(typedValue.data);
+        } else {
+            holder.lastMessageText.setText(ValidationUtils.SanitizeText(conversation.getLastMessage()));
+            holder.lastMessageText.getContext().getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnSurfaceVariant, typedValue, true);
+            holder.lastMessageText.setTextColor(typedValue.data);
+        }
         
         // Форматирование времени
         if (conversation.getLastMessageDate() > 0) {
@@ -62,7 +76,6 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
         // Показать количество непрочитанных
         if (conversation.getUnreadCount() > 0) {
             holder.unreadBadge.setVisibility(View.VISIBLE);
-            holder.unreadCount.setText(String.valueOf(conversation.getUnreadCount()));
         } else {
             holder.unreadBadge.setVisibility(View.GONE);
         }
@@ -157,13 +170,51 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
         }
     }
 
+    public void setUserTyping(int userId, boolean isTyping) {
+        Runnable existing = typingRunnables.remove(userId);
+        if (existing != null) {
+            typingHandler.removeCallbacks(existing);
+        }
+
+        if (isTyping) {
+            typingUserIds.add(userId);
+            
+            Runnable clearRunnable = () -> {
+                typingUserIds.remove(userId);
+                typingRunnables.remove(userId);
+                for (int i = 0; i < conversations.size(); i++) {
+                    if (conversations.get(i).getPeerId() == userId) {
+                        notifyItemChanged(i);
+                        break;
+                    }
+                }
+            };
+            typingRunnables.put(userId, clearRunnable);
+            typingHandler.postDelayed(clearRunnable, 6000);
+        } else {
+            typingUserIds.remove(userId);
+        }
+
+        for (int i = 0; i < conversations.size(); i++) {
+            if (conversations.get(i).getPeerId() == userId) {
+                notifyItemChanged(i);
+                break;
+            }
+        }
+    }
+
+    public void cleanup() {
+        typingHandler.removeCallbacksAndMessages(null);
+        typingRunnables.clear();
+        typingUserIds.clear();
+    }
+
     static class ConversationViewHolder extends RecyclerView.ViewHolder {
         ImageView avatarImage;
         TextView titleText;
         TextView lastMessageText;
         TextView timeText;
         View unreadBadge;
-        TextView unreadCount;
         View onlineIndicator;
         ImageView peerVerified;
 
@@ -174,7 +225,6 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
             lastMessageText = itemView.findViewById(R.id.last_message_text);
             timeText = itemView.findViewById(R.id.time_text);
             unreadBadge = itemView.findViewById(R.id.unread_badge);
-            unreadCount = itemView.findViewById(R.id.unread_count);
             onlineIndicator = itemView.findViewById(R.id.online_indicator);
             peerVerified = itemView.findViewById(R.id.peer_verified);
         }

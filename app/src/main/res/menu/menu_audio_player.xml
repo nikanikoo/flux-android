@@ -5,7 +5,7 @@
     <item
         android:id="@+id/action_playlist"
         android:title="@string/playlist"
-        android:icon="@drawable/ic_playlist"
+        android:icon="@drawable/ic_menu"
         app:showAsAction="ifRoom"/>
 
 </menu>

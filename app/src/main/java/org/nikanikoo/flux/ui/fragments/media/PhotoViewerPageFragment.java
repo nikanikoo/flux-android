@@ -76,12 +76,6 @@ public class PhotoViewerPageFragment extends Fragment {
             // Включаем зум и панорамирование
             photoView.setZoomable(true);
             
-            // Настраиваем обработчик тапов
-            photoView.setOnPhotoTapListener((view, x, y) -> {
-                if (getActivity() instanceof PhotoViewerActivity) {
-                    ((PhotoViewerActivity) getActivity()).toggleUI();
-                }
-            });
             
             // Настраиваем обработчик изменения масштаба для плавности
             photoView.setOnScaleChangeListener((scaleFactor, focusX, focusY) -> {

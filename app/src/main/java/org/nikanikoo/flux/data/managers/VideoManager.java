@@ -119,8 +119,33 @@ public class VideoManager extends BaseManager<VideoManager> {
             video.setTitle(json.optString("title", ""));
             video.setDescription(json.optString("description", ""));
             video.setDuration(json.optInt("duration", 0));
-            video.setImage(json.optString("image", ""));
-            video.setFirstFrame(json.optString("first_frame", ""));
+            if (json.has("image")) {
+                if (json.optJSONArray("image") != null) {
+                    JSONArray images = json.getJSONArray("image");
+                    if (images.length() > 0) {
+                        video.setImage(images.getJSONObject(images.length() - 1).optString("url", ""));
+                    }
+                } else {
+                    video.setImage(json.optString("image", ""));
+                }
+            } else if (json.has("photo_800")) {
+                video.setImage(json.optString("photo_800", ""));
+            } else if (json.has("photo_320")) {
+                video.setImage(json.optString("photo_320", ""));
+            } else if (json.has("photo_130")) {
+                video.setImage(json.optString("photo_130", ""));
+            }
+
+            if (json.has("first_frame")) {
+                if (json.optJSONArray("first_frame") != null) {
+                    JSONArray frames = json.getJSONArray("first_frame");
+                    if (frames.length() > 0) {
+                        video.setFirstFrame(frames.getJSONObject(frames.length() - 1).optString("url", ""));
+                    }
+                } else {
+                    video.setFirstFrame(json.optString("first_frame", ""));
+                }
+            }
             video.setDate(json.optLong("date", 0));
             video.setAddingDate(json.optLong("adding_date", 0));
             video.setViews(json.optInt("views", 0));

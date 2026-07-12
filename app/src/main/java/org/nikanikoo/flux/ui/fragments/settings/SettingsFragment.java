@@ -46,11 +46,13 @@ public class SettingsFragment extends Fragment {
     private TextView appVersionValue;
     private TextView instanceUrlValue;
     private TextView languageValue;
+    private TextView balanceValue;
 
     // Clickable items
     private View settingsAboutApp;
     private View settingsAboutInstance;
     private View cardLanguage;
+    private View cardBalance;
 
     private MaterialButton btnLogout;
 
@@ -68,6 +70,7 @@ public class SettingsFragment extends Fragment {
         setupDataSettings(view);
         setupLanguageSettings(view);
         setupAccountsSettings(view);
+        setupBalanceSettings(view);
         setupAboutSettings();
         setupLogout();
 
@@ -79,11 +82,13 @@ public class SettingsFragment extends Fragment {
         appVersionValue = view.findViewById(R.id.app_version_value);
         instanceUrlValue = view.findViewById(R.id.instance_url_value);
         languageValue = view.findViewById(R.id.language_value);
+        balanceValue = view.findViewById(R.id.balance_value);
 
         // Clickable items
         settingsAboutApp = view.findViewById(R.id.settings_about_app);
         settingsAboutInstance = view.findViewById(R.id.settings_about_instance);
         cardLanguage = view.findViewById(R.id.card_language);
+        cardBalance = view.findViewById(R.id.card_balance);
 
         btnLogout = view.findViewById(R.id.btn_logout);
     }
@@ -159,10 +164,117 @@ public class SettingsFragment extends Fragment {
     public void onResume() {
         super.onResume();
         updateLanguageValue();
+        loadBalance();
         if (getActivity() != null) {
             androidx.appcompat.app.AppCompatActivity activity = (androidx.appcompat.app.AppCompatActivity) getActivity();
             if (activity.getSupportActionBar() != null) {
                 activity.getSupportActionBar().setTitle(getString(R.string.settings_title));
+            }
+        }
+    }
+
+    private void setupBalanceSettings(View view) {
+        if (cardBalance != null) {
+            cardBalance.setOnClickListener(v -> {
+                Intent intent = new Intent(requireContext(), org.nikanikoo.flux.ui.activities.BalanceActivity.class);
+                startActivity(intent);
+            });
+        }
+    }
+
+    private void loadBalance() {
+        if (balanceValue == null) return;
+        
+        android.content.SharedPreferences prefs = requireContext().getSharedPreferences("balance_cache", android.content.Context.MODE_PRIVATE);
+        int cachedBalance = prefs.getInt("cached_balance", -1);
+        if (cachedBalance != -1) {
+            balanceValue.setText(formatVotes(cachedBalance));
+        } else {
+            balanceValue.setText(getString(R.string.loading));
+        }
+        
+        OpenVKApi.getInstance(requireContext()).callMethod("account.getBalance", null, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(org.json.JSONObject response) {
+                if (isAdded() && getActivity() != null) {
+                    try {
+                        org.json.JSONObject responseObj = response.getJSONObject("response");
+                        int votes = responseObj.optInt("votes", 0);
+                        
+                        prefs.edit().putInt("cached_balance", votes).apply();
+                        
+                        balanceValue.setText(formatVotes(votes));
+                    } catch (Exception e) {
+                        org.nikanikoo.flux.utils.Logger.e("SettingsFragment", "Failed to parse balance response", e);
+                        balanceValue.setText(getString(R.string.settings_balance_desc));
+                    }
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                if (isAdded() && getActivity() != null) {
+                    org.nikanikoo.flux.utils.Logger.e("SettingsFragment", "Failed to load balance: " + error);
+                    if (cachedBalance == -1) {
+                        balanceValue.setText(getString(R.string.settings_balance_desc));
+                    }
+                }
+            }
+        });
+    }
+
+    private String formatVotes(int count) {
+        LocaleManager localeMgr = LocaleManager.getInstance(requireContext());
+        java.util.Locale locale;
+        int langInt = localeMgr.getLanguage();
+        if (langInt == LocaleManager.LANGUAGE_SYSTEM) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                locale = android.content.res.Resources.getSystem().getConfiguration().getLocales().get(0);
+            } else {
+                locale = android.content.res.Resources.getSystem().getConfiguration().locale;
+            }
+        } else {
+            switch (langInt) {
+                case LocaleManager.LANGUAGE_RUSSIAN:
+                    locale = new java.util.Locale("ru", "RU");
+                    break;
+                case LocaleManager.LANGUAGE_UKRAINIAN:
+                    locale = new java.util.Locale("uk", "UA");
+                    break;
+                case LocaleManager.LANGUAGE_ENGLISH:
+                    locale = new java.util.Locale("en", "US");
+                    break;
+                default:
+                    locale = new java.util.Locale("ru", "RU");
+                    break;
+            }
+        }
+        String lang = locale.getLanguage();
+        if ("uk".equals(lang)) {
+            int lastDigit = count % 10;
+            int lastTwoDigits = count % 100;
+            if (lastTwoDigits >= 11 && lastTwoDigits <= 19) {
+                return count + " голосів";
+            } else if (lastDigit == 1) {
+                return count + " голос";
+            } else if (lastDigit >= 2 && lastDigit <= 4) {
+                return count + " голоси";
+            } else {
+                return count + " голосів";
+            }
+        } else if ("en".equals(lang)) {
+            return count == 1 ? "1 vote" : count + " votes";
+        } else {
+            int lastDigit = count % 10;
+            int lastTwoDigits = count % 100;
+            if (lastTwoDigits >= 11 && lastTwoDigits <= 19) {
+                return count + " голосов";
+            } else if (lastDigit == 1) {
+                return count + " голос";
+            } else if (lastDigit >= 2 && lastDigit <= 4) {
+                return count + " голоса";
+            } else {
+                return count + " голосов";
             }
         }
     }
@@ -247,6 +359,7 @@ public class SettingsFragment extends Fragment {
             // Clear cache and reset API instance
             ProfileManager.getInstance(requireContext()).clearCache();
             MessageNotificationManager.getInstance(requireContext()).clearCache();
+            org.nikanikoo.flux.ui.fragments.news.NewsFragment.clearCache();
 
             // Reset OpenVKApi to use new token
             org.nikanikoo.flux.data.managers.api.OpenVKApi.resetInstance();
@@ -268,6 +381,7 @@ public class SettingsFragment extends Fragment {
         
         // Clear profile cache
         ProfileManager.getInstance(requireContext()).clearCache();
+        org.nikanikoo.flux.ui.fragments.news.NewsFragment.clearCache();
         
         // Clear notifications cache and cancel all notifications
         MessageNotificationManager.getInstance(requireContext()).clearCache();

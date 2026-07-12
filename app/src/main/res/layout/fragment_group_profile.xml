@@ -23,6 +23,7 @@
     android:id="@+id/group_content"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:descendantFocusability="blocksDescendants"
     android:visibility="gone"
     tools:context=".ui.fragments.profile.GroupProfileFragment">
 
@@ -127,7 +128,7 @@
                         android:id="@+id/expand_arrow"
                         android:layout_width="24dp"
                         android:layout_height="24dp"
-                        android:src="@drawable/ic_expand_more"
+                        android:src="@drawable/ic_keyboard_arrow_down"
                         android:layout_marginEnd="8dp" />
 
                 </LinearLayout>
@@ -558,6 +559,7 @@
             android:id="@+id/recycler_group_posts"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:descendantFocusability="blocksDescendants"
             android:nestedScrollingEnabled="false"
             android:layout_marginTop="8dp" />
 

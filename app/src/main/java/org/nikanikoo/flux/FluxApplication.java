@@ -22,9 +22,16 @@ import okhttp3.Cache;
 import okhttp3.OkHttpClient;
 
 public class FluxApplication extends Application {
+    private static FluxApplication instance;
+
+    public static FluxApplication getInstance() {
+        return instance;
+    }
 
     @Override
     public void onCreate() {
+        instance = this;
+        Logger.init(this);
         super.onCreate();
 
         Logger.d("FluxApplication", "Инициализация приложения");

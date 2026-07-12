@@ -8,92 +8,112 @@
     android:background="?attr/colorPrimaryContainer">
 
     <!-- Current Account Header -->
-    <LinearLayout
-        android:id="@+id/current_account_header"
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="bottom"
-        android:layout_marginTop="32dp"
-        android:padding="16dp"
-        android:clickable="true"
-        android:focusable="true"
-        android:background="?attr/selectableItemBackground">
+        android:layout_height="wrap_content">
 
         <LinearLayout
-            android:layout_width="0dp"
+            android:id="@+id/current_account_header"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical">
-
-            <androidx.appcompat.widget.AppCompatImageView
-                android:id="@+id/drawer_avatar"
-                android:layout_width="64dp"
-                android:layout_height="64dp"
-                android:src="@drawable/camera_200"
-                android:background="?android:attr/selectableItemBackgroundBorderless"/>
+            android:orientation="horizontal"
+            android:gravity="bottom"
+            android:layout_marginTop="32dp"
+            android:padding="16dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackground">
 
             <LinearLayout
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
+                android:layout_weight="1"
+                android:orientation="vertical">
 
-                <TextView
-                    android:id="@+id/drawer_name"
+                <androidx.appcompat.widget.AppCompatImageView
+                    android:id="@+id/drawer_avatar"
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:src="@drawable/camera_200"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"/>
+
+                <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/drawer_name"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/empty_loading"
+                        android:textColor="?attr/colorOnPrimaryContainer"
+                        android:textStyle="bold"
+                        android:textSize="16sp"/>
+
+                    <ImageView
+                        android:id="@+id/drawer_verified_badge"
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:layout_marginStart="4dp"
+                        android:layout_gravity="center_vertical"
+                        android:src="@drawable/ic_verified"
+                        android:visibility="gone"/>
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/drawer_username"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
                     android:text="@string/empty_loading"
                     android:textColor="?attr/colorOnPrimaryContainer"
-                    android:textStyle="bold"
-                    android:textSize="16sp"/>
+                    android:textSize="14sp"
+                    android:alpha="0.8"/>
 
-                <ImageView
-                    android:id="@+id/drawer_verified_badge"
-                    android:layout_width="16dp"
-                    android:layout_height="16dp"
-                    android:layout_marginStart="4dp"
-                    android:layout_gravity="center_vertical"
-                    android:src="@drawable/ic_verified"
-                    android:visibility="gone"/>
+                <TextView
+                    android:id="@+id/drawer_instance"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/empty_loading"
+                    android:textColor="?attr/colorOnPrimaryContainer"
+                    android:textSize="12sp"
+                    android:alpha="0.6"/>
 
             </LinearLayout>
 
-            <TextView
-                android:id="@+id/drawer_username"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="@string/empty_loading"
-                android:textColor="?attr/colorOnPrimaryContainer"
-                android:textSize="14sp"
-                android:alpha="0.8"/>
-
-            <TextView
-                android:id="@+id/drawer_instance"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
-                android:text="@string/empty_loading"
-                android:textColor="?attr/colorOnPrimaryContainer"
-                android:textSize="12sp"
-                android:alpha="0.6"/>
+            <!-- Expand/Collapse Arrow -->
+            <ImageView
+                android:id="@+id/accounts_expand_icon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_keyboard_arrow_down"
+                android:rotation="0"
+                android:alpha="0.7"
+                android:layout_gravity="center_vertical" />
 
         </LinearLayout>
 
-        <!-- Expand/Collapse Arrow -->
-        <ImageView
-            android:id="@+id/accounts_expand_icon"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:src="@drawable/ic_arrow_down"
-            android:rotation="0"
-            android:alpha="0.7"
-            android:layout_gravity="center_vertical"
-            android:padding="4dp"/>
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/theme_toggle_btn"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="top|end"
+            android:layout_marginTop="32dp"
+            android:layout_marginEnd="12dp"
+            android:padding="12dp"
+            android:src="@drawable/ic_sunny"
+            android:tint="?attr/colorOnPrimaryContainer"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="Switch theme" />
 
-    </LinearLayout>
+    </FrameLayout>
 
     <!-- Accounts List (Expandable) -->
     <LinearLayout

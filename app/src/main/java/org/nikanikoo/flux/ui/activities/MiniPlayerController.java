@@ -258,12 +258,12 @@ public class MiniPlayerController {
         if (miniPlayerIcon == null || artist == null || title == null || 
             artist.isEmpty() || title.isEmpty()) {
             if (miniPlayerIcon != null) {
-                miniPlayerIcon.setImageResource(R.drawable.ic_music);
+                miniPlayerIcon.setImageResource(R.drawable.ic_music_note);
             }
             return;
         }
 
-        albumArtFetcher.loadAlbumArt(artist, title, miniPlayerIcon, R.drawable.ic_music);
+        albumArtFetcher.loadAlbumArt(artist, title, miniPlayerIcon, R.drawable.ic_music_note);
     }
     
     /**

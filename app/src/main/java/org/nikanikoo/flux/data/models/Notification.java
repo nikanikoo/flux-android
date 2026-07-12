@@ -111,21 +111,21 @@ public class Notification {
     public int getTypeIcon() {
         switch (type) {
             case "like_post":
-                return R.drawable.ic_like;
+                return R.drawable.ic_favorite;
             case "comment_post":
-                return R.drawable.ic_notes;
+                return R.drawable.ic_note_stack;
             case "comment_photo":
                 return R.drawable.ic_photo;
             case "sent_gift":
-                return R.drawable.ic_gift;
+                return R.drawable.ic_redeem;
             case "wall":
-                return R.drawable.ic_news;
+                return R.drawable.ic_newspaper;
             case "mention":
-                return R.drawable.ic_messages;
+                return R.drawable.ic_chat_bubble;
             case "copy_post":
-                return R.drawable.ic_news;
+                return R.drawable.ic_newspaper;
             default:
-                return R.drawable.ic_notification;
+                return R.drawable.ic_notifications;
         }
     }
 

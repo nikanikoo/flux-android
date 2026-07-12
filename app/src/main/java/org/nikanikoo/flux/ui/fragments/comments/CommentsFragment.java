@@ -21,6 +21,7 @@ import com.squareup.picasso.Picasso;
 
 import org.nikanikoo.flux.data.models.Comment;
 import org.nikanikoo.flux.ui.adapters.comments.CommentsAdapter;
+import org.nikanikoo.flux.ui.adapters.posts.PostImagesCollage;
 import org.nikanikoo.flux.data.managers.CommentsManager;
 import org.nikanikoo.flux.data.managers.api.OpenVKApi;
 import org.nikanikoo.flux.data.models.Post;
@@ -31,6 +32,7 @@ import org.nikanikoo.flux.ui.activities.PhotoViewerActivity;
 import org.nikanikoo.flux.ui.dialogs.RepostDialog;
 import org.nikanikoo.flux.ui.fragments.profile.ProfileFragment;
 import org.nikanikoo.flux.ui.fragments.profile.GroupProfileFragment;
+import org.nikanikoo.flux.utils.SafeLinkMovementMethod;
 import org.nikanikoo.flux.utils.ValidationUtils;
 
 import java.util.ArrayList;
@@ -54,13 +56,22 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
     private ImageView originalPostAvatar;
     private TextView originalPostAuthorName;
     private TextView originalPostTimestamp;
+    private ImageView originalPostDeviceIcon;
     private TextView originalPostContent;
-    private ImageView originalPostImage;
+    private PostImagesCollage originalPostImage;
+    private android.widget.LinearLayout originalPostAudioContainer;
+    private android.widget.LinearLayout originalPostVideoContainer;
+    private android.widget.LinearLayout originalPostPollContainer;
+    private TextView originalPostUnsupportedElements;
+    private View originalPostBodyContainer;
+    private View originalPostNsfwSpoiler;
     private View originalPostLikeButton;
     private ImageView originalPostLikeIcon;
     private TextView originalPostLikeCount;
     private TextView originalPostCommentCount;
     private View originalPostShareButton;
+    private View originalPostCopyrightContainer;
+    private TextView originalPostCopyrightLink;
 
     // Views для ввода комментария
     private EditText editComment;
@@ -116,13 +127,22 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
         originalPostAvatar = view.findViewById(R.id.original_post_avatar);
         originalPostAuthorName = view.findViewById(R.id.original_post_author_name);
         originalPostTimestamp = view.findViewById(R.id.original_post_timestamp);
+        originalPostDeviceIcon = view.findViewById(R.id.original_post_device_icon);
         originalPostContent = view.findViewById(R.id.original_post_content);
         originalPostImage = view.findViewById(R.id.original_post_image);
+        originalPostAudioContainer = view.findViewById(R.id.original_post_audio_container);
+        originalPostVideoContainer = view.findViewById(R.id.original_post_video_container);
+        originalPostPollContainer = view.findViewById(R.id.original_post_poll_container);
+        originalPostUnsupportedElements = view.findViewById(R.id.original_post_unsupported_elements);
+        originalPostBodyContainer = view.findViewById(R.id.original_post_body_container);
+        originalPostNsfwSpoiler = view.findViewById(R.id.original_post_nsfw_spoiler);
         originalPostLikeButton = view.findViewById(R.id.original_post_like_button);
         originalPostLikeIcon = view.findViewById(R.id.original_post_like_icon);
         originalPostLikeCount = view.findViewById(R.id.original_post_like_count);
         originalPostCommentCount = view.findViewById(R.id.original_post_comment_count);
         originalPostShareButton = view.findViewById(R.id.original_post_share_button);
+        originalPostCopyrightContainer = view.findViewById(R.id.original_post_copyright_container);
+        originalPostCopyrightLink = view.findViewById(R.id.original_post_copyright_link);
         
         // Комментарии
         recyclerComments = view.findViewById(R.id.recycler_comments);
@@ -190,9 +210,40 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
     private void displayOriginalPost() {
         originalPostAuthorName.setText(originalPost.getAuthorName());
         originalPostTimestamp.setText(originalPost.getTimestamp());
+        setDeviceIcon(originalPostDeviceIcon, originalPost.getPlatform());
+        handleCopyright(originalPostCopyrightContainer, originalPostCopyrightLink, originalPost);
         originalPostContent.setText(ValidationUtils.SanitizeText(originalPost.getContent()));
         originalPostLikeCount.setText(String.valueOf(originalPost.getLikeCount()));
         originalPostCommentCount.setText(String.valueOf(originalPost.getCommentCount()));
+        
+        if (originalPostNsfwSpoiler != null && originalPostBodyContainer != null) {
+            if (originalPost.isExplicit() && !originalPost.isNsfwRevealed()) {
+                originalPostNsfwSpoiler.setVisibility(View.VISIBLE);
+                originalPostNsfwSpoiler.setAlpha(1f);
+                originalPostBodyContainer.setVisibility(View.INVISIBLE);
+                
+                originalPostNsfwSpoiler.setOnClickListener(v -> {
+                    v.getRootView().clearFocus();
+                    
+                    originalPost.setNsfwRevealed(true);
+                    
+                    originalPostBodyContainer.setVisibility(View.VISIBLE);
+                    originalPostNsfwSpoiler.animate()
+                        .alpha(0f)
+                        .setDuration(300)
+                        .withEndAction(() -> {
+                            originalPostNsfwSpoiler.setVisibility(View.GONE);
+                            originalPostNsfwSpoiler.setAlpha(1f);
+                        })
+                        .start();
+                });
+            } else {
+                originalPostNsfwSpoiler.setVisibility(View.GONE);
+                originalPostNsfwSpoiler.setOnClickListener(null);
+                originalPostBodyContainer.setVisibility(View.VISIBLE);
+                originalPostBodyContainer.setAlpha(1f);
+            }
+        }
         
         // Загружаем аватарку автора
         if (originalPost.getAuthorAvatarUrl() != null && !originalPost.getAuthorAvatarUrl().isEmpty()) {
@@ -242,19 +293,47 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
         // Загружаем изображения поста
         List<String> imageUrls = originalPost.getImageUrls();
         if (imageUrls != null && !imageUrls.isEmpty()) {
-            originalPostImage.setVisibility(View.VISIBLE);
-            Picasso.get()
-                    .load(imageUrls.get(0))
-                    .placeholder(android.R.drawable.ic_menu_gallery)
-                    .error(android.R.drawable.ic_menu_gallery)
-                    .into(originalPostImage);
-            
-            // Добавляем обработчик клика на изображение поста
-            originalPostImage.setOnClickListener(v -> {
-                PhotoViewerActivity.start(getContext(), imageUrls, 0, originalPost, originalPost.getAuthorName());
+            originalPostImage.setImages(imageUrls);
+            originalPostImage.setOnImageClickListener((position, urls) -> {
+                PhotoViewerActivity.start(getContext(), urls, position, originalPost, originalPost.getAuthorName());
             });
+            originalPostImage.setVisibility(View.VISIBLE);
         } else {
             originalPostImage.setVisibility(View.GONE);
+        }
+
+        if (originalPost.getAudioAttachments() != null && !originalPost.getAudioAttachments().isEmpty()) {
+            org.nikanikoo.flux.ui.views.AudioAttachmentView.addAudioAttachments(
+                getContext(), 
+                originalPostAudioContainer, 
+                originalPost.getAudioAttachments(), 
+                null
+            );
+        } else {
+            org.nikanikoo.flux.ui.views.AudioAttachmentView.clearAudioAttachments(originalPostAudioContainer);
+        }
+
+        if (originalPost.getVideoAttachments() != null && !originalPost.getVideoAttachments().isEmpty()) {
+            addVideoAttachments(originalPostVideoContainer, originalPost.getVideoAttachments());
+        } else {
+            clearVideoAttachments(originalPostVideoContainer);
+        }
+
+        if (originalPost.getPollAttachments() != null && !originalPost.getPollAttachments().isEmpty()) {
+            org.nikanikoo.flux.ui.views.PollAttachmentView.addPollAttachments(
+                getContext(),
+                originalPostPollContainer,
+                originalPost.getPollAttachments()
+            );
+        } else {
+            org.nikanikoo.flux.ui.views.PollAttachmentView.clearPollAttachments(originalPostPollContainer);
+        }
+
+        if (originalPost.getUnsupportedElementsText() != null && !originalPost.getUnsupportedElementsText().isEmpty()) {
+            originalPostUnsupportedElements.setVisibility(View.VISIBLE);
+            originalPostUnsupportedElements.setText(originalPost.getUnsupportedElementsText());
+        } else {
+            originalPostUnsupportedElements.setVisibility(View.GONE);
         }
         
         // Обновляем состояние лайка
@@ -576,7 +655,10 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
         
         comment.setLiked(newLikedState);
         comment.setLikesCount(newLikeCount);
-        commentsAdapter.notifyDataSetChanged();
+        int index = comments.indexOf(comment);
+        if (index >= 0) {
+            commentsAdapter.notifyItemChanged(index, "LIKE_UPDATE");
+        }
 
         // Передаем ОРИГИНАЛЬНОЕ состояние в toggleCommentLike
         commentsManager.toggleCommentLikeWithOriginalState(comment, originalPost.getOwnerId(), originalPost.getPostId(), 
@@ -588,7 +670,10 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
                     getActivity().runOnUiThread(() -> {
                         comment.setLikesCount(serverLikesCount);
                         comment.setLiked(serverIsLiked);
-                        commentsAdapter.notifyDataSetChanged();
+                        int successIndex = comments.indexOf(comment);
+                        if (successIndex >= 0) {
+                            commentsAdapter.notifyItemChanged(successIndex, "LIKE_UPDATE");
+                        }
                     });
                 }
             }
@@ -600,7 +685,10 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
                     getActivity().runOnUiThread(() -> {
                         comment.setLiked(originalLikedState);
                         comment.setLikesCount(originalLikeCount);
-                        commentsAdapter.notifyDataSetChanged();
+                        int errorIndex = comments.indexOf(comment);
+                        if (errorIndex >= 0) {
+                            commentsAdapter.notifyItemChanged(errorIndex, "LIKE_UPDATE");
+                        }
                         Toast.makeText(getContext(), getString(R.string.error_loading) + error, Toast.LENGTH_SHORT).show();
                     });
                 }
@@ -644,5 +732,77 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
         fakePost.setImageUrl(imageUrl);
         
         PhotoViewerActivity.start(getContext(), imageUrls, 0, fakePost, getString(R.string.photo_viewer));
+    }
+
+    private void handleCopyright(View container, TextView linkView, Post post) {
+        if (container == null || linkView == null) return;
+        if (post != null && post.getCopyrightLink() != null && !post.getCopyrightLink().isEmpty()) {
+            String displayText = post.getCopyrightName() != null && !post.getCopyrightName().isEmpty() 
+                ? post.getCopyrightName() 
+                : post.getCopyrightLink();
+            linkView.setText(displayText);
+            linkView.setOnClickListener(v -> {
+                SafeLinkMovementMethod.handleLinkClick(requireContext(), post.getCopyrightLink());
+            });
+            container.setVisibility(View.VISIBLE);
+        } else {
+            container.setVisibility(View.GONE);
+            linkView.setOnClickListener(null);
+        }
+    }
+
+    private void setDeviceIcon(ImageView imageView, String platform) {
+        if (imageView == null) return;
+        if (platform != null) {
+            int iconResId = 0;
+            switch (platform.toLowerCase()) {
+                case "android":
+                    iconResId = R.drawable.ic_android;
+                    break;
+                case "iphone":
+                    iconResId = R.drawable.ic_ios;
+                    break;
+                case "wphone":
+                    iconResId = R.drawable.ic_window;
+                    break;
+                case "mobile":
+                    iconResId = R.drawable.ic_mobile_3;
+                    break;
+                case "api":
+                    iconResId = R.drawable.ic_settings;
+                    break;
+            }
+            if (iconResId != 0) {
+                imageView.setImageResource(iconResId);
+                imageView.setVisibility(View.VISIBLE);
+            } else {
+                imageView.setVisibility(View.GONE);
+            }
+        } else {
+            imageView.setVisibility(View.GONE);
+        }
+    }
+
+    private void addVideoAttachments(android.widget.LinearLayout container, List<org.nikanikoo.flux.data.models.Video> videos) {
+        if (container == null || videos == null || videos.isEmpty()) {
+            return;
+        }
+        
+        container.removeAllViews();
+        container.setVisibility(View.VISIBLE);
+        
+        for (org.nikanikoo.flux.data.models.Video video : videos) {
+            org.nikanikoo.flux.ui.views.VideoAttachmentView videoView =
+                new org.nikanikoo.flux.ui.views.VideoAttachmentView(getContext());
+            videoView.setVideo(video);
+            container.addView(videoView);
+        }
+    }
+    
+    private void clearVideoAttachments(android.widget.LinearLayout container) {
+        if (container != null) {
+            container.removeAllViews();
+            container.setVisibility(View.GONE);
+        }
     }
 }

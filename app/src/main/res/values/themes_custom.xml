@@ -167,4 +167,10 @@
         <item name="cardViewStyle">@style/Widget.App.CardView</item>
     </style>
 
+    <!-- AMOLED Theme -->
+    <style name="Theme.Flux.Amoled" parent="Theme.Flux" />
+    <style name="Theme.Flux.Green.Amoled" parent="Theme.Flux.Green" />
+    <style name="Theme.Flux.Purple.Amoled" parent="Theme.Flux.Purple" />
+    <style name="Theme.Flux.Red.Amoled" parent="Theme.Flux.Red" />
+
 </resources>

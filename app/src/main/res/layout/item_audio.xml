@@ -26,7 +26,8 @@
             android:id="@+id/audio_cover"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:src="@drawable/ic_music"
+            android:src="@drawable/ic_music_note"
+            android:padding="8dp"
             android:scaleType="centerCrop"
             android:contentDescription="Обложка"/>
 
@@ -67,35 +68,28 @@
 
             </LinearLayout>
 
-            <TextView
-                android:id="@+id/audio_duration"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="3:45"
-                android:layout_gravity="center_vertical"
-                android:textSize="12sp"
-                android:textColor="?android:attr/textColorTertiary"/>
-
         </LinearLayout>
 
         <ImageView
-            android:id="@+id/audio_add_button"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:src="@drawable/ic_add"
-            android:background="?attr/selectableItemBackgroundBorderless"
+            android:id="@+id/audio_downloaded_indicator"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_download"
+            android:visibility="gone"
             android:scaleType="centerInside"
-            android:padding="8dp"/>
+            android:padding="4dp"
+            android:contentDescription="@string/audio_downloaded"/>
 
         <ImageView
             android:id="@+id/audio_more_button"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:src="@drawable/ic_more"
+            android:src="@drawable/ic_more_vert"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:scaleType="centerInside"
             android:padding="8dp"/>
 
     </LinearLayout>
+
 
 </com.google.android.material.card.MaterialCardView>

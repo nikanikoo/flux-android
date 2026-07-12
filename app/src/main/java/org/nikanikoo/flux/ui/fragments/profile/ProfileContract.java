@@ -53,6 +53,11 @@ public interface ProfileContract {
         void openCreatePost(int ownerId);
         
         /**
+         * Открыть чат с пользователем
+         */
+        void openChat(int userId, String userName);
+        
+        /**
          * Показать/скрыть кнопку создания поста
          */
         void setCreatePostButtonVisible(boolean visible);
@@ -116,6 +121,21 @@ public interface ProfileContract {
          * Обработать клик по деталям профиля
          */
         void onDetailsClick();
+        
+        /**
+         * Обработать клик по кнопке сообщения
+         */
+        void onMessageButtonClick();
+        
+        /**
+         * Обработать клик по кнопке добавления/удаления из друзей
+         */
+        void onFriendButtonClick(boolean isFriend);
+        
+        /**
+         * Обработать клик по кнопке редактирования профиля
+         */
+        void onEditProfileClick();
         
         /**
          * Получить текущий профиль

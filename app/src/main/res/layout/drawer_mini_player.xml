@@ -29,7 +29,7 @@
             android:id="@+id/mini_player_icon"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:src="@drawable/ic_music"
+            android:src="@drawable/ic_music_note"
             android:scaleType="centerCrop"
             android:contentDescription="Обложка трека"/>
 

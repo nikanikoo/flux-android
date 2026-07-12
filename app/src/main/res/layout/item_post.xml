@@ -65,12 +65,29 @@
 
                 </LinearLayout>
 
-                <TextView
-                    android:id="@+id/post_timestamp"
+                <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="12sp"
-                    android:textColor="?attr/colorOnSurfaceVariant" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/post_timestamp"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="12sp"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    <ImageView
+                        android:id="@+id/post_device_icon"
+                        android:layout_width="14dp"
+                        android:layout_height="14dp"
+                        android:layout_marginStart="4dp"
+                        android:layout_gravity="center_vertical"
+                        android:visibility="gone"
+                        app:tint="?attr/colorOnSurfaceVariant" />
+
+                </LinearLayout>
 
             </LinearLayout>
 
@@ -84,215 +101,417 @@
 
         </LinearLayout>
 
-        <!-- Текст поста -->
-        <TextView
-            android:id="@+id/post_content"
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            android:breakStrategy="balanced"
-            android:lineSpacingExtra="2dp"
-            android:maxLines="1000"
-            android:textColor="?attr/colorOnSurface"
-            android:textIsSelectable="true"
-            android:textSize="14sp" />
-
-        <!-- Оригинальный пост (для репостов) -->
-        <androidx.cardview.widget.CardView
-            android:id="@+id/original_post_container"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            android:visibility="gone"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="2dp"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?attr/selectableItemBackground">
+            android:layout_marginBottom="12dp">
 
             <LinearLayout
+                android:id="@+id/post_body_container"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="12dp">
+                android:orientation="vertical">
 
-                <!-- Заголовок оригинального поста -->
-                <LinearLayout
+                <!-- Текст поста -->
+                <TextView
+                    android:id="@+id/post_content"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginBottom="8dp">
+                    android:layout_marginBottom="12dp"
+                    android:breakStrategy="balanced"
+                    android:lineSpacingExtra="2dp"
+                    android:maxLines="1000"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textIsSelectable="true"
+                    android:textSize="14sp" />
 
-                    <ImageView
-                        android:id="@+id/original_post_avatar"
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:src="@drawable/camera_200"
-                        android:scaleType="centerCrop"
-                        android:background="@drawable/post_item" />
+                <!-- Оригинальный пост (для репостов) -->
+                <androidx.cardview.widget.CardView
+                    android:id="@+id/original_post_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    android:visibility="gone"
+                    app:cardCornerRadius="8dp"
+                    app:cardElevation="2dp"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?attr/selectableItemBackground">
 
                     <LinearLayout
-                        android:layout_width="0dp"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
                         android:orientation="vertical"
-                        android:layout_marginStart="8dp">
+                        android:padding="12dp">
 
+                        <!-- Заголовок оригинального поста -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="8dp">
+
+                            <ImageView
+                                android:id="@+id/original_post_avatar"
+                                android:layout_width="32dp"
+                                android:layout_height="32dp"
+                                android:src="@drawable/camera_200"
+                                android:scaleType="centerCrop"
+                                android:background="@drawable/post_item" />
+
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:orientation="vertical"
+                                android:layout_marginStart="8dp">
+
+                                <LinearLayout
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="horizontal"
+                                    android:gravity="center_vertical">
+
+                                    <TextView
+                                        android:id="@+id/original_post_author_name"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:textStyle="bold"
+                                        android:textSize="14sp"
+                                        android:textColor="?attr/colorOnSurface"
+                                        android:maxLines="1"
+                                        android:ellipsize="end" />
+
+                                    <ImageView
+                                        android:id="@+id/original_post_author_verified"
+                                        android:layout_width="14dp"
+                                        android:layout_height="14dp"
+                                        android:layout_marginStart="4dp"
+                                        android:layout_gravity="center_vertical"
+                                        android:src="@drawable/ic_verified"
+                                        android:visibility="gone" />
+
+                                </LinearLayout>
+
+                                <LinearLayout
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="horizontal"
+                                    android:gravity="center_vertical">
+
+                                    <TextView
+                                        android:id="@+id/original_post_timestamp"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:textSize="11sp"
+                                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                                    <ImageView
+                                        android:id="@+id/original_post_device_icon"
+                                        android:layout_width="12dp"
+                                        android:layout_height="12dp"
+                                        android:layout_marginStart="4dp"
+                                        android:layout_gravity="center_vertical"
+                                        android:visibility="gone"
+                                        app:tint="?attr/colorOnSurfaceVariant" />
+
+                                </LinearLayout>
+
+                            </LinearLayout>
+
+                        </LinearLayout>
+
+                        <!-- Область контента оригинального поста с поддержкой NSFW спойлера -->
+                        <FrameLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="8dp">
+
+                            <LinearLayout
+                                android:id="@+id/original_post_body_container"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:orientation="vertical">
+
+                                <!-- Текст оригинального поста -->
+                                <TextView
+                                    android:id="@+id/original_post_content"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:textSize="13sp"
+                                    android:textColor="?attr/colorOnSurface"
+                                    android:layout_marginBottom="8dp"
+                                    android:lineSpacingExtra="1dp"
+                                    android:breakStrategy="balanced"
+                                    android:maxLines="1000" />
+
+                                <!-- Изображения оригинального поста -->
+                                <org.nikanikoo.flux.ui.adapters.posts.PostImagesCollage
+                                    android:id="@+id/original_post_images_collage"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:visibility="gone" />
+
+                                <!-- Аудио вложения оригинального поста -->
+                                <LinearLayout
+                                    android:id="@+id/original_post_audio_container"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="vertical"
+                                    android:visibility="gone"
+                                    android:layout_marginBottom="8dp"/>
+
+                                <!-- Видео вложения оригинального поста -->
+                                <LinearLayout
+                                    android:id="@+id/original_post_video_container"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="vertical"
+                                    android:visibility="gone"
+                                    android:layout_marginBottom="8dp"/>
+
+                                <LinearLayout
+                                    android:id="@+id/original_post_poll_container"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="vertical"
+                                    android:visibility="gone"
+                                    android:layout_marginBottom="8dp"/>
+
+                                <!-- Неподдерживаемые элементы оригинального поста -->
+                                <TextView
+                                    android:id="@+id/original_post_unsupported_elements"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:text=""
+                                    android:textSize="11sp"
+                                    android:textColor="@android:color/holo_orange_dark"
+                                    android:textStyle="italic"
+                                    android:layout_marginBottom="8dp"
+                                    android:visibility="gone"
+                                    android:background="#FFF3E0"
+                                    android:padding="6dp"
+                                    android:breakStrategy="balanced"
+                                    android:maxLines="1000" />
+
+                                <!-- Источник -->
+                                <LinearLayout
+                                    android:id="@+id/original_post_copyright_container"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="horizontal"
+                                    android:gravity="center_vertical"
+                                    android:layout_marginTop="4dp"
+                                    android:layout_marginBottom="6dp"
+                                    android:visibility="gone">
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="Источник: "
+                                        android:textSize="11sp"
+                                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                                    <TextView
+                                        android:id="@+id/original_post_copyright_link"
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:textSize="11sp"
+                                        android:textColor="?attr/colorPrimary"
+                                        android:textStyle="bold"
+                                        android:background="?attr/selectableItemBackground"
+                                        android:clickable="true"
+                                        android:focusable="true"/>
+
+                                </LinearLayout>
+
+                            </LinearLayout>
+
+                            <!-- NSFW Спойлер для репоста -->
+                            <LinearLayout
+                                android:id="@+id/original_post_nsfw_spoiler"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:minHeight="120dp"
+                                android:orientation="vertical"
+                                android:gravity="center"
+                                android:background="@drawable/bg_nsfw_overlay"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:visibility="gone"
+                                android:padding="12dp">
+
+                                <!-- Чистая карточка предупреждения репоста -->
+                                <LinearLayout
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:orientation="vertical"
+                                    android:gravity="center"
+                                    android:background="@drawable/bg_nsfw_spoiler"
+                                    android:paddingHorizontal="18dp"
+                                    android:paddingVertical="12dp">
+
+                                    <ImageView
+                                        android:layout_width="32dp"
+                                        android:layout_height="32dp"
+                                        android:src="@drawable/ic_add"
+                                        app:tint="?attr/colorPrimary"
+                                        android:layout_marginBottom="8dp" />
+
+                                    <TextView
+                                        android:layout_width="wrap_content"
+                                        android:layout_height="wrap_content"
+                                        android:text="Данный пост может содержать 18+ контент"
+                                        android:textColor="#E0E0E0"
+                                        android:textSize="12sp"
+                                        android:textStyle="bold"
+                                        android:gravity="center" />
+
+                                </LinearLayout>
+
+                            </LinearLayout>
+
+                        </FrameLayout>
+
+                        <!-- Статистика оригинального поста -->
                         <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="horizontal"
                             android:gravity="center_vertical">
 
-                            <TextView
-                                android:id="@+id/original_post_author_name"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:textStyle="bold"
-                                android:textSize="14sp"
-                                android:textColor="?attr/colorOnSurface"
-                                android:maxLines="1"
-                                android:ellipsize="end" />
-
-                            <ImageView
-                                android:id="@+id/original_post_author_verified"
-                                android:layout_width="14dp"
-                                android:layout_height="14dp"
-                                android:layout_marginStart="4dp"
-                                android:layout_gravity="center_vertical"
-                                android:src="@drawable/ic_verified"
-                                android:visibility="gone" />
-
                         </LinearLayout>
-
-                        <TextView
-                            android:id="@+id/original_post_timestamp"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textSize="11sp"
-                            android:textColor="?attr/colorOnSurfaceVariant" />
 
                     </LinearLayout>
 
-                </LinearLayout>
+                </androidx.cardview.widget.CardView>
 
-                <!-- Текст оригинального поста -->
-                <TextView
-                    android:id="@+id/original_post_content"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:textSize="13sp"
-                    android:textColor="?attr/colorOnSurface"
-                    android:layout_marginBottom="8dp"
-                    android:lineSpacingExtra="1dp"
-                    android:breakStrategy="balanced"
-                    android:maxLines="1000" />
-
-                <!-- Изображения оригинального поста -->
+                <!-- Коллаж изображений -->
                 <org.nikanikoo.flux.ui.adapters.posts.PostImagesCollage
-                    android:id="@+id/original_post_images_collage"
+                    android:id="@+id/post_images_collage"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:visibility="gone" />
 
-                <!-- Аудио вложения оригинального поста -->
+                <!-- Аудио вложения -->
                 <LinearLayout
-                    android:id="@+id/original_post_audio_container"
+                    android:id="@+id/post_audio_container"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:visibility="gone"
                     android:layout_marginBottom="8dp"/>
 
-                <!-- Видео вложения оригинального поста -->
+                <!-- Видео вложения -->
                 <LinearLayout
-                    android:id="@+id/original_post_video_container"
+                    android:id="@+id/post_video_container"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
                     android:visibility="gone"
                     android:layout_marginBottom="8dp"/>
 
-                <!-- Неподдерживаемые элементы оригинального поста -->
+                <LinearLayout
+                    android:id="@+id/post_poll_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    android:layout_marginBottom="8dp"/>
+
+                <!-- Неподдерживаемые элементы -->
                 <TextView
-                    android:id="@+id/original_post_unsupported_elements"
+                    android:id="@+id/post_unsupported_elements"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text=""
-                    android:textSize="11sp"
+                    android:textSize="12sp"
                     android:textColor="@android:color/holo_orange_dark"
                     android:textStyle="italic"
-                    android:layout_marginBottom="8dp"
+                    android:layout_marginBottom="12dp"
                     android:visibility="gone"
                     android:background="#FFF3E0"
-                    android:padding="6dp"
+                    android:padding="8dp"
                     android:breakStrategy="balanced"
                     android:maxLines="1000" />
 
-                <!-- Статистика оригинального поста -->
+                <!-- Источник -->
                 <LinearLayout
+                    android:id="@+id/post_copyright_container"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:gravity="center_vertical">
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginBottom="8dp"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Источник: "
+                        android:textSize="12sp"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    <TextView
+                        android:id="@+id/post_copyright_link"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="12sp"
+                        android:textColor="?attr/colorPrimary"
+                        android:textStyle="bold"
+                        android:background="?attr/selectableItemBackground"
+                        android:clickable="true"
+                        android:focusable="true"/>
 
                 </LinearLayout>
 
             </LinearLayout>
 
-        </androidx.cardview.widget.CardView>
+            <LinearLayout
+                android:id="@+id/nsfw_spoiler"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:minHeight="140dp"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:background="@drawable/bg_nsfw_overlay"
+                android:clickable="true"
+                android:focusable="true"
+                android:visibility="gone"
+                android:padding="20dp">
 
-        <!-- Изображения поста -->
-        <!-- Одиночное изображение (для обратной совместимости) -->
-        <ImageView
-            android:id="@+id/post_image"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:scaleType="fitStart"
-            android:visibility="gone"
-            android:layout_marginBottom="12dp"/>
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:background="@drawable/bg_nsfw_spoiler"
+                    android:paddingHorizontal="24dp"
+                    android:paddingVertical="16dp">
 
-        <!-- Коллаж изображений -->
-        <org.nikanikoo.flux.ui.adapters.posts.PostImagesCollage
-            android:id="@+id/post_images_collage"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:visibility="gone" />
+                    <ImageView
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:src="@drawable/ic_visibility_off"
+                        app:tint="@color/white"
+                        android:layout_marginBottom="10dp" />
 
-        <!-- Аудио вложения -->
-        <LinearLayout
-            android:id="@+id/post_audio_container"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:visibility="gone"
-            android:layout_marginBottom="8dp"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Данный пост может содержать 18+ контент"
+                        android:textColor="#E0E0E0"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:gravity="center" />
 
-        <!-- Видео вложения -->
-        <LinearLayout
-            android:id="@+id/post_video_container"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:visibility="gone"
-            android:layout_marginBottom="8dp"/>
+                </LinearLayout>
 
-        <!-- Неподдерживаемые элементы -->
-        <TextView
-            android:id="@+id/post_unsupported_elements"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text=""
-            android:textSize="12sp"
-            android:textColor="@android:color/holo_orange_dark"
-            android:textStyle="italic"
-            android:layout_marginBottom="12dp"
-            android:visibility="gone"
-            android:background="#FFF3E0"
-            android:padding="8dp"
-            android:breakStrategy="balanced"
-            android:maxLines="1000" />
+            </LinearLayout>
+
+        </FrameLayout>
 
         <!-- Действия с постом -->
         <LinearLayout
@@ -316,7 +535,7 @@
                     android:id="@+id/post_like_icon"
                     android:layout_width="20dp"
                     android:layout_height="20dp"
-                    android:src="@drawable/ic_like"
+                    android:src="@drawable/ic_favorite"
                     app:tint="@color/like_inactive" />
 
                 <TextView
@@ -325,7 +544,7 @@
                     android:layout_height="wrap_content"
                     android:textSize="12sp"
                     android:textColor="@color/like_inactive"
-                    android:layout_marginStart="4dp" />
+                    android:layout_marginStart="6dp" />
 
             </LinearLayout>
 
@@ -343,7 +562,7 @@
                 <ImageView
                     android:layout_width="20dp"
                     android:layout_height="20dp"
-                    android:src="@android:drawable/ic_menu_edit"
+                    android:src="@drawable/ic_comment"
                     app:tint="@android:color/darker_gray" />
 
                 <TextView
@@ -352,7 +571,7 @@
                     android:layout_height="wrap_content"
                     android:textSize="12sp"
                     android:textColor="?attr/colorOnSurfaceVariant"
-                    android:layout_marginStart="4dp" />
+                    android:layout_marginStart="6dp" />
 
             </LinearLayout>
 
@@ -369,7 +588,7 @@
                 <ImageView
                     android:layout_width="20dp"
                     android:layout_height="20dp"
-                    android:src="@android:drawable/ic_menu_share"
+                    android:src="@drawable/ic_share"
                     app:tint="@android:color/darker_gray" />
 
                 <TextView
@@ -378,7 +597,7 @@
                     android:text="@string/share"
                     android:textSize="12sp"
                     android:textColor="?attr/colorOnSurfaceVariant"
-                    android:layout_marginStart="4dp" />
+                    android:layout_marginStart="6dp" />
 
             </LinearLayout>
 

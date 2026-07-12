@@ -1,20 +1,57 @@
 name: Build and Release APK
 
 on:
-  push:
-    branches:
-      - main
+  schedule:
+    - cron: '0 0 */3 * *'
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
+  check_changes:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 
+          
+      - name: Check for recent commits
+        id: check
+        run: |
+          git fetch --tags # На всякий случай явно обновляем теги
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
+          if [ -z "$LATEST_TAG" ]; then
+            echo "No previous tags found. Checking all commits."
+            COMMITS=$(git log --no-merges --oneline)
+          else
+            echo "Last release tag found: $LATEST_TAG. Checking commits since then."
+            COMMITS=$(git log "$LATEST_TAG..HEAD" --no-merges --oneline)
+          fi
+          
+          # Проверяем: если коммитов нет И это не ручной запуск - отменяем сборку
+          if [ -z "$COMMITS" ] && [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            echo "No new commits since last release. Skipping build."
+            echo "should_run=false" >> $GITHUB_OUTPUT
+          else
+            echo "New commits found or manual trigger. Proceeding to build."
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          fi
+
   build:
+    needs: check_changes
+    if: needs.check_changes.outputs.should_run == 'true'
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -29,41 +66,98 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: ${{ runner.os }}-gradle
 
+      - name: Get commit info and version
+        id: commit
+        run: |
+          # Сохраняем хэш коммита
+          echo "hash=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          
+          git fetch --tags
+          
+          LATEST_BUILD_TAG=$(git tag -l "build-alpha-*" --sort=-v:refname | head -n 1)
+          if [ -z "$LATEST_BUILD_TAG" ]; then
+            VERSION_CODE=1
+          else
+            LAST_CODE=${LATEST_BUILD_TAG#build-alpha-}
+            VERSION_CODE=$((LAST_CODE + 1))
+          fi
+          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+          # -----------------------------------
+          
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
+          if [ -z "$LATEST_TAG" ]; then
+            COMMITS=$(git log --no-merges --pretty=format:"- %s (%h)")
+          else
+            COMMITS=$(git log "$LATEST_TAG..HEAD" --no-merges --pretty=format:"- %s (%h)")
+          fi
+          
+          if [ -z "$COMMITS" ]; then
+            COMMITS="- Manual launch or no changes since last release"
+          fi
+          
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "$COMMITS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug
+      - name: Build Release and Debug APK
+        run: ./gradlew assembleRelease assembleDebug -PciVersionCode=${{ steps.commit.outputs.version_code }} -PciVersionName="${{ steps.commit.outputs.version_code }}-${{ steps.commit.outputs.hash }}"
+      - name: Sign APK
+        uses: r0adkll/sign-android-release@v1
+        id: sign_app
+        with:
+          releaseDirectory: app/build/outputs/apk/release
+          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
+          alias: ${{ secrets.KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+        env:
+          BUILD_TOOLS_VERSION: "34.0.0"
 
-      - name: Get commit info
-        id: commit
+      - name: Rename APKs
         run: |
-          echo "hash=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          echo "title=$(git log -1 --pretty=%s)" >> $GITHUB_OUTPUT
-
-          body=$(git log -1 --pretty=%b)
-
-          if [ -z "$body" ]; then
-            body="No additional details"
-          fi
-
-          echo "body<<EOF" >> $GITHUB_OUTPUT
-          echo "$body" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          mv ${{steps.sign_app.outputs.signedReleaseFile}} flux.apk
+          mv app/build/outputs/apk/debug/app-debug.apk flux-debug.apk
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: build-${{ steps.commit.outputs.hash }}
-          name: Build ${{ steps.commit.outputs.hash }}
-          prerelease: true
-          files: app/build/outputs/apk/debug/*.apk
+          tag_name: build-alpha-${{ steps.commit.outputs.version_code }}
+          name: Build ${{ steps.commit.outputs.hash }} (${{ steps.commit.outputs.version_code }})
+          prerelease: false
+          files: |
+            flux.apk
+            flux-debug.apk
           body: |
-            ## ${{ steps.commit.outputs.title }}
-
+            ## Changes in this build:
+            
             ${{ steps.commit.outputs.body }}
-
+            
             ---
             🔗 Commit: ${{ steps.commit.outputs.hash }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate Update JSON
+        run: |
+          mkdir -p public
+          CHANGELOG=$(echo "${{ steps.commit.outputs.body }}" | awk '{printf "%s\\n", $0}' | sed 's/"/\\"/g')
+          cat <<EOF > public/update.json
+          {
+            "versionCode": ${{ steps.commit.outputs.version_code }},
+            "versionName": "Build ${{ steps.commit.outputs.hash }} (${{ steps.commit.outputs.version_code }})",
+            "changelog": "$CHANGELOG",
+            "releaseApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-${{ steps.commit.outputs.version_code }}/flux.apk",
+            "debugApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-${{ steps.commit.outputs.version_code }}/flux-debug.apk"
+          }
+          EOF
+
+      - name: Deploy Update JSON to gh-pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./public
+          keep_files: false

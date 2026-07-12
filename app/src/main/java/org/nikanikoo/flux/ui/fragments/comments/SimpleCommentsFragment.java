@@ -169,15 +169,32 @@ public class SimpleCommentsFragment extends Fragment implements CommentsAdapter.
     
     @Override
     public void onLikeClick(Comment comment) {
+        final boolean originalLikedState = comment.isLiked();
+        final int originalLikeCount = comment.getLikesCount();
+        
+        final boolean newLikedState = !originalLikedState;
+        final int newLikeCount = originalLikedState ? originalLikeCount - 1 : originalLikeCount + 1;
+        
+        comment.setLiked(newLikedState);
+        comment.setLikesCount(newLikeCount);
+        
+        int index = comments.indexOf(comment);
+        if (index >= 0) {
+            commentsAdapter.notifyItemChanged(index, "LIKE_UPDATE");
+        }
+        
         commentsManager.toggleCommentLikeWithOriginalState(comment, post.getOwnerId(), post.getPostId(), 
-                comment.isLiked(), new CommentsManager.LikeCommentCallback() {
+                originalLikedState, new CommentsManager.LikeCommentCallback() {
             @Override
             public void onSuccess(int newLikesCount, boolean isLiked) {
                 if (getActivity() != null) {
                     getActivity().runOnUiThread(() -> {
                         comment.setLikesCount(newLikesCount);
                         comment.setLiked(isLiked);
-                        commentsAdapter.notifyDataSetChanged();
+                        int successIndex = comments.indexOf(comment);
+                        if (successIndex >= 0) {
+                            commentsAdapter.notifyItemChanged(successIndex, "LIKE_UPDATE");
+                        }
                     });
                 }
             }
@@ -186,6 +203,12 @@ public class SimpleCommentsFragment extends Fragment implements CommentsAdapter.
             public void onError(String error) {
                 if (getActivity() != null) {
                     getActivity().runOnUiThread(() -> {
+                        comment.setLiked(originalLikedState);
+                        comment.setLikesCount(originalLikeCount);
+                        int errorIndex = comments.indexOf(comment);
+                        if (errorIndex >= 0) {
+                            commentsAdapter.notifyItemChanged(errorIndex, "LIKE_UPDATE");
+                        }
                         Toast.makeText(getContext(), getString(R.string.error_loading) + error, Toast.LENGTH_SHORT).show();
                     });
                 }

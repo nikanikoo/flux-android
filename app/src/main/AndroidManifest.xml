@@ -4,7 +4,7 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -12,6 +12,7 @@
         android:maxSdkVersion="28" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:name=".FluxApplication"
@@ -29,7 +30,8 @@
         android:requestLegacyExternalStorage="true">
         <activity
             android:name=".ui.activities.MainActivity"
-            android:exported="true">
+            android:exported="true"
+            android:configChanges="orientation|screenSize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -40,29 +42,35 @@
             android:name=".ui.activities.CreatePostActivity"
             android:exported="false"
             android:parentActivityName=".ui.activities.MainActivity"
-            android:theme="@style/Theme.Flux" />
+            android:theme="@style/Theme.Flux"
+            android:configChanges="orientation|screenSize" />
         <activity
             android:name=".ui.activities.LoginActivity"
             android:exported="false"
-            android:theme="@style/Theme.Flux" />
+            android:theme="@style/Theme.Flux"
+            android:configChanges="orientation|screenSize" />
         <activity
             android:name=".ui.activities.TwoFactorActivity"
             android:exported="false"
-            android:theme="@style/Theme.Flux" />
+            android:theme="@style/Theme.Flux"
+            android:configChanges="orientation|screenSize" />
         <activity
             android:name=".ui.activities.PhotoViewerActivity"
             android:exported="false"
-            android:theme="@style/Theme.PhotoViewer" />
+            android:theme="@style/Theme.PhotoViewer"
+            android:configChanges="orientation|screenSize" />
         <activity
             android:name=".ui.activities.AudioPlayerActivity"
             android:exported="false"
-            android:theme="@style/Theme.Flux"
-            android:launchMode="singleTop" />
+            android:theme="@style/Theme.AudioPlayer"
+            android:launchMode="singleTop"
+            android:configChanges="orientation|screenSize" />
         <activity
             android:name=".ui.activities.VideoPlayerActivity"
             android:exported="false"
             android:theme="@style/Theme.Flux"
-            android:supportsPictureInPicture="true" />
+            android:supportsPictureInPicture="true"
+            android:configChanges="orientation|screenSize" />
         
         <!-- Chat and Comments Activities -->
         <activity
@@ -70,60 +78,94 @@
             android:exported="false"
             android:parentActivityName=".ui.activities.MainActivity"
             android:theme="@style/Theme.Flux"
-            android:launchMode="singleTop" />
+            android:launchMode="singleTop"
+            android:configChanges="orientation|screenSize" />
         <activity
             android:name=".ui.activities.CommentsActivity"
             android:exported="false"
             android:parentActivityName=".ui.activities.MainActivity"
-            android:theme="@style/Theme.Flux" />
+            android:theme="@style/Theme.Flux"
+            android:configChanges="orientation|screenSize" />
         
         <!-- Settings Activities -->
+        <activity
+            android:name=".ui.activities.BalanceActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.activities.MainActivity"
+            android:theme="@style/Theme.Flux"
+            android:configChanges="orientation|screenSize" />
         <activity
             android:name=".ui.activities.AppearanceSettingsActivity"
             android:exported="false"
             android:parentActivityName=".ui.activities.MainActivity"
-            android:theme="@style/Theme.Flux" />
+            android:theme="@style/Theme.Flux"
+            android:configChanges="orientation|screenSize" />
         <activity
             android:name=".ui.activities.AccountManagerActivity"
             android:exported="false"
             android:parentActivityName=".ui.activities.MainActivity"
-            android:theme="@style/Theme.Flux" />
+            android:theme="@style/Theme.Flux"
+            android:configChanges="orientation|screenSize" />
         <activity
             android:name=".ui.activities.NotificationsSettingsActivity"
             android:exported="false"
             android:parentActivityName=".ui.activities.MainActivity"
-            android:theme="@style/Theme.Flux" />
+            android:theme="@style/Theme.Flux"
+            android:configChanges="orientation|screenSize" />
         <activity
             android:name=".ui.activities.DataSettingsActivity"
             android:exported="false"
             android:parentActivityName=".ui.activities.MainActivity"
-            android:theme="@style/Theme.Flux" />
+            android:theme="@style/Theme.Flux"
+            android:configChanges="orientation|screenSize" />
         <activity
             android:name=".ui.activities.AboutAppActivity"
             android:exported="false"
             android:parentActivityName=".ui.activities.MainActivity"
-            android:theme="@style/Theme.Flux" />
+            android:theme="@style/Theme.Flux"
+            android:configChanges="orientation|screenSize" />
         <activity
             android:name=".ui.activities.AboutInstanceActivity"
             android:exported="false"
             android:parentActivityName=".ui.activities.MainActivity"
-            android:theme="@style/Theme.Flux" />
+            android:theme="@style/Theme.Flux"
+            android:configChanges="orientation|screenSize" />
         <activity
             android:name=".ui.activities.LanguageSettingsActivity"
             android:exported="false"
             android:parentActivityName=".ui.activities.MainActivity"
-            android:theme="@style/Theme.Flux" />
+            android:theme="@style/Theme.Flux"
+            android:configChanges="orientation|screenSize" />
+
+        <activity
+            android:name=".ui.activities.ProfileEditActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.activities.MainActivity"
+            android:theme="@style/Theme.Flux"
+            android:configChanges="orientation|screenSize" />
+
+        <activity
+            android:name="com.yalantis.ucrop.UCropActivity"
+            android:theme="@style/Theme.Flux"/>
 
         <service
             android:name=".services.LongPollService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Long polling for real-time messaging updates and notifications" />
+        </service>
         <service
             android:name=".services.AudioPlayerService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="mediaPlayback" />
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </service>
         
         <receiver 
             android:name="androidx.media.session.MediaButtonReceiver"

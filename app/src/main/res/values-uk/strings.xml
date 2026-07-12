@@ -16,7 +16,12 @@
     <string name="save">Зберегти</string>
     <string name="delete">Видалити</string>
     <string name="edit">Редагувати</string>
+    <string name="edit_post_title">Редагування посту</string>
+    <string name="edit_post_hint">Що нового?</string>
+    <string name="profile_edit_success">Зміни збережено</string>
     <string name="pin">Закріпити</string>
+    <string name="unpin">Відкріпити</string>
+    <string name="pinned">закріплено</string>
     <string name="close">Закрити</string>
     <string name="back">Назад</string>
     <string name="search">Пошук</string>
@@ -56,6 +61,9 @@
     <string name="login_hint">Email</string>
     <string name="password_hint">Пароль</string>
     <string name="forgot_password">Забули пароль?</string>
+    <string name="login_with_token">Увійти за токеном</string>
+    <string name="token_hint">Токен доступу (access_token)</string>
+    <string name="login_token_invalid">Введіть токен</string>
     <string name="btn_login">Увійти</string>
     <string name="btn_login_confirm">Все одно увійти</string>
     <string name="btn_login_loading">Вхід...</string>
@@ -135,7 +143,7 @@
     <string name="post_error_like">Неможливо поставити лайк цьому посту</string>
     <string name="post_delete_message">Цю дію не можна відмінити</string>
     <string name="post_published">Пост опубліковано!</string>
-    <string name="post_publish_error">"Помилка публикації: "</string>
+    <string name="post_publish_error">"Помилка публикації:\u0020"</string>
     <string name="post_publishing">Публікація...</string>
 
     <!-- Create Post -->
@@ -149,8 +157,8 @@
     <!-- Comments -->
     <string name="comments_title">Коментарі</string>
     <string name="comments_write">Написати коментар</string>
-    <string name="comments_loading_error">Помилка завантаження коментарів: </string>
-    <string name="comments_send_error">Помилка відправки коментаря: </string>
+    <string name="comments_loading_error">Помилка завантаження коментарів:\u0020</string>
+    <string name="comments_send_error">Помилка відправки коментаря:\u0020</string>
     <string name="comments_add_error">Введіть коментар</string>
     <string name="comments_cannot_load">Неможливо завантажити коментарі</string>
     <string name="comments_updated">Коментарі оновлено</string>
@@ -159,31 +167,31 @@
     <string name="comments_post_not_found">Помилка: пост не знайдено</string>
 
     <!-- News -->
-    <string name="news_loading_error">Помилка завантаження новин: </string>
+    <string name="news_loading_error">Помилка завантаження новин:\u0020</string>
     <string name="news_refresh_error">Не вдалося завантажити нові пости</string>
-    <string name="news_public_loading_error">Помилка завантаження публічних постів: </string>
+    <string name="news_public_loading_error">Помилка завантаження публічних постів:\u0020</string>
     <string name="news_select_type">Оберіть тип новин</string>
     <string name="news_create_post">Створити пост</string>
 
     <!-- Messages -->
     <string name="messages_title">Повідомлення</string>
-    <string name="messages_loading_error">Помилка завантаження діалогів: </string>
+    <string name="messages_loading_error">Помилка завантаження діалогів:\u0020</string>
     <string name="chat_title">Чат</string>
     <string name="chat_message_hint">Введіть повідомлення</string>
     <string name="chat_send">Надіслати</string>
-    <string name="chat_loading_error">Помилка завантаження повідомлень: </string>
-    <string name="chat_send_error">Помилка надсилання: </string>
+    <string name="chat_loading_error">Помилка завантаження повідомлень:\u0020</string>
+    <string name="chat_send_error">Помилка надсилання:\u0020</string>
     <string name="message_incoming">Вхідне повідомлення</string>
     <string name="message_outgoing">Вихідне повідомлення</string>
     <string name="message_time">%s</string>
 
     <!-- Friends -->
     <string name="friends_title">Друзі</string>
-    <string name="friends_title2">Друзі </string>
+    <string name="friends_title2">Друзі\u0020</string>
     <string name="friends_all">Всі друзі</string>
     <string name="friends_requests">Заявки</string>
     <string name="friends_search">Пошук друзів</string>
-    <string name="friends_loading_error">Помилка завантаження друзів: </string>
+    <string name="friends_loading_error">Помилка завантаження друзів:\u0020</string>
     <string name="friends_not_found">Друзів не знайдено</string>
     <string name="friends_not_found_info">У користувача поки нема друзів :(</string>
     <string name="friends_common">%d спільних друзів</string>
@@ -197,8 +205,8 @@
     <string name="friend_requests_loading_error">Помилка завантаження заявок: %s</string>
     <string name="friend_send_message">Написати повідомлення</string>
     <string name="friend_1_follower">1 учасник</string>
-    <string name="friend_5_followers"> учасника</string>
-    <string name="friend_followers6"> учасників</string>
+    <string name="friend_5_followers">\u0020учасника</string>
+    <string name="friend_followers6">\u0020учасників</string>
 
     <string name="groups_title">Спільноти</string>
     <string name="groups_search">Пошук спільнот</string>
@@ -211,16 +219,16 @@
     <string name="group_members">%d учасників</string>
     <string name="group_description">Опис спільноти</string>
     <string name="group_members_search">Пошук учасників</string>
-    <string name="group_members_loading_error">Помилка завантаження учасників: </string>
+    <string name="group_members_loading_error">Помилка завантаження учасників:\u0020</string>
     <string name="group_members_not_found">Учасників не знайдено</string>
-    <string name="group_members2">Учасники </string>
+    <string name="group_members2">Учасники\u0020</string>
     <string name="group_members_none">У спільноті поки немає учасників</string>
     <string name="search_none2">Спробуйте змінити параметри пошуку</string>
     <string name="group_join">Вступити</string>
     <string name="group_leave">Залишити</string>
     <string name="group_joined">Ви вступили до спільноти</string>
     <string name="group_left">Ви залишили спільноту</string>
-    <string name="group_load_error">Помилка завантаження спільноти: </string>
+    <string name="group_load_error">Помилка завантаження спільноти:\u0020</string>
 
     <!-- Photos -->
     <string name="photos_title">Фотографії</string>
@@ -232,7 +240,7 @@
     <string name="video_preview">"Прев'ю відео"</string>
     <string name="video_play">Відтворити</string>
     <string name="video_url_not_found">URL відео не знайдено</string>
-    <string name="video_error">Помилка відтворення: </string>
+    <string name="video_error">Помилка відтворення:\u0020</string>
     <string name="video_search">Пошук відео</string>
     <string name="video_forward">%d »</string>
     <string name="video_back">« %d</string>
@@ -243,13 +251,13 @@
     <string name="audio_playlist">Плейлист</string>
     <string name="audio_track_name">Назва</string>
     <string name="audio_no_tracks">У вас поки нема аудіозаписів</string>
-    <string name="audio_search_error">Помилка пошуку: </string>
+    <string name="audio_search_error">Помилка пошуку:\u0020</string>
     <string name="audio_nothing_found">Нічого не знайдено</string>
     <string name="audio_removed">Видалено з аудіозаписів</string>
-    <string name="audio_loading_error">Помилка завантаження: </string>
-    <string name="audio_remove_error">Помилка видалення: </string>
+    <string name="audio_loading_error">Помилка завантаження:\u0020</string>
+    <string name="audio_remove_error">Помилка видалення:\u0020</string>
     <string name="audio_added">Додано в аудіозаписи</string>
-    <string name="audio_add_error">Помилка додавання: </string>
+    <string name="audio_add_error">Помилка додавання:\u0020</string>
     <string name="audio_dob">Додаткові опції</string>
     <string name="audio_search">Пошук музики</string>
     <string name="audio_add">Додати</string>
@@ -269,7 +277,7 @@
 
     <!-- Notifications -->
     <string name="notifications_title">Сповіщення</string>
-    <string name="notifications_loading_error">Помилка завантаження архівних сповіщень: </string>
+    <string name="notifications_loading_error">Помилка завантаження архівних сповіщень:\u0020</string>
     <string name="notifications_all_read">Всі повідомлення відмічено як прочитані</string>
     <string name="notifications_mark_all_read">Відмітити всі як прочитані</string>
     <string name="notifications_error_user">Не вдалося визначити користувача</string>
@@ -288,6 +296,8 @@
 
     <!-- Settings -->
     <string name="settings_title">Налаштування</string>
+    <string name="settings_balance">Баланс</string>
+    <string name="settings_balance_desc">Голоси</string>
     <string name="settings_accounts">Керування акаунтами</string>
     <string name="settings_accounts_desc">Перемикання між акаунтами</string>
     <string name="settings_appearance">Зовнішній вигляд</string>
@@ -324,12 +334,14 @@
     <string name="appearance_theme_system">Системна</string>
     <string name="appearance_theme_light">Світла</string>
     <string name="appearance_theme_dark">Темна</string>
+    <string name="appearance_theme_amoled">AMOLED</string>
     <string name="appearance_color_scheme">Колірна схема</string>
     <string name="appearance_color_blue">Синя</string>
     <string name="appearance_color_material_you">Material You (динамічна)</string>
     <string name="appearance_color_green">Зелена</string>
     <string name="appearance_color_purple">Фіолетова</string>
     <string name="appearance_color_red">Червона</string>
+    <string name="appearance_color_amoled">AMOLED</string>
     <string name="appearance_material_you_info">Material You доступний тільки на Android 12+</string>
     <string name="appearance_select_theme">Вибір теми</string>
 
@@ -380,8 +392,8 @@
 
     <!-- About App -->
     <string name="about_app_title">Про застосунок</string>
-    <string name="about_app_version">Версія: </string>
-    <string name="about_app_commit">Комміт: </string>
+    <string name="about_app_version">Версія:\u0020</string>
+    <string name="about_app_commit">Комміт:\u0020</string>
     <string name="about_app_github">Вихідний код на Github</string>
     <string name="about_app_team">КОМАНДА РОЗРОБКИ</string>
     <string name="about_app_author">Автор</string>
@@ -408,12 +420,12 @@
     <string name="about_instance_users">КОРИСТУВАЧІВ</string>
     <string name="about_instance_https">"HTTPS (Захищене з'єданання)"</string>
     <string name="about_instance_http">"HTTP (Незахищене з'єданання)"</string>
-    <string name="about_instance_version">Версія: </string>
-    <string name="about_instance_error">Помилка під час обробки даних: </string>
+    <string name="about_instance_version">Версія:\u0020</string>
+    <string name="about_instance_error">Помилка під час обробки даних:\u0020</string>
 
     <!-- Errors -->
     <string name="error_loading_profile">Помилка завантаження профілю</string>
-    <string name="error_loading">Помилка: </string>
+    <string name="error_loading">Помилка:\u0020</string>
     <string name="error_generic">Сталася помилка</string>
     <string name="error_network">Помилка мережі</string>
     <string name="error_unknown">Невідома помилка</string>
@@ -427,7 +439,7 @@
     <string name="profile_title">Профіль</string>
     <string name="profile_sex_male">Чоловіча</string>
     <string name="profile_sex_female">Жіноча</string>
-    <string name="profile_username">"Ім'я користувача: "</string>
+    <string name="profile_username">"Ім'я користувача:"</string>
     <string name="profile_status_online">У мережі</string>
     <string name="profile_gender">Стать:</string>
     <string name="profile_date_registered">Дата реєстрації:</string>
@@ -452,7 +464,7 @@
     <string name="profile_subs">підписників</string>
     <string name="profile_groups">спільноти</string>
     <string name="profile_create_post">Створити пост</string>
-    <string name="profile_posts_loading_error">Помилка завантаження постів: </string>
+    <string name="profile_posts_loading_error">Помилка завантаження постів:\u0020</string>
     <string name="profile_posts_refresh_error">Не вдалося завантажити нові пости</string>
     <string name="profile_photo_title">Фото профілю</string>
 
@@ -488,5 +500,56 @@
     <string name="language_kazakh_cyrillic">Kazakh (Cyrillic)</string>
     <string name="language_kazakh_latin">Kazakh (Latin)</string>
     <string name="about_app_kk_cyrillic">🇰🇿 Казахська мова (Кирилична)</string>
+
+    <!-- Logging & Crash settings -->
+    <string name="settings_log_limit">Ліміт розміру логів</string>
+    <string name="settings_save_logs">Зберегти логи на пристрій</string>
+    <string name="settings_clear_logs">Очистити логи</string>
+    <string name="settings_clear_logs_confirm">Очистити файли логів?</string>
+    <string name="settings_clear_logs_message">Ви впевнені, що хочете видалити всі збережені логи застосунку?</string>
+    <string name="settings_logs_cleared">Логи очищено</string>
+    <string name="settings_logs_clear_error">Помилка при очищенні логів</string>
+    
+    <string name="crash_dialog_title">⚠️ Непередбачений збій</string>
+    <string name="crash_dialog_message">Минулого разу застосунок завершив роботу некоректно. Виберіть дію зі звітом про збій:</string>
+    <string name="crash_option_copy">Скопіювати в буфер обміну</string>
+    <string name="crash_option_save">Зберегти звіт на пристрій</string>
+    <string name="crash_option_ignore">Ігнорувати</string>
+    <string name="crash_copied_success">Звіт скопійовано в буфер обміну</string>
+    <string name="crash_saved_success">Файл успішно збережено</string>
+    <string name="crash_saved_error">Не вдалося зберегти файл</string>
+
+    <string name="balance_current">Поточний баланс</string>
+    <string name="balance_votes_plural">голосів</string>
+    <string name="balance_action_topup">Поповнити</string>
+    <string name="balance_action_voucher">Ваучер</string>
+    <string name="balance_action_transfer">Передати</string>
+    <string name="balance_info_title">Що таке голоса?</string>
+    <string name="balance_info_desc">Голоси - це внутрішня валюта OpenVK. За неї можна купити стікери або подарунки іншим користувачам.</string>
+    <string name="transfer_title">Переказ голосів</string>
+    <string name="transfer_recipient">Отримувач</string>
+    <string name="transfer_amount_hint">Кількість голосів</string>
+    <string name="transfer_message_hint">Повідомлення (необов\'язково)</string>
+    <string name="transfer_btn_cancel">Скасувати</string>
+    <string name="transfer_btn_confirm">Переказати</string>
+    <string name="transfer_search_hint">Пошук</string>
+    <string name="transfer_tab_friends">Друзі</string>
+    <string name="transfer_tab_search">Пошук</string>
+    <string name="transfer_search_empty_prompt">Введіть ім\'я, прізвище або ID для пошуку</string>
+    <string name="transfer_friends_load_error">Не вдалося завантажити список друзів</string>
+    <string name="transfer_search_error">Помилка пошуку</string>
+    <string name="transfer_no_results">Нічого не знайдено</string>
+    <string name="transfer_sort_rating">За рейтингом</string>
+    <string name="transfer_sort_new">Спочатку нові</string>
+    <string name="transfer_sort_old">Спочатку старі</string>
+    <string name="transfer_err_empty_amount">Введіть кількість голосів</string>
+    <string name="transfer_err_invalid_format">Невірний формат числа</string>
+    <string name="transfer_err_greater_than_zero">Кількість голосів має бути більше 0</string>
+    <string name="transfer_success">Голоси успішно надіслані!</string>
+    <string name="transfer_err_commerce_disabled">Комерція вимкнена на цій інстанції</string>
+    <string name="transfer_err_not_enough_votes">Недостатньо голосів для переказу</string>
+    <string name="transfer_err_self_transfer">Не можна переказувати голоси самому собі</string>
+    <string name="transfer_err_invalid_recipient">Невірний отримувач</string>
+    <string name="transfer_err_message_too_long">Повідомлення занадто довге</string>
 
 </resources>

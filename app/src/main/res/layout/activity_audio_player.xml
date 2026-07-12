@@ -20,7 +20,7 @@
             android:background="?attr/colorSurface"
             android:elevation="4dp"
             android:theme="@style/ThemeOverlay.AppCompat.ActionBar"
-            app:title="@string/audio_title" />
+            app:title="@string/audio_title"/>
 
         <LinearLayout
             android:id="@+id/main_player_content"
@@ -43,7 +43,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:scaleType="centerCrop"
-                    android:src="@drawable/ic_music"
+                    android:src="@drawable/ic_music_note"
                     android:visibility="gone"/>
 
                 <ImageView
@@ -52,34 +52,64 @@
                     android:layout_height="match_parent"
                     android:padding="32dp"
                     android:scaleType="centerCrop"
-                    android:src="@drawable/ic_music" />
+                    android:src="@drawable/ic_music_note"/>
 
             </com.google.android.material.card.MaterialCardView>
 
-            <TextView
-                android:id="@+id/track_title"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="8dp"
-                android:ellipsize="end"
-                android:gravity="center"
-                android:maxLines="2"
-                android:text="Название трека"
-                android:textColor="?android:attr/textColorPrimary"
-                android:textSize="24sp"
-                android:textStyle="bold" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingLeft="10dp"
+                android:paddingRight="10dp">
 
-            <TextView
-                android:id="@+id/track_artist"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="24dp"
-                android:ellipsize="end"
-                android:gravity="center"
-                android:maxLines="1"
-                android:text="Исполнитель"
-                android:textColor="?android:attr/textColorSecondary"
-                android:textSize="18sp" />
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/track_title"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="2"
+                        android:text="Название трека"
+                        android:textAlignment="viewStart"
+                        android:textColor="?android:attr/textColorPrimary"
+                        android:textSize="24sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/track_artist"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="24dp"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:text="Исполнитель"
+                        android:textAlignment="viewStart"
+                        android:textColor="?android:attr/textColorSecondary"
+                        android:textSize="18sp" />
+
+                </LinearLayout>
+
+                <ImageButton
+                    android:id="@+id/btn_add_to_library"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/audio_add_to_library"
+                    android:padding="12dp"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_add" />
+
+            </LinearLayout>
 
             <!-- Прогресс бар -->
             <SeekBar
@@ -134,7 +164,7 @@
                     android:contentDescription="@string/player_previous"
                     android:padding="12dp"
                     android:scaleType="centerInside"
-                    android:src="@drawable/ic_previous" />
+                    android:src="@drawable/ic_skip_previous" />
 
                 <ImageButton
                     android:id="@+id/btn_play_pause"
@@ -144,8 +174,8 @@
                     android:layout_marginEnd="16dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/player_play_pause"
-                    android:padding="12dp"
-                    android:scaleType="centerInside"
+                    android:padding="16dp"
+                    android:scaleType="fitCenter"
                     android:src="@drawable/ic_play" />
 
                 <ImageButton
@@ -156,7 +186,7 @@
                     android:contentDescription="@string/player_next"
                     android:padding="12dp"
                     android:scaleType="centerInside"
-                    android:src="@drawable/ic_next" />
+                    android:src="@drawable/ic_skip_next" />
 
             </LinearLayout>
 

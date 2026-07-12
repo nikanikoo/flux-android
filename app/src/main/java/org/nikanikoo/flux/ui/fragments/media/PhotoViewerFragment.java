@@ -381,7 +381,7 @@ public class PhotoViewerFragment extends Fragment {
     
     private void updateLikeButton() {
         if (post != null) {
-            btnLike.setImageResource(post.isLiked() ? R.drawable.ic_like_filled : R.drawable.ic_like);
+            btnLike.setImageResource(post.isLiked() ? R.drawable.ic_favorite_filled : R.drawable.ic_favorite);
             if (getContext() != null) {
                 int color = post.isLiked() ? 
                     androidx.core.content.ContextCompat.getColor(getContext(), R.color.like_color) : 

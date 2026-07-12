@@ -40,6 +40,33 @@ public class FriendsManager extends BaseManager<FriendsManager> {
         void onError(String error);
     }
 
+    public interface AreFriendsCallback {
+        void onSuccess(List<FriendStatus> statuses);
+        void onError(String error);
+    }
+
+    public static class FriendStatus {
+        private int userId;
+        private int friendStatus;
+
+        public FriendStatus(int userId, int friendStatus) {
+            this.userId = userId;
+            this.friendStatus = friendStatus;
+        }
+
+        public int getUserId() {
+            return userId;
+        }
+
+        public int getFriendStatus() {
+            return friendStatus;
+        }
+
+        public boolean isFriend() {
+            return friendStatus == 3;
+        }
+    }
+
     // Получение списка друзей
     public void getFriends(int count, int offset, FriendsCallback callback) {
         Logger.d(TAG, "Начинаем запрос списка друзей...");
@@ -341,6 +368,57 @@ public class FriendsManager extends BaseManager<FriendsManager> {
                 } else {
                     callback.onError("Не удалось отклонить заявку в друзья");
                 }
+            }
+        });
+    }
+
+    public void areFriends(List<Integer> userIds, AreFriendsCallback callback) {
+        if (userIds == null || userIds.isEmpty()) {
+            callback.onSuccess(new ArrayList<>());
+            return;
+        }
+
+        StringBuilder idsBuilder = new StringBuilder();
+        for (int i = 0; i < userIds.size(); i++) {
+            if (i > 0) idsBuilder.append(",");
+            idsBuilder.append(userIds.get(i));
+        }
+
+        Map<String, String> params = new HashMap<>();
+        params.put("user_ids", idsBuilder.toString());
+
+        api.callMethod("friends.areFriends", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                try {
+                    Logger.d(TAG, "friends.areFriends: " + response.toString());
+
+                    if (response.has("response")) {
+                        JSONArray responseArray = response.getJSONArray("response");
+                        List<FriendStatus> statuses = new ArrayList<>();
+
+                        for (int i = 0; i < responseArray.length(); i++) {
+                            JSONObject item = responseArray.getJSONObject(i);
+                            int userId = item.getInt("user_id");
+                            int friendStatus = item.getInt("friend_status");
+                            statuses.add(new FriendStatus(userId, friendStatus));
+                        }
+
+                        callback.onSuccess(statuses);
+                    } else {
+                        Logger.w(TAG, "Нет поля response в ответе friends.areFriends");
+                        callback.onError("Некорректный ответ сервера");
+                    }
+                } catch (Exception e) {
+                    Logger.e(TAG, "Ошибка парсинга ответа friends.areFriends", e);
+                    callback.onError("Ошибка обработки ответа");
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                Logger.e(TAG, "Ошибка запроса friends.areFriends: " + error);
+                callback.onError("Не удалось проверить статус дружбы");
             }
         });
     }

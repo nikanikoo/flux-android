@@ -41,6 +41,7 @@ public class RepostDialog {
         });
 
         chooseDialog.setContentView(chooseView);
+        chooseDialog.getBehavior().setState(com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED);
         chooseDialog.show();
     }
 
@@ -61,6 +62,7 @@ public class RepostDialog {
         });
 
         commentDialog.setContentView(commentView);
+        commentDialog.getBehavior().setState(com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED);
         commentDialog.show();
     }
 

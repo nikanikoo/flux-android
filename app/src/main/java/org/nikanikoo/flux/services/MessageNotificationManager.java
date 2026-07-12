@@ -79,6 +79,7 @@ public class MessageNotificationManager {
             this.timestamp = System.currentTimeMillis();
         }
     }
+    private final java.util.Set<Target> activeTargets = Collections.synchronizedSet(new java.util.HashSet<>());
     private final Map<Integer, List<String>> pendingMessages = new ConcurrentHashMap<>();
     
     // Кеш для отслеживания уже обработанных сообщений (messageId -> timestamp)
@@ -279,29 +280,35 @@ public class MessageNotificationManager {
         }
         
         try {
+            Target target = new Target() {
+                @Override
+                public void onBitmapLoaded(Bitmap bitmap, Picasso.LoadedFrom from) {
+                    activeTargets.remove(this);
+                    userInfo.photoBitmap = bitmap;
+                    callback.onUserInfoReceived(userInfo);
+                }
+
+                @Override
+                public void onBitmapFailed(Exception e, android.graphics.drawable.Drawable errorDrawable) {
+                    activeTargets.remove(this);
+                    Log.e(TAG, "Failed to load avatar: " + e.getMessage());
+                    callback.onUserInfoReceived(userInfo);
+                }
+
+                @Override
+                public void onPrepareLoad(android.graphics.drawable.Drawable placeHolderDrawable) {
+                    // Ничего не делаем
+                }
+            };
+            
+            activeTargets.add(target);
+            
             Picasso.get()
                     .load(userInfo.photoUrl)
                     .resize(128, 128)
                     .centerCrop()
                     .transform(new CircularImageTransformation())
-                    .into(new Target() {
-                        @Override
-                        public void onBitmapLoaded(Bitmap bitmap, Picasso.LoadedFrom from) {
-                            userInfo.photoBitmap = bitmap;
-                            callback.onUserInfoReceived(userInfo);
-                        }
-
-                        @Override
-                        public void onBitmapFailed(Exception e, android.graphics.drawable.Drawable errorDrawable) {
-                            Log.e(TAG, "Failed to load avatar: " + e.getMessage());
-                            callback.onUserInfoReceived(userInfo);
-                        }
-
-                        @Override
-                        public void onPrepareLoad(android.graphics.drawable.Drawable placeHolderDrawable) {
-                            // Ничего не делаем
-                        }
-                    });
+                    .into(target);
         } catch (Exception e) {
             Log.e(TAG, "Error loading avatar: " + e.getMessage());
             callback.onUserInfoReceived(userInfo);
@@ -339,7 +346,7 @@ public class MessageNotificationManager {
         // Используем системную иконку сообщений как fallback
         int iconRes;
         try {
-            iconRes = R.drawable.ic_messages;
+            iconRes = R.drawable.ic_chat_bubble;
         } catch (Exception e) {
             Log.w(TAG, "ic_messages not found, using system icon");
             iconRes = android.R.drawable.ic_dialog_email;
@@ -424,7 +431,7 @@ public class MessageNotificationManager {
         // Используем системную иконку сообщений как fallback
         int iconRes;
         try {
-            iconRes = R.drawable.ic_messages;
+            iconRes = R.drawable.ic_chat_bubble;
         } catch (Exception e) {
             Log.w(TAG, "ic_messages not found, using system icon");
             iconRes = android.R.drawable.ic_dialog_email;

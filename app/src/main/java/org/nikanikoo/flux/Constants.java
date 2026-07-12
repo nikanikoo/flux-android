@@ -94,4 +94,9 @@ public final class Constants {
         public static final String EXTRA_OPEN_COMMENTS = "open_comments";
         public static final String EXTRA_POST = "post";
     }
+
+    public static final class Links {
+        public static final String GITHUB_REPO = "https://github.com/nikanikoo/flux-android";
+        public static final String GITHUB_RELEASES_API = "https://raw.githubusercontent.com/nikanikoo/flux-android/gh-pages/update.json";
+    }
 }

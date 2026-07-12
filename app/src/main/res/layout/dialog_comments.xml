@@ -47,7 +47,7 @@
             android:id="@+id/btn_send_comment"
             android:layout_width="40dp"
             android:layout_height="40dp"
-            android:src="@android:drawable/ic_menu_send"
+            android:src="@drawable/ic_send"
             android:clickable="true"
             android:focusable="true"
             android:background="?android:attr/selectableItemBackgroundBorderless"
