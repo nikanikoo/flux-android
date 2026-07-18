@@ -69,7 +69,19 @@ public class UserProfile {
             profile.movies = json.optString("movies", "");
             profile.tv = json.optString("tv", "");
             profile.books = json.optString("books", "");
-            profile.city = json.optString("city", "");
+
+            //Город может быть либо JSON, либо просто строкой (на старых инстансах)
+            if (json.has("city")) {
+                Object cityObj = json.opt("city");
+                if (cityObj instanceof JSONObject) {
+                    profile.city = ((JSONObject) cityObj).optString("title", cityObj.toString());
+                } else {
+                    profile.city = json.optString("city", "");
+                }
+            } else {
+                profile.city = "";
+            }
+
             profile.interests = json.optString("interests", "");
             profile.quotes = json.optString("quotes", "");
             profile.email = json.optString("email", "");
