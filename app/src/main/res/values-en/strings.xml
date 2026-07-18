@@ -187,6 +187,11 @@
     <string name="message_time">%s</string>
     <string name="chat_attach">Attach file</string>
     <string name="attachment_section_photos">Photos</string>
+    <string name="attachment_section_video">Video</string>
+    <string name="attachment_section_audio">Audio</string>
+    <string name="attachment_section_document">Document</string>
+    <string name="attachment_section_graffiti">Graffiti</string>
+    <string name="attachment_section_poll">Poll</string>
     <string name="attachment_permission_denied">No access to photos</string>
     <string name="attachment_open_camera">Open camera</string>
 

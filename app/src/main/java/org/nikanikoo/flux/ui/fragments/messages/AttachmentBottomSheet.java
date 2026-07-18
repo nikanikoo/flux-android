@@ -113,6 +113,56 @@ public class AttachmentBottomSheet extends BottomSheetDialogFragment {
             sectionPhotos.setOnClickListener(v -> expandToFullScreen());
         }
 
+        View sectionVideo = view.findViewById(R.id.section_video);
+        if (sectionVideo != null) {
+            sectionVideo.setOnClickListener(v -> {
+                expandToFullScreen();
+                Toast.makeText(requireContext(),
+                        getString(R.string.attachment_section_video),
+                        Toast.LENGTH_SHORT).show();
+            });
+        }
+
+        View sectionAudio = view.findViewById(R.id.section_audio);
+        if (sectionAudio != null) {
+            sectionAudio.setOnClickListener(v -> {
+                expandToFullScreen();
+                Toast.makeText(requireContext(),
+                        getString(R.string.attachment_section_audio),
+                        Toast.LENGTH_SHORT).show();
+            });
+        }
+
+        View sectionDocument = view.findViewById(R.id.section_document);
+        if (sectionDocument != null) {
+            sectionDocument.setOnClickListener(v -> {
+                expandToFullScreen();
+                Toast.makeText(requireContext(),
+                        getString(R.string.attachment_section_document),
+                        Toast.LENGTH_SHORT).show();
+            });
+        }
+
+        View sectionGraffiti = view.findViewById(R.id.section_graffiti);
+        if (sectionGraffiti != null) {
+            sectionGraffiti.setOnClickListener(v -> {
+                expandToFullScreen();
+                Toast.makeText(requireContext(),
+                        getString(R.string.attachment_section_graffiti),
+                        Toast.LENGTH_SHORT).show();
+            });
+        }
+
+        View sectionPoll = view.findViewById(R.id.section_poll);
+        if (sectionPoll != null) {
+            sectionPoll.setOnClickListener(v -> {
+                expandToFullScreen();
+                Toast.makeText(requireContext(),
+                        getString(R.string.attachment_section_poll),
+                        Toast.LENGTH_SHORT).show();
+            });
+        }
+
         RecyclerView grid = view.findViewById(R.id.photos_grid);
         GridLayoutManager layoutManager = new GridLayoutManager(requireContext(), 3);
         grid.setLayoutManager(layoutManager);

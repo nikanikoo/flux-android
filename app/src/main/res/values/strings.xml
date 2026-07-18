@@ -221,6 +221,11 @@
     <string name="message_time">%s</string>
     <string name="chat_attach">Прикрепить вложение</string>
     <string name="attachment_section_photos">Фотографии</string>
+    <string name="attachment_section_video">Видео</string>
+    <string name="attachment_section_audio">Аудио</string>
+    <string name="attachment_section_document">Документ</string>
+    <string name="attachment_section_graffiti">Граффити</string>
+    <string name="attachment_section_poll">Опрос</string>
     <string name="attachment_permission_denied">Нет доступа к фотографиям</string>
     <string name="attachment_open_camera">Открыть камеру</string>
 
