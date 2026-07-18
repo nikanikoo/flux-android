@@ -185,6 +185,10 @@
     <string name="message_incoming">Incoming message</string>
     <string name="message_outgoing">Outgoing message</string>
     <string name="message_time">%s</string>
+    <string name="chat_attach">Attach file</string>
+    <string name="attachment_section_photos">Photos</string>
+    <string name="attachment_permission_denied">No access to photos</string>
+    <string name="attachment_open_camera">Open camera</string>
 
     <!-- Friends -->
     <string name="friends_title">Friends</string>

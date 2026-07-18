@@ -219,6 +219,10 @@
     <string name="message_incoming">Входящее сообщение</string>
     <string name="message_outgoing">Исходящее сообщение</string>
     <string name="message_time">%s</string>
+    <string name="chat_attach">Прикрепить вложение</string>
+    <string name="attachment_section_photos">Фотографии</string>
+    <string name="attachment_permission_denied">Нет доступа к фотографиям</string>
+    <string name="attachment_open_camera">Открыть камеру</string>
 
     <!-- Friends -->
     <string name="friends_title">Друзья</string>

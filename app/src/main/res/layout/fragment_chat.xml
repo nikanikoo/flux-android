@@ -61,6 +61,19 @@
         android:background="?attr/colorSurface"
         android:elevation="4dp">
 
+        <ImageView
+            android:id="@+id/attach_button"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_attach"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:padding="8dp"
+            android:layout_marginEnd="4dp"
+            android:contentDescription="@string/chat_attach"
+            app:tint="?attr/colorOnSurfaceVariant" />
+
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"

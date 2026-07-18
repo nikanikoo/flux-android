@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FF1C1C1E">
+
+    <ImageView
+        android:id="@+id/camera_icon"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_gravity="center"
+        android:src="@drawable/ic_photo"
+        android:tint="#FFFFFFFF" />
+
+</FrameLayout>

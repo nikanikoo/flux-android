@@ -1,5 +1,6 @@
 package org.nikanikoo.flux.ui.fragments.messages;
 
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -51,6 +52,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     private SwipeRefreshLayout swipeRefreshLayout;
     private EditText messageInput;
     private ImageView sendButton;
+    private ImageView attachButton;
     private MessagesManager messagesManager;
     private List<Message> messages;
 
@@ -167,6 +169,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         swipeRefreshLayout = view.findViewById(R.id.swipe_refresh);
         messageInput = view.findViewById(R.id.message_input);
         sendButton = view.findViewById(R.id.send_button);
+        attachButton = view.findViewById(R.id.attach_button);
         dateHeaderCard = view.findViewById(R.id.date_header_card);
         dateHeaderText = view.findViewById(R.id.date_header_text);
         messagesManager = MessagesManager.getInstance(requireContext());
@@ -286,7 +289,11 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
 
     private void setupSendButton() {
         sendButton.setOnClickListener(v -> sendMessage());
-        
+
+        if (attachButton != null) {
+            attachButton.setOnClickListener(v -> openAttachmentPicker());
+        }
+
         messageInput.setOnEditorActionListener((v, actionId, event) -> {
             sendMessage();
             return true;
@@ -372,6 +379,28 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                 }
             }
         });
+    }
+
+    private void openAttachmentPicker() {
+        AttachmentBottomSheet sheet = AttachmentBottomSheet.newInstance();
+        sheet.setOnAttachmentSelectedListener(new AttachmentBottomSheet.OnAttachmentSelectedListener() {
+            @Override
+            public void onPhotoSelected(Uri photoUri) {
+                Log.d("ChatFragment", "Photo selected: " + photoUri);
+                Toast.makeText(requireContext(),
+                        photoUri.getLastPathSegment(),
+                        Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onCameraPhotoTaken(Uri photoUri) {
+                Log.d("ChatFragment", "Camera photo taken: " + photoUri);
+                Toast.makeText(requireContext(),
+                        photoUri.getLastPathSegment(),
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
+        sheet.show(getChildFragmentManager(), "attachment_sheet");
     }
 
     private void sendMessage() {

@@ -79,5 +79,13 @@
         <item name="android:windowAnimationStyle">@null</item>
     </style>
 
+    <style name="BottomSheet.Attachment" parent="ThemeOverlay.Material3.BottomSheetDialog">
+        <item name="android:windowSoftInputMode">adjustResize</item>
+        <item name="behavior_peekHeight">auto</item>
+        <item name="behavior_fitToContents">false</item>
+        <item name="behavior_halfExpandedRatio">0.6</item>
+        <item name="behavior_skipCollapsed">false</item>
+    </style>
+
 
 </resources>
