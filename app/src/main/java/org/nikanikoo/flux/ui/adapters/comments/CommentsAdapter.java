@@ -16,6 +16,7 @@ import com.squareup.picasso.Picasso;
 import org.nikanikoo.flux.data.models.Comment;
 import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.ui.views.AudioAttachmentView;
+import org.nikanikoo.flux.utils.MentionUtils;
 import org.nikanikoo.flux.utils.SafeLinkMovementMethod;
 import org.nikanikoo.flux.utils.ValidationUtils;
 
@@ -79,7 +80,14 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
         
         holder.authorName.setText(comment.getAuthorName());
         holder.timestamp.setText(comment.getTimestamp());
-        holder.content.setText(ValidationUtils.SanitizeText(comment.getText()));
+        
+        String commentText = ValidationUtils.SanitizeText(comment.getText());
+        holder.content.setText(MentionUtils.formatMentions(commentText, (id, name, isGroup) -> {
+            if (clickListener != null) {
+                clickListener.onAuthorClick(id, name, isGroup);
+            }
+        }));
+
         holder.likeCount.setText(String.valueOf(comment.getLikesCount()));
         
         Linkify.addLinks(holder.content, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES);
@@ -141,7 +149,12 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
         
         // Отображаем неподдерживаемые элементы
         if (comment.getUnsupportedElementsText() != null && !comment.getUnsupportedElementsText().isEmpty()) {
-            holder.unsupportedElements.setText(comment.getUnsupportedElementsText());
+            String unsupportedText = comment.getUnsupportedElementsText();
+            holder.unsupportedElements.setText(MentionUtils.formatMentions(unsupportedText, (id, name, isGroup) -> {
+                if (clickListener != null) {
+                    clickListener.onAuthorClick(id, name, isGroup);
+                }
+            }));
             holder.unsupportedElements.setVisibility(View.VISIBLE);
             Linkify.addLinks(holder.unsupportedElements, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES);
             holder.unsupportedElements.setMovementMethod(SafeLinkMovementMethod.getInstance());

@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.util.Linkify;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -32,6 +33,7 @@ import org.nikanikoo.flux.ui.activities.PhotoViewerActivity;
 import org.nikanikoo.flux.ui.dialogs.RepostDialog;
 import org.nikanikoo.flux.ui.fragments.profile.ProfileFragment;
 import org.nikanikoo.flux.ui.fragments.profile.GroupProfileFragment;
+import org.nikanikoo.flux.utils.MentionUtils;
 import org.nikanikoo.flux.utils.SafeLinkMovementMethod;
 import org.nikanikoo.flux.utils.ValidationUtils;
 
@@ -212,7 +214,12 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
         originalPostTimestamp.setText(originalPost.getTimestamp());
         setDeviceIcon(originalPostDeviceIcon, originalPost.getPlatform());
         handleCopyright(originalPostCopyrightContainer, originalPostCopyrightLink, originalPost);
-        originalPostContent.setText(ValidationUtils.SanitizeText(originalPost.getContent()));
+        
+        String postContent = ValidationUtils.SanitizeText(originalPost.getContent());
+        originalPostContent.setText(MentionUtils.formatMentions(postContent, this::onAuthorClick));
+        Linkify.addLinks(originalPostContent, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES);
+        originalPostContent.setMovementMethod(SafeLinkMovementMethod.getInstance());
+
         originalPostLikeCount.setText(String.valueOf(originalPost.getLikeCount()));
         originalPostCommentCount.setText(String.valueOf(originalPost.getCommentCount()));
         
@@ -331,7 +338,10 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
 
         if (originalPost.getUnsupportedElementsText() != null && !originalPost.getUnsupportedElementsText().isEmpty()) {
             originalPostUnsupportedElements.setVisibility(View.VISIBLE);
-            originalPostUnsupportedElements.setText(originalPost.getUnsupportedElementsText());
+            String unsupportedText = originalPost.getUnsupportedElementsText();
+            originalPostUnsupportedElements.setText(MentionUtils.formatMentions(unsupportedText, this::onAuthorClick));
+            Linkify.addLinks(originalPostUnsupportedElements, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES);
+            originalPostUnsupportedElements.setMovementMethod(SafeLinkMovementMethod.getInstance());
         } else {
             originalPostUnsupportedElements.setVisibility(View.GONE);
         }
