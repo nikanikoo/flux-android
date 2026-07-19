@@ -308,10 +308,14 @@ public class FriendsListFragment extends BaseFragment implements FriendsAdapter.
         boolean isEmpty = showRequests ? friendRequests.isEmpty() : filteredFriends.isEmpty();
         
         if (isEmpty) {
-            emptyState.setVisibility(View.VISIBLE);
             recyclerView.setVisibility(View.GONE);
+            if (!currentSearchQuery.isEmpty()) {
+                showError(org.nikanikoo.flux.utils.ErrorViewHandler.ErrorType.EMPTY_SEARCH);
+            } else {
+                showError(org.nikanikoo.flux.utils.ErrorViewHandler.ErrorType.EMPTY_STATE);
+            }
         } else {
-            emptyState.setVisibility(View.GONE);
+            hideError();
             recyclerView.setVisibility(View.VISIBLE);
         }
     }

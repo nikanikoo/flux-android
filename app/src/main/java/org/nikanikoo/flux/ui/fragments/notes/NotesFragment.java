@@ -30,7 +30,7 @@ import org.nikanikoo.flux.ui.adapters.NotesAdapter;
 
 import java.util.List;
 
-public class NotesFragment extends Fragment {
+public class NotesFragment extends org.nikanikoo.flux.ui.fragments.BaseFragment {
 
     private RecyclerView recyclerView;
     private SwipeRefreshLayout swipeRefreshLayout;
@@ -61,6 +61,8 @@ public class NotesFragment extends Fragment {
         fabAddNote = view.findViewById(R.id.fab_add_note);
         progressBar = view.findViewById(R.id.progress_bar);
         emptyState = view.findViewById(R.id.empty_state);
+        setupErrorViewWithView(emptyState);
+        setRetryCallback(this::showAddNoteDialog);
 
         notesManager = NotesManager.getInstance(requireContext());
         adapter = new NotesAdapter();
@@ -142,9 +144,11 @@ public class NotesFragment extends Fragment {
                 if (isRefresh) {
                     adapter.setNotes(notes);
                     if (notes.isEmpty()) {
-                        emptyState.setVisibility(View.VISIBLE);
+                        recyclerView.setVisibility(View.GONE);
+                        showError(org.nikanikoo.flux.utils.ErrorViewHandler.ErrorType.EMPTY_NOTES);
                     } else {
-                        emptyState.setVisibility(View.GONE);
+                        recyclerView.setVisibility(View.VISIBLE);
+                        hideError();
                     }
                 } else {
                     adapter.addNotes(notes);
@@ -163,10 +167,10 @@ public class NotesFragment extends Fragment {
                 isLoading = false;
                 swipeRefreshLayout.setRefreshing(false);
                 progressBar.setVisibility(View.GONE);
-                Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show();
 
                 if (adapter.getItemCount() == 0) {
-                    emptyState.setVisibility(View.VISIBLE);
+                    recyclerView.setVisibility(View.GONE);
+                    showErrorAuto(error);
                 }
             }
         });

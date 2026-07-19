@@ -33,6 +33,7 @@
                     <include layout="@layout/settings_item_theme_amoled" />
                     <include layout="@layout/settings_item_color_scheme" />
                     <include layout="@layout/settings_item_contrast" />
+                    <include layout="@layout/settings_item_show_arts" />
 
                 </LinearLayout>
 

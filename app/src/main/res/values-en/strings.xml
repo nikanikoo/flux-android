@@ -636,5 +636,16 @@
     <string name="poll_closed">Poll closed</string>
     <string name="poll_error_vote">Voting error</string>
     <string name="poll_error_unvote">Error retracting vote</string>
+    <string name="empty_notes_title">No notes</string>
+    <string name="empty_notes_desc">Create your first note to save important thoughts!</string>
+    <string name="empty_search_title">Nothing found</string>
+    <string name="empty_search_desc">Try changing your search query or filters.</string>
+    <string name="empty_state_title">Empty</string>
+    <string name="empty_state_desc">Nothing here yet...</string>
+    <string name="empty_chat_title">No messages</string>
+    <string name="empty_chat_desc">There are no messages here yet. Write something to start a conversation!</string>
+    <string name="note_btn_create_note">Create a note</string>
+    <string name="settings_appearance_show_arts">Error illustrations</string>
+    <string name="settings_appearance_show_arts_desc">Show fun arts on error and empty screens</string>
 
 </resources>

@@ -19,13 +19,18 @@ public class ErrorViewHandler {
         API_ERROR,
         TIMEOUT,
         UNAUTHORIZED,
-        GENERIC
+        GENERIC,
+        EMPTY_NOTES,
+        EMPTY_SEARCH,
+        EMPTY_STATE,
+        EMPTY_CHAT
     }
 
     private View errorView;
     private View mainContent;
     private TextView errorTitle;
     private TextView errorMessage;
+    private android.widget.ImageView errorImage;
     private View retryButton;
     private RetryCallback retryCallback;
 
@@ -52,6 +57,7 @@ public class ErrorViewHandler {
     private void initViews() {
         errorTitle = errorView.findViewById(R.id.error_title);
         errorMessage = errorView.findViewById(R.id.error_message);
+        errorImage = errorView.findViewById(R.id.error_image);
         retryButton = errorView.findViewById(R.id.error_retry_button);
 
         if (retryButton != null) {
@@ -64,52 +70,182 @@ public class ErrorViewHandler {
     }
 
     public void showError(@NonNull ErrorType type) {
+        int titleRes = R.string.error_generic_title;
+        int messageRes = R.string.error_generic_message;
+        int imageRes = R.drawable.veselcraft;
+        boolean showButton = true;
+        int buttonTextRes = R.string.error_retry;
+
         switch (type) {
             case NO_INTERNET:
-                showError(R.string.error_no_internet_title, R.string.error_no_internet_message);
-                break;
-            case API_ERROR:
-                showError(R.string.error_api_title, R.string.error_api_message);
+                titleRes = R.string.error_no_internet_title;
+                messageRes = R.string.error_no_internet_message;
+                imageRes = R.drawable.nikanikoo;
                 break;
             case TIMEOUT:
-                showError(R.string.error_timeout_title, R.string.error_timeout_message);
+                titleRes = R.string.error_timeout_title;
+                messageRes = R.string.error_timeout_message;
+                imageRes = R.drawable.nikanikoo;
+                break;
+            case API_ERROR:
+                titleRes = R.string.error_api_title;
+                messageRes = R.string.error_api_message;
+                imageRes = R.drawable.veselcraft;
                 break;
             case UNAUTHORIZED:
-                showError(R.string.error_unauthorized_title, R.string.error_unauthorized_message);
+                titleRes = R.string.error_unauthorized_title;
+                messageRes = R.string.error_unauthorized_message;
+                imageRes = R.drawable.veselcraft;
+                break;
+            case EMPTY_NOTES:
+                titleRes = R.string.empty_notes_title;
+                messageRes = R.string.empty_notes_desc;
+                imageRes = R.drawable.abobus228;
+                buttonTextRes = R.string.note_btn_create_note;
+                break;
+            case EMPTY_SEARCH:
+                titleRes = R.string.empty_search_title;
+                messageRes = R.string.empty_search_desc;
+                imageRes = R.drawable.daniel_myslivets;
+                showButton = false;
+                break;
+            case EMPTY_STATE:
+                titleRes = R.string.empty_state_title;
+                messageRes = R.string.empty_state_desc;
+                imageRes = R.drawable.konata;
+                showButton = false;
+                break;
+            case EMPTY_CHAT:
+                titleRes = R.string.empty_chat_title;
+                messageRes = R.string.empty_chat_desc;
+                imageRes = R.drawable.vepur;
+                showButton = false;
                 break;
             case GENERIC:
             default:
-                showError(R.string.error_generic_title, R.string.error_generic_message);
+                titleRes = R.string.error_generic_title;
+                messageRes = R.string.error_generic_message;
+                imageRes = R.drawable.veselcraft;
                 break;
         }
+
+        if (errorTitle != null) {
+            errorTitle.setVisibility(View.VISIBLE);
+            errorTitle.setText(titleRes);
+        }
+        if (errorMessage != null) {
+            errorMessage.setVisibility(View.VISIBLE);
+            errorMessage.setText(messageRes);
+        }
+        if (errorImage != null) {
+            boolean showArts = ThemeManager.getInstance(errorView.getContext()).isShowArts();
+            if (showArts) {
+                errorImage.setVisibility(View.VISIBLE);
+                errorImage.setImageResource(imageRes);
+                errorImage.setImageTintList(null);
+            } else {
+                errorImage.setVisibility(View.GONE);
+            }
+        }
+        if (retryButton != null) {
+            retryButton.setVisibility(showButton ? View.VISIBLE : View.GONE);
+            if (showButton && retryButton instanceof android.widget.Button) {
+                ((android.widget.Button) retryButton).setText(buttonTextRes);
+            }
+        }
+        setVisible(true);
     }
 
     public void showError(@StringRes int titleRes, @StringRes int messageRes) {
         if (errorTitle != null) {
+            errorTitle.setVisibility(View.VISIBLE);
             errorTitle.setText(titleRes);
         }
         if (errorMessage != null) {
+            errorMessage.setVisibility(View.VISIBLE);
             errorMessage.setText(messageRes);
+        }
+        if (errorImage != null) {
+            boolean showArts = ThemeManager.getInstance(errorView.getContext()).isShowArts();
+            if (showArts) {
+                errorImage.setVisibility(View.VISIBLE);
+                Context context = errorView.getContext();
+                String msg = context.getString(messageRes).toLowerCase();
+                if (msg.contains("сеть") || msg.contains("интернет") || msg.contains("connection") || msg.contains("network")) {
+                    errorImage.setImageResource(R.drawable.nikanikoo);
+                } else {
+                    errorImage.setImageResource(R.drawable.veselcraft);
+                }
+                errorImage.setImageTintList(null);
+            } else {
+                errorImage.setVisibility(View.GONE);
+            }
+        }
+        if (retryButton != null) {
+            retryButton.setVisibility(View.VISIBLE);
+            if (retryButton instanceof android.widget.Button) {
+                ((android.widget.Button) retryButton).setText(R.string.error_retry);
+            }
         }
         setVisible(true);
     }
 
     public void showError(@NonNull String title, @NonNull String message) {
         if (errorTitle != null) {
+            errorTitle.setVisibility(View.VISIBLE);
             errorTitle.setText(title);
         }
         if (errorMessage != null) {
+            errorMessage.setVisibility(View.VISIBLE);
             errorMessage.setText(message);
+        }
+        if (errorImage != null) {
+            boolean showArts = ThemeManager.getInstance(errorView.getContext()).isShowArts();
+            if (showArts) {
+                errorImage.setVisibility(View.VISIBLE);
+                String msg = message.toLowerCase();
+                if (msg.contains("сеть") || msg.contains("интернет") || msg.contains("connection") || msg.contains("network")) {
+                    errorImage.setImageResource(R.drawable.nikanikoo);
+                } else {
+                    errorImage.setImageResource(R.drawable.veselcraft);
+                }
+                errorImage.setImageTintList(null);
+            } else {
+                errorImage.setVisibility(View.GONE);
+            }
+        }
+        if (retryButton != null) {
+            retryButton.setVisibility(View.VISIBLE);
+            if (retryButton instanceof android.widget.Button) {
+                ((android.widget.Button) retryButton).setText(R.string.error_retry);
+            }
         }
         setVisible(true);
     }
 
     public void showErrorWithTitle(@StringRes int titleRes) {
         if (errorTitle != null) {
+            errorTitle.setVisibility(View.VISIBLE);
             errorTitle.setText(titleRes);
         }
         if (errorMessage != null) {
             errorMessage.setVisibility(View.GONE);
+        }
+        if (errorImage != null) {
+            boolean showArts = ThemeManager.getInstance(errorView.getContext()).isShowArts();
+            if (showArts) {
+                errorImage.setVisibility(View.VISIBLE);
+                errorImage.setImageResource(R.drawable.veselcraft);
+                errorImage.setImageTintList(null);
+            } else {
+                errorImage.setVisibility(View.GONE);
+            }
+        }
+        if (retryButton != null) {
+            retryButton.setVisibility(View.VISIBLE);
+            if (retryButton instanceof android.widget.Button) {
+                ((android.widget.Button) retryButton).setText(R.string.error_retry);
+            }
         }
         setVisible(true);
     }
@@ -119,7 +255,24 @@ public class ErrorViewHandler {
             errorTitle.setVisibility(View.GONE);
         }
         if (errorMessage != null) {
+            errorMessage.setVisibility(View.VISIBLE);
             errorMessage.setText(messageRes);
+        }
+        if (errorImage != null) {
+            boolean showArts = ThemeManager.getInstance(errorView.getContext()).isShowArts();
+            if (showArts) {
+                errorImage.setVisibility(View.VISIBLE);
+                errorImage.setImageResource(R.drawable.veselcraft);
+                errorImage.setImageTintList(null);
+            } else {
+                errorImage.setVisibility(View.GONE);
+            }
+        }
+        if (retryButton != null) {
+            retryButton.setVisibility(View.VISIBLE);
+            if (retryButton instanceof android.widget.Button) {
+                ((android.widget.Button) retryButton).setText(R.string.error_retry);
+            }
         }
         setVisible(true);
     }

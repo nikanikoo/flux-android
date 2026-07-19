@@ -71,6 +71,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     private Handler typingTimeoutHandler;
     private Runnable typingTimeoutRunnable;
     private long lastTypingSendTime = 0;
+    private org.nikanikoo.flux.utils.ErrorViewHandler errorViewHandler;
 
     public static ChatFragment newInstance(int peerId, String title) {
         ChatFragment fragment = new ChatFragment();
@@ -106,6 +107,8 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         View view = inflater.inflate(R.layout.fragment_chat, container, false);
         
         initViews(view);
+        errorViewHandler = new org.nikanikoo.flux.utils.ErrorViewHandler(requireContext(), swipeRefreshLayout, recyclerView);
+        errorViewHandler.setRetryCallback(() -> loadMessages(true));
         setupRecyclerView();
         setupEndlessScroll();
         setupSendButton();
@@ -345,6 +348,12 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                             adapter.addMessagesToTop(loadedMessages);
                         }
                         
+                        if (adapter.getItemCount() == 0) {
+                            errorViewHandler.showError(org.nikanikoo.flux.utils.ErrorViewHandler.ErrorType.EMPTY_CHAT);
+                        } else {
+                            errorViewHandler.hideError();
+                        }
+                        
                         swipeRefreshLayout.setRefreshing(false);
 
                         if (shouldScrollToBottom && adapter.getItemCount() > 0) {
@@ -366,7 +375,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                 if (getActivity() != null) {
                     getActivity().runOnUiThread(() -> {
                         paginationHelper.stopLoading();
-                        Toast.makeText(requireContext(), getString(R.string.chat_loading_error) + error, Toast.LENGTH_SHORT).show();
+                        errorViewHandler.showErrorAuto(error);
                         swipeRefreshLayout.setRefreshing(false);
                     });
                 }
@@ -522,6 +531,9 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                 if (adapter != null) {
                     Log.d("ChatFragment", "Adapter is not null, adding message via adapter");
                     adapter.addMessage(newMessage);
+                    if (errorViewHandler != null) {
+                        errorViewHandler.hideError();
+                    }
                     
                     // Загружаем информацию о пользователе для входящих сообщений
                     if (!isOut && fromId > 0) {

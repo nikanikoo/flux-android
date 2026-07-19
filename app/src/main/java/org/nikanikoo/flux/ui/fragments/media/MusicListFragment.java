@@ -240,7 +240,6 @@ public class MusicListFragment extends BaseFragment implements AudioAdapter.OnAu
                 paginationHelper.onDataLoaded(newAudios.size());
                 progressLoading.setVisibility(View.GONE);
                 swipeRefresh.setRefreshing(false);
-                hideError();
 
                 if (refresh) {
                     audios.clear();
@@ -249,7 +248,9 @@ public class MusicListFragment extends BaseFragment implements AudioAdapter.OnAu
                 audioAdapter.notifyDataSetChanged();
 
                 if (audios.isEmpty()) {
-                    Toast.makeText(requireContext(), getString(R.string.audio_no_tracks), Toast.LENGTH_SHORT).show();
+                    showError(org.nikanikoo.flux.utils.ErrorViewHandler.ErrorType.EMPTY_STATE);
+                } else {
+                    hideError();
                 }
             }
 
@@ -299,7 +300,6 @@ public class MusicListFragment extends BaseFragment implements AudioAdapter.OnAu
                 paginationHelper.onDataLoaded(newAudios.size());
                 progressLoading.setVisibility(View.GONE);
                 swipeRefresh.setRefreshing(false);
-                hideError();
 
                 if (refresh) {
                     audios.clear();
@@ -308,7 +308,9 @@ public class MusicListFragment extends BaseFragment implements AudioAdapter.OnAu
                 audioAdapter.notifyDataSetChanged();
 
                 if (audios.isEmpty() && refresh) {
-                    Toast.makeText(requireContext(), getString(R.string.audio_nothing_found), Toast.LENGTH_SHORT).show();
+                    showError(org.nikanikoo.flux.utils.ErrorViewHandler.ErrorType.EMPTY_SEARCH);
+                } else {
+                    hideError();
                 }
             }
 

@@ -35,7 +35,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class GroupMembersFragment extends Fragment implements FriendsAdapter.OnFriendClickListener {
+public class GroupMembersFragment extends org.nikanikoo.flux.ui.fragments.BaseFragment implements FriendsAdapter.OnFriendClickListener {
 
     private static final String ARG_GROUP_ID = "group_id";
     private static final String ARG_GROUP_NAME = "group_name";
@@ -93,6 +93,8 @@ public class GroupMembersFragment extends Fragment implements FriendsAdapter.OnF
         setupSearch();
         setupSwipeRefresh();
         setupToolbarTitle();
+        setupErrorView(view, R.id.recycler_view);
+        setRetryCallback(() -> loadMembers(true));
         loadMembers(true);
         
         return view;
@@ -211,7 +213,7 @@ public class GroupMembersFragment extends Fragment implements FriendsAdapter.OnF
                         getActivity().runOnUiThread(() -> {
                             paginationHelper.stopLoading();
                             hideLoading();
-                            Toast.makeText(getContext(), getString(R.string.group_members_loading_error) + e.getMessage(), Toast.LENGTH_SHORT).show();
+                            showErrorAuto(e.getMessage());
                             updateEmptyState();
                         });
                     }
@@ -224,7 +226,7 @@ public class GroupMembersFragment extends Fragment implements FriendsAdapter.OnF
                     getActivity().runOnUiThread(() -> {
                         paginationHelper.stopLoading();
                         hideLoading();
-                        Toast.makeText(getContext(), getString(R.string.group_members_loading_error) + error, Toast.LENGTH_SHORT).show();
+                        showErrorAuto(error);
                         updateEmptyState();
                     });
                 }
@@ -252,13 +254,14 @@ public class GroupMembersFragment extends Fragment implements FriendsAdapter.OnF
         boolean isEmpty = filteredMembers.isEmpty();
         
         if (isEmpty) {
-            emptyState.setVisibility(View.VISIBLE);
             recyclerView.setVisibility(View.GONE);
-            emptyTextTitle.setText(getString(R.string.group_members_not_found));
-            emptyTextSubtitle.setText(currentSearchQuery.isEmpty() ? 
-                getString(R.string.group_members_none) : getString(R.string.search_none2));
+            if (!currentSearchQuery.isEmpty()) {
+                showError(org.nikanikoo.flux.utils.ErrorViewHandler.ErrorType.EMPTY_SEARCH);
+            } else {
+                showError(org.nikanikoo.flux.utils.ErrorViewHandler.ErrorType.EMPTY_STATE);
+            }
         } else {
-            emptyState.setVisibility(View.GONE);
+            hideError();
             recyclerView.setVisibility(View.VISIBLE);
         }
     }

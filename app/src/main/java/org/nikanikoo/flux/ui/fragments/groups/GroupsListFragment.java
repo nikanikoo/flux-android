@@ -218,10 +218,14 @@ public class GroupsListFragment extends BaseFragment implements GroupsAdapter.On
     private void updateEmptyState() {
         if (filteredGroups.isEmpty()) {
             recyclerView.setVisibility(View.GONE);
-            emptyState.setVisibility(View.VISIBLE);
+            if (!currentSearchQuery.isEmpty()) {
+                showError(org.nikanikoo.flux.utils.ErrorViewHandler.ErrorType.EMPTY_SEARCH);
+            } else {
+                showError(org.nikanikoo.flux.utils.ErrorViewHandler.ErrorType.EMPTY_STATE);
+            }
         } else {
+            hideError();
             recyclerView.setVisibility(View.VISIBLE);
-            emptyState.setVisibility(View.GONE);
         }
     }
 

@@ -32,6 +32,8 @@ public class AppearanceSettingsFragment extends Fragment {
     private MaterialSwitch switchThemeAmoled;
     private View settingsColorScheme;
     private View settingsContrast;
+    private View settingsShowArts;
+    private MaterialSwitch switchShowArts;
 
     @Nullable
     @Override
@@ -57,6 +59,8 @@ public class AppearanceSettingsFragment extends Fragment {
         switchThemeAmoled = view.findViewById(R.id.switch_theme_amoled);
         settingsColorScheme = view.findViewById(R.id.settings_color_scheme);
         settingsContrast = view.findViewById(R.id.settings_contrast);
+        settingsShowArts = view.findViewById(R.id.settings_show_arts);
+        switchShowArts = view.findViewById(R.id.switch_show_arts);
     }
     
     private void setupClickListeners() {
@@ -73,6 +77,13 @@ public class AppearanceSettingsFragment extends Fragment {
         });
         settingsColorScheme.setOnClickListener(v -> showColorSchemeDialog());
         settingsContrast.setOnClickListener(v -> showContrastDialog());
+        settingsShowArts.setOnClickListener(v -> {
+            if (switchShowArts != null) {
+                boolean enabled = !switchShowArts.isChecked();
+                switchShowArts.setChecked(enabled);
+                themeManager.setShowArts(enabled);
+            }
+        });
     }
     
     private void updateThemeValues() {
@@ -82,6 +93,9 @@ public class AppearanceSettingsFragment extends Fragment {
         }
         colorSchemeValue.setText(themeManager.getStyleName(themeManager.getThemeStyle()));
         contrastValue.setText(themeManager.getContrastName(themeManager.getContrastMode()));
+        if (switchShowArts != null) {
+            switchShowArts.setChecked(themeManager.isShowArts());
+        }
     }
     
     private void showThemeModeDialog() {

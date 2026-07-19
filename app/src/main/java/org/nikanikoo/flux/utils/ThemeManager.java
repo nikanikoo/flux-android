@@ -16,6 +16,7 @@ public class ThemeManager {
     private static final String KEY_CONTRAST_MODE = "contrast_mode";
     private static final String KEY_DYNAMIC_COLORS = "dynamic_colors";
     private static final String KEY_AMOLED_THEME = "amoled_theme";
+    private static final String KEY_SHOW_ARTS = "show_arts";
 
     public static final int THEME_LIGHT = 0;
     public static final int THEME_DARK = 1;
@@ -147,6 +148,14 @@ public class ThemeManager {
 
     public boolean isAmoledThemeEnabled() {
         return prefs.getBoolean(KEY_AMOLED_THEME, false);
+    }
+
+    public void setShowArts(boolean enabled) {
+        prefs.edit().putBoolean(KEY_SHOW_ARTS, enabled).apply();
+    }
+
+    public boolean isShowArts() {
+        return prefs.getBoolean(KEY_SHOW_ARTS, true);
     }
     
     public boolean isDynamicColorsAvailable() {

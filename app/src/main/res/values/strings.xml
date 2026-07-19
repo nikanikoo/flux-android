@@ -641,6 +641,17 @@
     <string name="error_timeout_message">Сервер не ответил вовремя. Проверьте интернет и попробуйте снова</string>
     <string name="error_unauthorized_title">Требуется авторизация</string>
     <string name="error_unauthorized_message">Сессия истекла. Войдите в аккаунт заново</string>
+    <string name="empty_notes_title">Заметок нет</string>
+    <string name="empty_notes_desc">Создайте свою первую заметку, чтобы сохранять важные мысли!</string>
+    <string name="empty_search_title">Ничего не найдено</string>
+    <string name="empty_search_desc">Попробуйте изменить поисковый запрос или фильтры.</string>
+    <string name="empty_state_title">Пусто</string>
+    <string name="empty_state_desc">Здесь пока ничего нет...</string>
+    <string name="empty_chat_title">Диалог пуст</string>
+    <string name="empty_chat_desc">Здесь пока нет сообщений. Напишите что-нибудь, чтобы начать беседу!</string>
+    <string name="note_btn_create_note">Создать заметку</string>
+    <string name="settings_appearance_show_arts">Иллюстрации ошибок</string>
+    <string name="settings_appearance_show_arts_desc">Отображать забавные арты при ошибках и пустых экранах</string>
 
     <!-- Profile Fragment -->
     <string name="add_to_friends">Добавить в друзья</string>

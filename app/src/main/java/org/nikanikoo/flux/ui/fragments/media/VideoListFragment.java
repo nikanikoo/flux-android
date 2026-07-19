@@ -153,7 +153,6 @@ public class VideoListFragment extends BaseFragment implements VideoAdapter.OnVi
                 paginationHelper.onDataLoaded(loadedVideos.size());
                 progressLoading.setVisibility(View.GONE);
                 swipeRefresh.setRefreshing(false);
-                hideError();
 
                 if (isRefresh) {
                     videos.clear();
@@ -161,6 +160,12 @@ public class VideoListFragment extends BaseFragment implements VideoAdapter.OnVi
 
                 videos.addAll(loadedVideos);
                 videoAdapter.notifyDataSetChanged();
+
+                if (videos.isEmpty()) {
+                    showError(org.nikanikoo.flux.utils.ErrorViewHandler.ErrorType.EMPTY_STATE);
+                } else {
+                    hideError();
+                }
 
                 Logger.d(TAG, "Loaded " + loadedVideos.size() + " videos, total: " + videos.size());
             }
@@ -202,7 +207,6 @@ public class VideoListFragment extends BaseFragment implements VideoAdapter.OnVi
                 paginationHelper.onDataLoaded(loadedVideos.size());
                 progressLoading.setVisibility(View.GONE);
                 swipeRefresh.setRefreshing(false);
-                hideError();
 
                 if (isRefresh) {
                     videos.clear();
@@ -210,6 +214,12 @@ public class VideoListFragment extends BaseFragment implements VideoAdapter.OnVi
 
                 videos.addAll(loadedVideos);
                 videoAdapter.notifyDataSetChanged();
+
+                if (videos.isEmpty()) {
+                    showError(org.nikanikoo.flux.utils.ErrorViewHandler.ErrorType.EMPTY_SEARCH);
+                } else {
+                    hideError();
+                }
 
                 Logger.d(TAG, "Found " + loadedVideos.size() + " videos for query: " + query);
             }
