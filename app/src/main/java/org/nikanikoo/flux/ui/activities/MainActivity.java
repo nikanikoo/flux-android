@@ -612,11 +612,16 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
         }
     }
     
+    
     @Override
     public void onNotificationBadgeUpdate() {
         updateAllBadges();
     }
-    
+
+    public NavigationController getNavigationController() {
+        return navigationController;
+    }
+
     // ==================== Helper Methods ====================
     
     private void updateMessagesListIfVisible(int peerId, String text, long timestamp, boolean isOut) {

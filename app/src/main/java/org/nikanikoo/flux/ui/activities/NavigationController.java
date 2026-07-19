@@ -511,6 +511,15 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
         closeDrawer();
         return true;
     }
+
+    public void navigateToSettings() {
+        if (navigationView != null) {
+            MenuItem item = navigationView.getMenu().findItem(R.id.drawer_settings);
+            if (item != null) {
+                onNavigationItemSelected(item);
+            }
+        }
+    }
     
     /**
      * Перейти к фрагменту

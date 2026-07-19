@@ -5,6 +5,12 @@ import android.os.Bundle;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.Toast;
+import android.widget.TextView;
+import android.content.res.ColorStateList;
+import android.view.Window;
+import android.util.TypedValue;
+import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -151,7 +157,6 @@ public class NewsFragment extends BaseFragment implements PostAdapter.OnPostClic
             mainActivity.setToolbarTitleClickable(currentTitle, v -> showNewsTypeDialog());
         }
     }
-    
     private void showNewsTypeDialog() {
         if (getContext() == null) return;
 
@@ -160,15 +165,34 @@ public class NewsFragment extends BaseFragment implements PostAdapter.OnPostClic
             return;
         }
 
-        androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(getContext());
-        builder.setTitle(getString(R.string.news_select_type));
+        BottomSheetDialog dialog = new BottomSheetDialog(getContext());
+        dialog.setContentView(R.layout.dialog_news_selection);
 
-        int currentSelection = isSubscriptionMode ? 0 : 1;
+        Window dialogWindow = dialog.getWindow();
+        if (dialogWindow != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            dialogWindow.setNavigationBarColor(android.graphics.Color.BLACK);
+        }
 
-        builder.setSingleChoiceItems(newsTypes, currentSelection, (dialog, which) -> {
-            boolean newMode = (which == 0);
-            if (newMode != isSubscriptionMode) {
-                isSubscriptionMode = newMode;
+        MaterialCardView cardMyNews = dialog.findViewById(R.id.card_my_news);
+        TextView tvMyNewsTitle = dialog.findViewById(R.id.tv_my_news_title);
+        TextView tvMyNewsDesc = dialog.findViewById(R.id.tv_my_news_desc);
+
+        MaterialCardView cardAllNews = dialog.findViewById(R.id.card_all_news);
+        TextView tvAllNewsTitle = dialog.findViewById(R.id.tv_all_news_title);
+        TextView tvAllNewsDesc = dialog.findViewById(R.id.tv_all_news_desc);
+
+        MaterialCardView cardFeedSettings = dialog.findViewById(R.id.card_feed_settings);
+        TextView tvFeedSettingsTitle = dialog.findViewById(R.id.tv_feed_settings_title);
+        TextView tvFeedSettingsDesc = dialog.findViewById(R.id.tv_feed_settings_desc);
+
+
+        setCardSelected(cardMyNews, tvMyNewsTitle, tvMyNewsDesc, isSubscriptionMode);
+        setCardSelected(cardAllNews, tvAllNewsTitle, tvAllNewsDesc, !isSubscriptionMode);
+        setCardSelected(cardFeedSettings, tvFeedSettingsTitle, tvFeedSettingsDesc, false);
+
+        cardMyNews.setOnClickListener(v -> {
+            if (!isSubscriptionMode) {
+                isSubscriptionMode = true;
                 setupToolbarTitle();
 
                 savedPosts.clear();
@@ -182,8 +206,69 @@ public class NewsFragment extends BaseFragment implements PostAdapter.OnPostClic
             dialog.dismiss();
         });
 
-        builder.setNegativeButton(getString(R.string.cancel), null);
-        builder.show();
+        cardAllNews.setOnClickListener(v -> {
+            if (isSubscriptionMode) {
+                isSubscriptionMode = false;
+                setupToolbarTitle();
+
+                savedPosts.clear();
+                savedNextFrom = null;
+                hasLoadedPosts = false;
+                isLoadingPosts = false;
+
+                scrollListener.resetState();
+                loadPosts(true);
+            }
+            dialog.dismiss();
+        });
+
+        cardFeedSettings.setOnClickListener(v -> {
+            dialog.dismiss();
+            if (getActivity() instanceof MainActivity) {
+                MainActivity mainActivity = (MainActivity) getActivity();
+                mainActivity.getNavigationController().navigateToSettings();
+            }
+        });
+
+
+        dialog.setCanceledOnTouchOutside(true);
+        dialog.show();
+    }
+
+    private void setCardSelected(MaterialCardView cardView, TextView titleView, TextView descView, boolean selected) {
+        android.content.Context context = cardView.getContext();
+        TypedValue typedValue = new TypedValue();
+
+        if (selected) {
+            context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorSecondaryContainer, typedValue, true);
+            int bgCol = typedValue.data;
+
+            context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnSecondaryContainer, typedValue, true);
+            int textCol = typedValue.data;
+
+            cardView.setCardBackgroundColor(ColorStateList.valueOf(bgCol));
+            titleView.setTextColor(textCol);
+            descView.setTextColor(textCol);
+            descView.setAlpha(0.8f);
+        } else {
+            context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorSurfaceContainerLow, typedValue, true);
+            int bgCol = typedValue.data;
+            if (bgCol == 0) {
+                context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorSurface, typedValue, true);
+                bgCol = typedValue.data;
+            }
+
+            context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnSurface, typedValue, true);
+            int titleCol = typedValue.data;
+
+            context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnSurfaceVariant, typedValue, true);
+            int descCol = typedValue.data;
+
+            cardView.setCardBackgroundColor(ColorStateList.valueOf(bgCol));
+            titleView.setTextColor(titleCol);
+            descView.setTextColor(descCol);
+            descView.setAlpha(1.0f);
+        }
     }
 
     private void initViews(View view) {

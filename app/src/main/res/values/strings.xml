@@ -201,6 +201,10 @@
     <string name="comments_post_not_found">Ошибка: пост не найден</string>
 
     <!-- News -->
+    <string name="news_subsfeed_desc">Лента постов пользователей, на которых вы подписаны. Будьте в курсе выбранного контента.</string>
+    <string name="news_globalfeed_desc">Глобальная лента всех постов сообщества. Узнайте, что происходит везде.</string>
+    <string name="news_settings_title">Настройки ленты</string>
+    <string name="news_settings_desc">Настройте свою ленту: регулируйте лимиты постов и фильтруйте источники.</string>
     <string name="news_loading_error">Ошибка загрузки новостей:\u0020</string>
     <string name="news_refresh_error">Не удалось загрузить новые посты</string>
     <string name="news_public_loading_error">Ошибка загрузки публичных постов:\u0020</string>

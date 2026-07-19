@@ -76,13 +76,27 @@
         <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
         <item name="android:windowIsTranslucent">true</item>
     </style>
-	
-	<!-- Theme for AudioPlayer Activity -->
-	<style name="Theme.AudioPlayer" parent="Theme.Flux">
+    <!-- Theme for AudioPlayer Activity -->
+    <style name="Theme.AudioPlayer" parent="Theme.Flux">
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowAnimationStyle">@null</item>
     </style>
+    <!-- Style for Top Sheet Dialog -->
+    <style name="Theme.Flux.TopSheetDialog" parent="Theme.Material3.DayNight.Dialog">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowFrame">@null</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowIsFloating">true</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowAnimationStyle">@style/Animation.Flux.TopSheet</item>
+        <item name="android:backgroundDimEnabled">true</item>
+    </style>
 
+    <style name="Animation.Flux.TopSheet" parent="@android:style/Animation.Dialog">
+        <item name="android:windowEnterAnimation">@anim/top_sheet_slide_in</item>
+        <item name="android:windowExitAnimation">@anim/top_sheet_slide_out</item>
+    </style>
 
 </resources>
