@@ -63,6 +63,7 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
     private int currentThemeMode = -1;
     private int currentThemeStyle = -1;
     private int currentContrastMode = -1;
+    private int currentCustomColor = -1;
 
     private final OnBackPressedCallback backPressedCallback = new OnBackPressedCallback(true) {
         @Override
@@ -163,6 +164,7 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
         currentThemeMode = themeManager.getThemeMode();
         currentThemeStyle = themeManager.getThemeStyle();
         currentContrastMode = themeManager.getContrastMode();
+        currentCustomColor = themeManager.getCustomColor();
         
         if (themeManager.getThemeStyle() == ThemeManager.STYLE_MATERIAL_YOU && 
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -392,7 +394,8 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
         ThemeManager themeManager = ThemeManager.getInstance(this);
         if (currentThemeMode != themeManager.getThemeMode() ||
             currentThemeStyle != themeManager.getThemeStyle() ||
-            currentContrastMode != themeManager.getContrastMode()) {
+            currentContrastMode != themeManager.getContrastMode() ||
+            currentCustomColor != themeManager.getCustomColor()) {
             
             Logger.d(TAG, "Theme changed, recreating MainActivity");
             recreate();

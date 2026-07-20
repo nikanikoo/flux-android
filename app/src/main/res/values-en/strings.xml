@@ -360,6 +360,10 @@
     <string name="appearance_color_green">Green</string>
     <string name="appearance_color_purple">Purple</string>
     <string name="appearance_color_red">Red</string>
+    <string name="appearance_color_custom">Custom color</string>
+    <string name="appearance_select_custom_color">Select color or enter HEX code:</string>
+    <string name="custom_color_hex_label">Color code (HEX)</string>
+    <string name="custom_color_hex_error">Invalid format (6 chars, A-F, 0-9 needed)</string>
     <string name="appearance_color_amoled">AMOLED</string>
     <string name="appearance_material_you_info">Material You is only available on Android 12+</string>
     <string name="appearance_select_theme">Select theme</string>

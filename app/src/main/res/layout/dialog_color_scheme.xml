@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
@@ -39,27 +40,81 @@
                 android:padding="12dp" />
 
             <com.google.android.material.radiobutton.MaterialRadioButton
-                android:id="@+id/radio_style_green"
+                android:id="@+id/radio_style_custom"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/appearance_color_green"
-                android:padding="12dp" />
-
-            <com.google.android.material.radiobutton.MaterialRadioButton
-                android:id="@+id/radio_style_purple"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/appearance_color_purple"
-                android:padding="12dp" />
-
-            <com.google.android.material.radiobutton.MaterialRadioButton
-                android:id="@+id/radio_style_red"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/appearance_color_red"
+                android:text="@string/appearance_color_custom"
                 android:padding="12dp" />
 
         </RadioGroup>
+
+        <LinearLayout
+            android:id="@+id/custom_color_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="8dp"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/appearance_select_custom_color"
+                android:textSize="14sp"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:layout_marginBottom="12dp" />
+
+            <org.nikanikoo.flux.ui.views.HsvGradientView
+                android:id="@+id/hsv_gradient_view"
+                android:layout_width="match_parent"
+                android:layout_height="180dp"
+                android:layout_marginBottom="12dp" />
+
+            <org.nikanikoo.flux.ui.views.HueSliderView
+                android:id="@+id/hue_slider_view"
+                android:layout_width="match_parent"
+                android:layout_height="32dp"
+                android:layout_marginBottom="16dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/custom_color_preview"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    app:cardCornerRadius="24dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="2dp"
+                    app:strokeColor="?attr/colorOutline"
+                    app:cardBackgroundColor="#2196F3" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/custom_color_input_layout"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="16dp"
+                    android:hint="@string/custom_color_hex_label"
+                    app:prefixText="#"
+                    app:helperTextEnabled="true">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/edit_custom_color_hex"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textCapCharacters"
+                        android:maxLines="1"
+                        android:maxLength="6" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+            </LinearLayout>
+
+        </LinearLayout>
 
         <TextView
             android:id="@+id/text_material_you_info"
