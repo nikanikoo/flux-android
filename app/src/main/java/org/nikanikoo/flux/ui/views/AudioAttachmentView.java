@@ -52,6 +52,7 @@ public class AudioAttachmentView {
 
             MaterialCardView audioCard = audioView.findViewById(R.id.audio_attachment_card);
             ImageView audioCover = audioView.findViewById(R.id.audio_attachment_cover);
+            ImageView coverPlaceholder = audioView.findViewById(R.id.audio_attachment_cover_placeholder);
             TextView artistText = audioView.findViewById(R.id.audio_attachment_artist);
             TextView titleText = audioView.findViewById(R.id.audio_attachment_title);
             TextView durationText = audioView.findViewById(R.id.audio_attachment_duration);
@@ -61,7 +62,19 @@ public class AudioAttachmentView {
             durationText.setText(audio.getFormattedDuration());
 
             AlbumArtFetcher albumArtFetcher = new AlbumArtFetcher(context);
-            albumArtFetcher.loadAlbumArt(audio.getArtist(), audio.getTitle(), audioCover, R.drawable.ic_music_note);
+            audioCover.setImageDrawable(null);
+            if (coverPlaceholder != null) coverPlaceholder.setVisibility(View.VISIBLE);
+            albumArtFetcher.loadAlbumArt(audio.getArtist(), audio.getTitle(), audioCover, 0,
+                    new AlbumArtFetcher.AlbumArtCallback() {
+                        @Override
+                        public void onSuccess(String imageUrl) {
+                            if (coverPlaceholder != null) coverPlaceholder.setVisibility(View.GONE);
+                        }
+                        @Override
+                        public void onError(String error) {
+                            if (coverPlaceholder != null) coverPlaceholder.setVisibility(View.VISIBLE);
+                        }
+                    });
 
             audioCard.setOnClickListener(v -> {
                 if (listener != null) {

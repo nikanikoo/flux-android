@@ -314,6 +314,7 @@
     <string name="audio_tab_downloaded">Загруженные</string>
     <string name="audio_downloading">Загрузка...</string>
     <string name="audio_downloaded">Трек загружен</string>
+    <string name="audio_cover">Обложка трека</string>
     <string name="audio_download_removed">Загрузка удалена</string>
     <string name="audio_download_error">Ошибка загрузки:\u0020</string>
     <string name="audio_no_downloaded">Загруженных треков пока нет</string>
