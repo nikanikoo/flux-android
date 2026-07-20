@@ -1,7 +1,7 @@
 {
-  "versionCode": 59,
-  "versionName": "Build 0467ef7 (59)",
-  "changelog": "- feat(messages): real-time typing indicators in chat and dialogue list. (0467ef7)\n- fix(auth): change instance list (c47f4ca)\n",
-  "releaseApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-59/flux.apk",
-  "debugApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-59/flux-debug.apk"
+  "versionCode": 60,
+  "versionName": "Build 93eb1aa (60)",
+  "changelog": "- fix(notifications): make the notifications fragment display unread notifications first (#95) (93eb1aa)\n- chore(gitignore): add appInsightsSettings.xml (19bcde7)\n- feat(albums): replace last.fm api to itunes api (902b1c4)\n- feat(themes): replace color themes with custom HSV color picker (fbb797f)\n- fix(posts): fix opening group profile via post comments fragment (51e687a)\n- fix(profile): fix city displaying on user profiles (#92) (2e55bc7)\n- fix(api): fix notifications with like_post type not having any user (#94) (de98c3d)\n",
+  "releaseApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-60/flux.apk",
+  "debugApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-60/flux-debug.apk"
 }
