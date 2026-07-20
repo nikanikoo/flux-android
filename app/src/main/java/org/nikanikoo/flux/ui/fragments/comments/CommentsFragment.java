@@ -259,28 +259,30 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
         // Обработчик клика на аватар и имя автора оригинального поста
         View.OnClickListener authorClickListener = v -> {
             if (originalPost.getAuthorId() != 0) {
-                if (originalPost.getAuthorId() > 0) {
-                    // Пользователь
-                    ProfileFragment profileFragment = ProfileFragment.newInstanceWithId(
-                            originalPost.getAuthorId(), 
-                            originalPost.getAuthorName()
-                    );
-                    if (getActivity() != null) {
-                        getActivity().getSupportFragmentManager().beginTransaction()
-                                .replace(R.id.fragment_container, profileFragment)
-                                .addToBackStack("profile_" + originalPost.getAuthorId())
-                                .commit();
-                    }
-                } else {
-                    // Группа (отрицательный ID)
+                if (originalPost.isGroup()) {
+                    // Группа (паблик)
+                    int groupId = Math.abs(originalPost.getAuthorId());
                     GroupProfileFragment groupProfileFragment = GroupProfileFragment.newInstance(
-                            -originalPost.getAuthorId(), 
+                            groupId, 
                             originalPost.getAuthorName()
                     );
                     if (getActivity() != null) {
                         getActivity().getSupportFragmentManager().beginTransaction()
                                 .replace(R.id.fragment_container, groupProfileFragment)
-                                .addToBackStack("group_" + (-originalPost.getAuthorId()))
+                                .addToBackStack("group_" + groupId)
+                                .commit();
+                    }
+                } else {
+                    // Пользователь
+                    int userId = Math.abs(originalPost.getAuthorId());
+                    ProfileFragment profileFragment = ProfileFragment.newInstanceWithId(
+                            userId, 
+                            originalPost.getAuthorName()
+                    );
+                    if (getActivity() != null) {
+                        getActivity().getSupportFragmentManager().beginTransaction()
+                                .replace(R.id.fragment_container, profileFragment)
+                                .addToBackStack("profile_" + userId)
                                 .commit();
                     }
                 }
