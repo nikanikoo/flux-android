@@ -137,6 +137,81 @@ public class AlbumArtFetcher {
         });
     }
 
+    public void loadArtistImage(String artistName, ImageView imageView, int placeholderResId) {
+        if (imageView == null) return;
+        if (artistName == null || artistName.isEmpty()) {
+            imageView.setImageResource(placeholderResId);
+            return;
+        }
+
+        executor.execute(() -> {
+            try {
+                String imageUrl = fetchArtistImageUrl(artistName);
+                Handler mainHandler = new Handler(Looper.getMainLooper());
+                mainHandler.post(() -> {
+                    if (imageUrl != null && !imageUrl.isEmpty()) {
+                        Picasso.get()
+                                .load(imageUrl)
+                                .placeholder(placeholderResId)
+                                .error(placeholderResId)
+                                .into(imageView);
+                    } else {
+                        imageView.setImageResource(placeholderResId);
+                    }
+                });
+            } catch (Exception e) {
+                Logger.e(TAG, "Error loading artist image", e);
+                Handler mainHandler = new Handler(Looper.getMainLooper());
+                mainHandler.post(() -> imageView.setImageResource(placeholderResId));
+            }
+        });
+    }
+
+    private String fetchArtistImageUrl(String artistName) {
+        if (LASTFM_API_KEY == null || LASTFM_API_KEY.isEmpty() || LASTFM_API_KEY.contains("Replace") || LASTFM_API_KEY.contains("token")) {
+            Logger.d(TAG, "Last.fm API key not configured");
+            return null;
+        }
+        try {
+            String artistEncoded = URLEncoder.encode(artistName, "UTF-8");
+            String urlString = LASTFM_BASE_URL + "?method=artist.getInfo" +
+                    "&api_key=" + LASTFM_API_KEY +
+                    "&artist=" + artistEncoded +
+                    "&format=json";
+
+            Request request = new Request.Builder().url(urlString).get().build();
+
+            try (Response response = httpClient.newCall(request).execute()) {
+                if (!response.isSuccessful()) {
+                    return null;
+                }
+
+                ResponseBody body = response.body();
+                if (body == null) return null;
+
+                String jsonStr = body.string();
+                JSONObject json = new JSONObject(jsonStr);
+
+                if (json.has("artist")) {
+                    JSONObject artistObj = json.getJSONObject("artist");
+                    if (artistObj.has("image")) {
+                        JSONArray images = artistObj.getJSONArray("image");
+                        for (int i = images.length() - 1; i >= 0; i--) {
+                            JSONObject image = images.getJSONObject(i);
+                            String imageUrl = image.optString("#text", null);
+                            if (imageUrl != null && !imageUrl.isEmpty()) {
+                                return imageUrl;
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            Logger.e(TAG, "Error fetching artist info", e);
+        }
+        return null;
+    }
+
     public void fetchAlbumArt(String artist, String title, AlbumArtCallback callback) {
         executor.execute(() -> {
             try {

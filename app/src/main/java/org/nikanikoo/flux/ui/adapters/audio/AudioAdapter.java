@@ -95,8 +95,11 @@ public class AudioAdapter extends RecyclerView.Adapter<AudioAdapter.AudioViewHol
             moreButton.setImageResource(R.drawable.ic_more_vert);
             moreButton.setContentDescription(itemView.getContext().getString(R.string.audio_more));
 
-            audioCard.setOnClickListener(v -> dispatchPosition((currentAudio, position) ->
-                    listener.onPlayClick(currentAudio, position)));
+            audioCard.setOnClickListener(v -> {
+                System.out.println("AudioAdapter: audioCard CLICKED");
+                dispatchPosition((currentAudio, position) ->
+                        listener.onPlayClick(currentAudio, position));
+            });
 
             moreButton.setOnClickListener(v -> dispatchPosition((currentAudio, position) ->
                     listener.onMoreClick(currentAudio, position, v)));
@@ -104,15 +107,20 @@ public class AudioAdapter extends RecyclerView.Adapter<AudioAdapter.AudioViewHol
 
         private void dispatchPosition(AudioAction action) {
             if (listener == null) {
+                System.out.println("AudioAdapter: dispatchPosition - listener is NULL");
                 return;
             }
 
             int position = getBindingAdapterPosition();
+            System.out.println("AudioAdapter: dispatchPosition position=" + position);
             if (position == RecyclerView.NO_POSITION || position >= audios.size()) {
+                System.out.println("AudioAdapter: dispatchPosition - NO_POSITION or out of bounds");
                 return;
             }
 
-            action.run(audios.get(position), position);
+            Audio audio = audios.get(position);
+            System.out.println("AudioAdapter: dispatching click for: " + audio.getArtist() + " - " + audio.getTitle() + ", url=" + audio.getUrl());
+            action.run(audio, position);
         }
 
         private void loadAlbumArt(Audio audio) {
