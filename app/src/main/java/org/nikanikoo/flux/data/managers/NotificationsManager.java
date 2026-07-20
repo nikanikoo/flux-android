@@ -45,6 +45,7 @@ public class NotificationsManager extends BaseManager<NotificationsManager> {
         if (startFrom > 0) {
             params.put("offset", String.valueOf(startFrom));
         }
+        params.put("archived", "0");
         params.put("filters", "wall,mentions,comments,likes,reposts,followers");
 
         api.callMethod("notifications.get", params, new OpenVKApi.ApiCallback() {
