@@ -20,6 +20,45 @@
         android:layout_height="1dp"
         android:background="#E0E0E0" />
 
+    <!-- Заголовок редактирования -->
+    <LinearLayout
+        android:id="@+id/edit_comment_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        android:background="?attr/colorSurfaceVariant"
+        android:visibility="gone"
+        android:gravity="center_vertical">
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_edit"
+            android:layout_marginStart="8dp"
+            app:tint="?attr/colorPrimary" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/comments_edit_hint"
+            android:textSize="14sp"
+            android:textColor="?attr/colorPrimary"
+            android:layout_marginStart="8dp"/>
+
+        <ImageView
+            android:id="@+id/btn_cancel_edit"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@drawable/ic_close"
+            android:padding="6dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            app:tint="?attr/colorOnSurfaceVariant" />
+    </LinearLayout>
+
     <!-- Поле ввода комментария -->
     <LinearLayout
         android:layout_width="match_parent"

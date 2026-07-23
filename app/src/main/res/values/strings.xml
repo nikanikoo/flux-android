@@ -197,6 +197,10 @@
     <string name="comments_cannot_load">Невозможно загрузить комментарии</string>
     <string name="comments_updated">Комментарии обновлены</string>
     <string name="comments_added">Комментарий отправлен</string>
+    <string name="comments_edited">Комментарий изменен</string>
+    <string name="comments_deleted">Комментарий удален</string>
+    <string name="comments_delete_confirm">Удалить комментарий?</string>
+    <string name="comments_edit_hint">Редактировать комментарий...</string>
     <string name="comments_image_selected">Изображение выбрано</string>
     <string name="comments_post_not_found">Ошибка: пост не найден</string>
 

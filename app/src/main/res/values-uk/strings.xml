@@ -163,6 +163,10 @@
     <string name="comments_cannot_load">Неможливо завантажити коментарі</string>
     <string name="comments_updated">Коментарі оновлено</string>
     <string name="comments_added">Коментар відправлено</string>
+    <string name="comments_edited">Коментар змінено</string>
+    <string name="comments_deleted">Коментар видалено</string>
+    <string name="comments_delete_confirm">Видалити коментар?</string>
+    <string name="comments_edit_hint">Редагувати коментар...</string>
     <string name="comments_image_selected">Зображення обрано</string>
     <string name="comments_post_not_found">Помилка: пост не знайдено</string>
 

@@ -7,6 +7,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.PopupMenu;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -15,6 +16,7 @@ import com.squareup.picasso.Picasso;
 
 import org.nikanikoo.flux.data.models.Comment;
 import org.nikanikoo.flux.R;
+import org.nikanikoo.flux.security.AccountManager;
 import org.nikanikoo.flux.ui.views.AudioAttachmentView;
 import org.nikanikoo.flux.utils.SafeLinkMovementMethod;
 import org.nikanikoo.flux.utils.ValidationUtils;
@@ -26,17 +28,30 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
     private List<Comment> comments;
     private Context context;
     private OnCommentClickListener clickListener;
+    private int currentUserId;
 
     public interface OnCommentClickListener {
         void onAuthorClick(int authorId, String authorName, boolean isGroup);
         void onLikeClick(Comment comment);
         void onReplyClick(Comment comment);
         void onImageClick(String imageUrl);
+        void onDeleteClick(Comment comment);
+        void onEditClick(Comment comment);
     }
 
     public CommentsAdapter(Context context, List<Comment> comments) {
         this.context = context;
         this.comments = comments;
+        
+        AccountManager accountManager = AccountManager.getInstance(context);
+        AccountManager.Account currentAccount = accountManager.getCurrentAccount();
+        if (currentAccount != null && currentAccount.userId != null) {
+            try {
+                this.currentUserId = Integer.parseInt(currentAccount.userId);
+            } catch (NumberFormatException e) {
+                this.currentUserId = 0;
+            }
+        }
     }
 
     public void setOnCommentClickListener(OnCommentClickListener listener) {
@@ -162,6 +177,18 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
         holder.avatar.setOnClickListener(authorClickListener);
         holder.authorName.setOnClickListener(authorClickListener);
 
+        // Меню комментария (редактирование/удаление)
+        if (holder.commentMenu != null) {
+            // Показываем меню только если это комментарий текущего пользователя
+            // Или если у пользователя есть права модератора (в будущем)
+            if (comment.getFromId() == currentUserId && comment.getFromId() != 0) {
+                holder.commentMenu.setVisibility(View.VISIBLE);
+                holder.commentMenu.setOnClickListener(v -> showPopupMenu(v, comment));
+            } else {
+                holder.commentMenu.setVisibility(View.GONE);
+            }
+        }
+
         holder.likeButton.setOnClickListener(v -> {
             System.out.println("Like button clicked for comment " + comment.getId());
             if (clickListener != null) {
@@ -196,6 +223,28 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
         }
     }
 
+    private void showPopupMenu(View view, Comment comment) {
+        PopupMenu popup = new PopupMenu(context, view);
+        popup.getMenu().add(0, 1, 0, context.getString(R.string.edit));
+        popup.getMenu().add(0, 2, 1, context.getString(R.string.delete));
+        
+        popup.setOnMenuItemClickListener(item -> {
+            if (clickListener == null) return false;
+            
+            switch (item.getItemId()) {
+                case 1:
+                    clickListener.onEditClick(comment);
+                    return true;
+                case 2:
+                    clickListener.onDeleteClick(comment);
+                    return true;
+                default:
+                    return false;
+            }
+        });
+        popup.show();
+    }
+
     public static class CommentViewHolder extends RecyclerView.ViewHolder {
         ImageView avatar;
         TextView authorName;
@@ -210,6 +259,7 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
         TextView likeCount;
         TextView replyButton;
         ImageView authorVerified;
+        View commentMenu;
 
         public CommentViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -226,6 +276,7 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
             likeCount = itemView.findViewById(R.id.comment_like_count);
             replyButton = itemView.findViewById(R.id.comment_reply_button);
             authorVerified = itemView.findViewById(R.id.comment_author_verified);
+            commentMenu = itemView.findViewById(R.id.comment_menu);
         }
     }
     

@@ -67,6 +67,22 @@
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:layout_marginStart="8dp" />
 
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <ImageView
+                android:id="@+id/comment_menu"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_more_vert"
+                android:contentDescription="More options"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:padding="4dp" />
+
         </LinearLayout>
 
         <TextView

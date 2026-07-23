@@ -165,6 +165,41 @@ public class NotesManager extends BaseManager<NotesManager> {
         });
     }
 
+    public void deleteComment(int commentId, ActionCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("comment_id", String.valueOf(commentId));
+
+        api.callMethod("wall.deleteComment", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                callback.onSuccess();
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    public void editComment(int commentId, String message, ActionCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("comment_id", String.valueOf(commentId));
+        params.put("message", message);
+
+        api.callMethod("wall.editComment", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                callback.onSuccess();
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
     private Note parseNote(JSONObject obj) {
         Note note = new Note();
         note.setId(obj.optInt("id", obj.optInt("nid", 0))); // OpenVK might use nid or id

@@ -164,6 +164,10 @@
     <string name="comments_cannot_load">Cannot load comments</string>
     <string name="comments_updated">Comments updated</string>
     <string name="comments_added">Comment added</string>
+    <string name="comments_edited">Comment edited</string>
+    <string name="comments_deleted">Comment deleted</string>
+    <string name="comments_delete_confirm">Delete comment?</string>
+    <string name="comments_edit_hint">Edit comment...</string>
     <string name="comments_image_selected">Image selected</string>
     <string name="comments_post_not_found">Error: post not found</string>
 
