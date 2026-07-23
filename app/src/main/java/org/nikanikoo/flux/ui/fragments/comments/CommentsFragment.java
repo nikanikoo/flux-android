@@ -784,6 +784,8 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
     private void cancelEditing() {
         editingComment = null;
         editComment.setText("");
+        selectedImageUri = null;
+        updateImageAttachmentIndicator();
         editCommentHeader.setVisibility(View.GONE);
         
         // Скрываем клавиатуру
@@ -829,12 +831,40 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
     }
 
     private void updateComment(Comment comment, String newText) {
-        commentsManager.editComment(comment.getId(), newText, new OpenVKApi.ApiCallback() {
+        if (selectedImageUri != null) {
+            // Если выбрано новое изображение, сначала загружаем его
+            org.nikanikoo.flux.data.managers.PhotoUploadManager.getInstance(requireContext())
+                    .uploadWallPhoto(selectedImageUri, new org.nikanikoo.flux.data.managers.PhotoUploadManager.PhotoUploadCallback() {
+                @Override
+                public void onSuccess(String attachment) {
+                    performUpdateComment(comment, newText, attachment);
+                }
+
+                @Override
+                public void onError(String error) {
+                    if (getActivity() != null) {
+                        getActivity().runOnUiThread(() -> {
+                            Toast.makeText(getContext(), getString(R.string.error_loading) + error, Toast.LENGTH_SHORT).show();
+                        });
+                    }
+                }
+            });
+        } else {
+            performUpdateComment(comment, newText, null);
+        }
+    }
+
+    private void performUpdateComment(Comment comment, String newText, String attachments) {
+        commentsManager.editComment(comment.getId(), newText, attachments, new OpenVKApi.ApiCallback() {
             @Override
             public void onSuccess(org.json.JSONObject response) {
                 if (getActivity() != null) {
                     getActivity().runOnUiThread(() -> {
                         comment.setText(newText);
+                        if (attachments != null) {
+                            // Пометим, что изображение есть
+                            comment.setImageUrl(""); 
+                        }
                         int index = comments.indexOf(comment);
                         if (index >= 0) {
                             commentsAdapter.notifyItemChanged(index);

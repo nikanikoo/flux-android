@@ -208,13 +208,21 @@ public class CommentsManager extends BaseManager<CommentsManager> {
         api.callMethod("wall.deleteComment", params, callback);
     }
 
-    public void editComment(int commentId, String message, OpenVKApi.ApiCallback callback) {
+    public void editComment(int commentId, String message, String attachments, OpenVKApi.ApiCallback callback) {
         Map<String, String> params = new HashMap<>();
         params.put("comment_id", String.valueOf(commentId));
         params.put("message", message);
+        
+        if (attachments != null) {
+            params.put("attachments", attachments);
+        }
 
-        Logger.d("CommentsManager", "Редактирование комментария: " + commentId);
+        Logger.d("CommentsManager", "Редактирование комментария: " + commentId + " с вложениями: " + attachments);
         api.callMethod("wall.editComment", params, callback);
+    }
+
+    public void editComment(int commentId, String message, OpenVKApi.ApiCallback callback) {
+        editComment(commentId, message, null, callback);
     }
 
     private List<Comment> parseComments(JSONArray items, JSONArray profiles, JSONArray groups) {
