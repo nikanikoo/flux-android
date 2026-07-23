@@ -23,6 +23,7 @@ public class AudioAdapter extends RecyclerView.Adapter<AudioAdapter.AudioViewHol
 
     private final List<Audio> audios;
     private final OnAudioClickListener listener;
+    private final AlbumArtFetcher albumArtFetcher;
     private AudioCacheManager audioCacheManager;
 
     public interface OnAudioClickListener {
@@ -31,9 +32,11 @@ public class AudioAdapter extends RecyclerView.Adapter<AudioAdapter.AudioViewHol
         void onMoreClick(Audio audio, int position, View anchor);
     }
 
-    public AudioAdapter(List<Audio> audios, OnAudioClickListener listener) {
+    public AudioAdapter(Context context, List<Audio> audios, OnAudioClickListener listener) {
         this.audios = audios;
         this.listener = listener;
+        this.albumArtFetcher = new AlbumArtFetcher(context);
+        this.audioCacheManager = AudioCacheManager.getInstance(context);
     }
 
     @NonNull
@@ -47,6 +50,14 @@ public class AudioAdapter extends RecyclerView.Adapter<AudioAdapter.AudioViewHol
     @Override
     public void onBindViewHolder(@NonNull AudioViewHolder holder, int position) {
         holder.bind(audios.get(position));
+    }
+
+    @Override
+    public void onViewRecycled(@NonNull AudioViewHolder holder) {
+        super.onViewRecycled(holder);
+        if (holder.audioCover != null) {
+            holder.audioCover.setTag(R.id.tag_album_art_key, null);
+        }
     }
 
     @Override
@@ -64,6 +75,7 @@ public class AudioAdapter extends RecyclerView.Adapter<AudioAdapter.AudioViewHol
     class AudioViewHolder extends RecyclerView.ViewHolder {
         MaterialCardView audioCard;
         ImageView audioCover;
+        ImageView coverPlaceholder;
         TextView artistText;
         TextView titleText;
         TextView durationText;
@@ -71,25 +83,23 @@ public class AudioAdapter extends RecyclerView.Adapter<AudioAdapter.AudioViewHol
         ImageView addButton;
         ImageView moreButton;
 
-        AlbumArtFetcher albumArtFetcher;
-
         AudioViewHolder(@NonNull View itemView) {
             super(itemView);
-            Context context = itemView.getContext();
             audioCard = itemView.findViewById(R.id.audio_card);
             audioCover = itemView.findViewById(R.id.audio_cover);
+            coverPlaceholder = itemView.findViewById(R.id.audio_cover_placeholder);
             artistText = itemView.findViewById(R.id.audio_artist);
             titleText = itemView.findViewById(R.id.audio_title);
             downloadedIndicator = itemView.findViewById(R.id.audio_downloaded_indicator);
             moreButton = itemView.findViewById(R.id.audio_more_button);
-            albumArtFetcher = new AlbumArtFetcher(context);
-            audioCacheManager = AudioCacheManager.getInstance(context);
         }
 
         void bind(Audio audio) {
             artistText.setText(audio.getArtist());
             titleText.setText(audio.getTitle());
             downloadedIndicator.setVisibility(audioCacheManager.isDownloaded(audio) ? View.VISIBLE : View.GONE);
+            audioCover.setImageDrawable(null);
+            if (coverPlaceholder != null) coverPlaceholder.setVisibility(View.VISIBLE);
             loadAlbumArt(audio);
 
             moreButton.setImageResource(R.drawable.ic_more_vert);
@@ -103,14 +113,10 @@ public class AudioAdapter extends RecyclerView.Adapter<AudioAdapter.AudioViewHol
         }
 
         private void dispatchPosition(AudioAction action) {
-            if (listener == null) {
-                return;
-            }
+            if (listener == null) return;
 
             int position = getBindingAdapterPosition();
-            if (position == RecyclerView.NO_POSITION || position >= audios.size()) {
-                return;
-            }
+            if (position == RecyclerView.NO_POSITION || position >= audios.size()) return;
 
             action.run(audios.get(position), position);
         }
@@ -122,11 +128,22 @@ public class AudioAdapter extends RecyclerView.Adapter<AudioAdapter.AudioViewHol
             String title = audio.getTitle();
 
             if (artist == null || title == null || artist.isEmpty() || title.isEmpty()) {
-                audioCover.setImageResource(R.drawable.ic_music_note);
+                audioCover.setImageDrawable(null);
+                if (coverPlaceholder != null) coverPlaceholder.setVisibility(View.VISIBLE);
                 return;
             }
 
-            albumArtFetcher.loadAlbumArt(artist, title, audioCover, R.drawable.ic_music_note);
+            albumArtFetcher.loadAlbumArt(artist, title, audioCover, 0,
+                    new AlbumArtFetcher.AlbumArtCallback() {
+                        @Override
+                        public void onSuccess(String imageUrl) {
+                            if (coverPlaceholder != null) coverPlaceholder.setVisibility(View.GONE);
+                        }
+                        @Override
+                        public void onError(String error) {
+                            if (coverPlaceholder != null) coverPlaceholder.setVisibility(View.VISIBLE);
+                        }
+                    });
         }
     }
 

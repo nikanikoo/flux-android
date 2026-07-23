@@ -33,6 +33,7 @@ public class MiniPlayerController {
     // Views
     private LinearLayout miniPlayerContainer;
     private ImageView miniPlayerIcon;
+    private ImageView miniPlayerIconPlaceholder;
     private TextView miniPlayerTitle;
     private TextView miniPlayerArtist;
     private ImageButton miniPlayerPlayPause;
@@ -131,6 +132,7 @@ public class MiniPlayerController {
 
         miniPlayerContainer = (LinearLayout) miniPlayerView;
         miniPlayerIcon = miniPlayerContainer.findViewById(R.id.mini_player_icon);
+        miniPlayerIconPlaceholder = miniPlayerContainer.findViewById(R.id.mini_player_icon_placeholder);
         miniPlayerTitle = miniPlayerContainer.findViewById(R.id.mini_player_title);
         miniPlayerArtist = miniPlayerContainer.findViewById(R.id.mini_player_artist);
         miniPlayerPlayPause = miniPlayerContainer.findViewById(R.id.mini_player_play_pause);
@@ -255,15 +257,26 @@ public class MiniPlayerController {
     }
 
     private void loadAlbumArt(String artist, String title) {
-        if (miniPlayerIcon == null || artist == null || title == null || 
-            artist.isEmpty() || title.isEmpty()) {
-            if (miniPlayerIcon != null) {
-                miniPlayerIcon.setImageResource(R.drawable.ic_music_note);
-            }
-            return;
-        }
+        if (miniPlayerIcon == null) return;
 
-        albumArtFetcher.loadAlbumArt(artist, title, miniPlayerIcon, R.drawable.ic_music_note);
+        miniPlayerIcon.setImageDrawable(null);
+        if (miniPlayerIconPlaceholder != null) miniPlayerIconPlaceholder.setVisibility(View.VISIBLE);
+
+        if (artist == null || title == null || artist.isEmpty() || title.isEmpty()) return;
+
+        albumArtFetcher.loadAlbumArt(artist, title, miniPlayerIcon, 0,
+                new AlbumArtFetcher.AlbumArtCallback() {
+                    @Override
+                    public void onSuccess(String imageUrl) {
+                        if (miniPlayerIconPlaceholder != null)
+                            miniPlayerIconPlaceholder.setVisibility(View.GONE);
+                    }
+                    @Override
+                    public void onError(String error) {
+                        if (miniPlayerIconPlaceholder != null)
+                            miniPlayerIconPlaceholder.setVisibility(View.VISIBLE);
+                    }
+                });
     }
     
     /**

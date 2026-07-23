@@ -314,6 +314,7 @@
     <string name="audio_tab_downloaded">Загруженные</string>
     <string name="audio_downloading">Загрузка...</string>
     <string name="audio_downloaded">Трек загружен</string>
+    <string name="audio_cover">Обложка трека</string>
     <string name="audio_download_removed">Загрузка удалена</string>
     <string name="audio_download_error">Ошибка загрузки:\u0020</string>
     <string name="audio_no_downloaded">Загруженных треков пока нет</string>
@@ -445,6 +446,10 @@
     <string name="appearance_color_green">Зелёная</string>
     <string name="appearance_color_purple">Фиолетовая</string>
     <string name="appearance_color_red">Красная</string>
+    <string name="appearance_color_custom">Свой цвет</string>
+    <string name="appearance_select_custom_color">Выберите цвет или введите HEX-код:</string>
+    <string name="custom_color_hex_label">Код цвета (HEX)</string>
+    <string name="custom_color_hex_error">Неверный формат (нужно 6 символов, A-F, 0-9)</string>
     <string name="appearance_color_amoled">AMOLED</string>
     <string name="appearance_material_you_info">Material You доступен только на Android 12+</string>
     <string name="appearance_select_theme">Выбор темы</string>

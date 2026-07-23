@@ -1,18 +1,19 @@
 package org.nikanikoo.flux.utils;
 
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.LruCache;
 import android.widget.ImageView;
 
+import org.nikanikoo.flux.R;
+
 import com.squareup.picasso.Picasso;
+import com.squareup.picasso.RequestCreator;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.IOException;
 import java.net.URLEncoder;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
@@ -34,9 +35,11 @@ import okhttp3.ResponseBody;
 
 public class AlbumArtFetcher {
     private static final String TAG = "AlbumArtFetcher";
+    private static final String ITUNES_SEARCH_URL = "https://itunes.apple.com/search";
 
-    private static final String LASTFM_API_KEY = "token";
-    private static final String LASTFM_BASE_URL = "https://ws.audioscrobbler.com/2.0";
+    private static final String NO_ART = "";
+
+    private static final LruCache<String, String> urlCache = new LruCache<>(200);
 
     private final ExecutorService executor;
     private final OkHttpClient httpClient;
@@ -47,7 +50,7 @@ public class AlbumArtFetcher {
     }
 
     public AlbumArtFetcher(Context context) {
-        executor = Executors.newSingleThreadExecutor();
+        executor = Executors.newFixedThreadPool(3);
         httpClient = createUnsafeOkHttpClient();
     }
 
@@ -55,35 +58,22 @@ public class AlbumArtFetcher {
         try {
             final TrustManager[] trustAllCerts = new TrustManager[]{
                     new X509TrustManager() {
-                        @Override
-                        public void checkClientTrusted(X509Certificate[] chain, String authType) {
-                        }
-
-                        @Override
-                        public void checkServerTrusted(X509Certificate[] chain, String authType) {
-                        }
-
-                        @Override
-                        public X509Certificate[] getAcceptedIssuers() {
-                            return new X509Certificate[]{};
-                        }
+                        @Override public void checkClientTrusted(X509Certificate[] chain, String authType) {}
+                        @Override public void checkServerTrusted(X509Certificate[] chain, String authType) {}
+                        @Override public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[]{}; }
                     }
             };
-
             final SSLContext sslContext = SSLContext.getInstance("SSL");
             sslContext.init(null, trustAllCerts, new SecureRandom());
-
             final HostnameVerifier trustAllHostnames = (hostname, session) -> true;
-
             return new OkHttpClient.Builder()
                     .connectTimeout(10, TimeUnit.SECONDS)
                     .readTimeout(10, TimeUnit.SECONDS)
                     .sslSocketFactory(sslContext.getSocketFactory(), (X509TrustManager) trustAllCerts[0])
                     .hostnameVerifier(trustAllHostnames)
                     .build();
-
         } catch (NoSuchAlgorithmException | KeyManagementException e) {
-            Logger.e(TAG, "Error creating unsafe SSL context", e);
+            Logger.e(TAG, "Error creating SSL context", e);
             return new OkHttpClient.Builder()
                     .connectTimeout(10, TimeUnit.SECONDS)
                     .readTimeout(10, TimeUnit.SECONDS)
@@ -96,268 +86,130 @@ public class AlbumArtFetcher {
     }
 
     public void loadAlbumArt(String artist, String title, ImageView imageView, int placeholderResId, AlbumArtCallback callback) {
-        if (imageView == null) {
-            Logger.w(TAG, "ImageView is null");
-            return;
-        }
+        if (imageView == null) return;
 
         if (artist == null || title == null || artist.isEmpty() || title.isEmpty()) {
-            Logger.d(TAG, "Invalid artist or title, showing placeholder");
-            imageView.setImageResource(placeholderResId);
+            if (placeholderResId > 0) imageView.setImageResource(placeholderResId);
+            else imageView.setImageDrawable(null);
             if (callback != null) callback.onError("Invalid artist or title");
             return;
         }
 
-        executor.execute(() -> {
-            try {
-                String imageUrl = fetchImageUrl(artist, title);
+        String key = artist + "\u0000" + title;
 
-                Handler mainHandler = new Handler(Looper.getMainLooper());
-                mainHandler.post(() -> {
-                    if (imageUrl != null && !imageUrl.isEmpty()) {
-                        Picasso.get()
-                                .load(imageUrl)
-                                .placeholder(placeholderResId)
-                                .error(placeholderResId)
-                                .into(imageView);
-                        if (callback != null) callback.onSuccess(imageUrl);
-                    } else {
-                        imageView.setImageResource(placeholderResId);
-                        if (callback != null) callback.onError("Album art not found");
-                    }
-                });
-            } catch (Exception e) {
-                Logger.e(TAG, "Error fetching album art URL", e);
-                Handler mainHandler = new Handler(Looper.getMainLooper());
-                mainHandler.post(() -> {
-                    imageView.setImageResource(placeholderResId);
-                    if (callback != null) callback.onError(e.getMessage());
-                });
+        imageView.setTag(R.id.tag_album_art_key, key);
+
+        String cached = urlCache.get(key);
+        if (cached != null) {
+            if (!cached.isEmpty()) {
+                RequestCreator req = Picasso.get().load(cached);
+                if (placeholderResId > 0) req = req.placeholder(placeholderResId).error(placeholderResId);
+                req.into(imageView);
+                if (callback != null) callback.onSuccess(cached);
+            } else {
+                if (placeholderResId > 0) imageView.setImageResource(placeholderResId);
+                else imageView.setImageDrawable(null);
+                if (callback != null) callback.onError("No art (cached)");
             }
+            return;
+        }
+
+        imageView.setImageDrawable(null);
+
+        executor.execute(() -> {
+            String imageUrl = fetchFromItunes(artist, title);
+
+            urlCache.put(key, imageUrl != null ? imageUrl : NO_ART);
+
+            Handler mainHandler = new Handler(Looper.getMainLooper());
+            mainHandler.post(() -> {
+                Object currentTag = imageView.getTag(R.id.tag_album_art_key);
+                if (!key.equals(currentTag)) return;
+
+                if (imageUrl != null && !imageUrl.isEmpty()) {
+                    RequestCreator req = Picasso.get().load(imageUrl);
+                    if (placeholderResId > 0) req = req.placeholder(placeholderResId).error(placeholderResId);
+                    req.into(imageView);
+                    if (callback != null) callback.onSuccess(imageUrl);
+                } else {
+                    if (placeholderResId > 0) imageView.setImageResource(placeholderResId);
+                    else imageView.setImageDrawable(null);
+                    if (callback != null) callback.onError("Album art not found");
+                }
+            });
         });
     }
 
     public void fetchAlbumArt(String artist, String title, AlbumArtCallback callback) {
-        executor.execute(() -> {
-            try {
-                String imageUrl = fetchImageUrl(artist, title);
+        if (artist == null || title == null || artist.isEmpty() || title.isEmpty()) {
+            if (callback != null) callback.onError("Invalid artist or title");
+            return;
+        }
 
-                Handler mainHandler = new Handler(Looper.getMainLooper());
-                mainHandler.post(() -> {
-                    if (imageUrl != null && !imageUrl.isEmpty()) {
-                        callback.onSuccess(imageUrl);
-                    } else {
-                        callback.onError("Album art not found");
-                    }
-                });
-            } catch (Exception e) {
-                Logger.e(TAG, "Error fetching album art", e);
-                Handler mainHandler = new Handler(Looper.getMainLooper());
-                mainHandler.post(() -> callback.onError(e.getMessage()));
-            }
+        String key = artist + "\u0000" + title;
+        String cached = urlCache.get(key);
+        if (cached != null) {
+            if (!cached.isEmpty()) callback.onSuccess(cached);
+            else callback.onError("No art (cached)");
+            return;
+        }
+
+        executor.execute(() -> {
+            String imageUrl = fetchFromItunes(artist, title);
+            urlCache.put(key, imageUrl != null ? imageUrl : NO_ART);
+
+            Handler mainHandler = new Handler(Looper.getMainLooper());
+            mainHandler.post(() -> {
+                if (imageUrl != null && !imageUrl.isEmpty()) callback.onSuccess(imageUrl);
+                else callback.onError("Album art not found");
+            });
         });
     }
 
-    private String fetchImageUrl(String artist, String title) {
-        if (LASTFM_API_KEY == null || LASTFM_API_KEY.isEmpty() || LASTFM_API_KEY.contains("Replace")) {
-            Logger.d(TAG, "Last.fm API key not configured");
+    public String fetchAlbumArtSync(String artist, String title) {
+        if (artist == null || title == null || artist.isEmpty() || title.isEmpty()) {
             return null;
         }
 
-        String result = fetchTrackInfo(artist, title);
-        if (result != null) {
-            Logger.d(TAG, "Found album art via track.getInfo");
-            return result;
+        String key = artist + "\u0000" + title;
+        String cached = urlCache.get(key);
+        if (cached != null) {
+            return cached.isEmpty() ? null : cached;
         }
 
-        result = fetchSimilarTracks(artist, title);
-        if (result != null) {
-            Logger.d(TAG, "Found album art via track.getSimilar");
-            return result;
-        }
-
-        Logger.d(TAG, "No album art found for: " + artist + " - " + title);
-        return null;
+        String imageUrl = fetchFromItunes(artist, title);
+        urlCache.put(key, imageUrl != null ? imageUrl : NO_ART);
+        return imageUrl;
     }
 
-    private String fetchTrackInfo(String artist, String title) {
+    private String fetchFromItunes(String artist, String title) {
         try {
-            String artistEncoded = URLEncoder.encode(artist, "UTF-8");
-            String titleEncoded = URLEncoder.encode(title, "UTF-8");
+            String term = URLEncoder.encode(artist + " " + title, "UTF-8");
+            String url = ITUNES_SEARCH_URL + "?term=" + term + "&entity=song&limit=5&media=music";
 
-            String urlString = LASTFM_BASE_URL + "?method=track.getInfo" +
-                    "&api_key=" + LASTFM_API_KEY +
-                    "&artist=" + artistEncoded +
-                    "&track=" + titleEncoded +
-                    "&format=json";
-
-            Request request = new Request.Builder().url(urlString).get().build();
+            Request request = new Request.Builder().url(url).get().build();
 
             try (Response response = httpClient.newCall(request).execute()) {
-                if (!response.isSuccessful()) {
-                    return null;
-                }
+                if (!response.isSuccessful()) return null;
 
                 ResponseBody body = response.body();
                 if (body == null) return null;
 
                 JSONObject json = new JSONObject(body.string());
+                JSONArray results = json.optJSONArray("results");
+                if (results == null || results.length() == 0) return null;
 
-                if (json.has("error") || !json.has("track")) {
-                    return null;
-                }
-
-                JSONObject track = json.getJSONObject("track");
-
-                if (track.has("album") && !track.isNull("album")) {
-                    JSONObject album = track.getJSONObject("album");
-                    if (album.has("image")) {
-                        JSONArray images = album.getJSONArray("image");
-                        String imageUrl = findBestImageUrl(images);
-                        if (imageUrl != null) return imageUrl;
-                    }
-                }
-
-                if (track.has("artist") && !track.isNull("artist")) {
-                    JSONObject artistObj = track.getJSONObject("artist");
-                    if (artistObj.has("image")) {
-                        JSONArray artistImages = artistObj.getJSONArray("image");
-                        String imageUrl = findBestImageUrl(artistImages);
-                        if (imageUrl != null) return imageUrl;
+                for (int i = 0; i < results.length(); i++) {
+                    JSONObject item = results.getJSONObject(i);
+                    String artUrl = item.optString("artworkUrl100", null);
+                    if (artUrl != null && !artUrl.isEmpty()) {
+                        // Upgrade to 600x600 for better quality
+                        return artUrl.replace("100x100bb", "600x600bb");
                     }
                 }
             }
         } catch (Exception e) {
-            Logger.e(TAG, "Error fetching track info", e);
-        }
-        return null;
-    }
-
-    private String fetchSimilarTracks(String artist, String title) {
-        try {
-            String artistEncoded = URLEncoder.encode(artist, "UTF-8");
-            String titleEncoded = URLEncoder.encode(title, "UTF-8");
-
-            String urlString = LASTFM_BASE_URL + "?method=track.getSimilar" +
-                    "&api_key=" + LASTFM_API_KEY +
-                    "&artist=" + artistEncoded +
-                    "&track=" + titleEncoded +
-                    "&limit=10" +
-                    "&format=json";
-
-            Request request = new Request.Builder().url(urlString).get().build();
-
-            try (Response response = httpClient.newCall(request).execute()) {
-                if (!response.isSuccessful()) {
-                    return null;
-                }
-
-                ResponseBody body = response.body();
-                if (body == null) return null;
-
-                JSONObject json = new JSONObject(body.string());
-
-                if (json.has("error") || !json.has("similartracks")) {
-                    return null;
-                }
-
-                JSONObject similarTracks = json.getJSONObject("similartracks");
-                if (similarTracks.has("track")) {
-                    JSONArray tracks = similarTracks.getJSONArray("track");
-
-                    for (int i = 0; i < tracks.length(); i++) {
-                        try {
-                            JSONObject similarTrack = tracks.getJSONObject(i);
-
-                            float match = (float) similarTrack.optDouble("match", 0.0);
-
-                            if (match < 0.5f) {
-                                continue;
-                            }
-
-                            if (similarTrack.has("album") && !similarTrack.isNull("album")) {
-                                JSONObject album = similarTrack.getJSONObject("album");
-                                if (album.has("image")) {
-                                    JSONArray images = album.getJSONArray("image");
-                                    String imageUrl = findBestImageUrl(images);
-                                    if (imageUrl != null) {
-                                        Logger.d(TAG, "Loaded from similar: " + similarTrack.optString("artist", "") + " - " + similarTrack.optString("name", "") + " (match=" + match + ")");
-                                        return imageUrl;
-                                    }
-                                }
-                            }
-
-                            if (similarTrack.has("artist") && !similarTrack.isNull("artist")) {
-                                JSONObject artistObj = similarTrack.getJSONObject("artist");
-                                if (artistObj.has("image")) {
-                                    JSONArray artistImages = artistObj.getJSONArray("image");
-                                    String imageUrl = findBestImageUrl(artistImages);
-                                    if (imageUrl != null) {
-                                        return imageUrl;
-                                    }
-                                }
-                            }
-
-                        } catch (Exception e) {
-                            continue;
-                        }
-                    }
-                }
-            }
-        } catch (Exception e) {
-            Logger.e(TAG, "Error fetching similar tracks", e);
-        }
-        return null;
-    }
-
-    private String fetchArtistInfo(String artist) {
-        try {
-            String artistEncoded = URLEncoder.encode(artist, "UTF-8");
-
-            String urlString = LASTFM_BASE_URL + "?method=artist.getInfo" +
-                    "&api_key=" + LASTFM_API_KEY +
-                    "&artist=" + artistEncoded +
-                    "&format=json";
-
-            Request request = new Request.Builder().url(urlString).get().build();
-
-            try (Response response = httpClient.newCall(request).execute()) {
-                if (!response.isSuccessful()) {
-                    return null;
-                }
-
-                ResponseBody body = response.body();
-                if (body == null) return null;
-
-                JSONObject json = new JSONObject(body.string());
-
-                if (json.has("error") || !json.has("artist")) {
-                    return null;
-                }
-
-                JSONObject artistObj = json.getJSONObject("artist");
-                if (artistObj.has("image")) {
-                    JSONArray images = artistObj.getJSONArray("image");
-                    return findBestImageUrl(images);
-                }
-            }
-        } catch (Exception e) {
-            Logger.e(TAG, "Error fetching artist info", e);
-        }
-        return null;
-    }
-
-    private String findBestImageUrl(JSONArray images) {
-        for (int i = images.length() - 1; i >= 0; i--) {
-            try {
-                JSONObject image = images.getJSONObject(i);
-                String imageUrl = image.optString("#text", null);
-                if (imageUrl != null && !imageUrl.isEmpty()) {
-                    return imageUrl;
-                }
-            } catch (Exception e) {
-                continue;
-            }
+            Logger.e(TAG, "Error fetching artwork from iTunes", e);
         }
         return null;
     }

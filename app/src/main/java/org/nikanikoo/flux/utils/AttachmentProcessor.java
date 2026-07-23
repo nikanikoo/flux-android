@@ -157,6 +157,7 @@ public class AttachmentProcessor {
             audio.setTitle(json.optString("title", "Без названия"));
             audio.setDuration(json.optInt("duration", 0));
             audio.setUrl(json.optString("url", ""));
+            audio.setCoverUrl(json.optString("cover_url", ""));
             audio.setManifest(json.optString("manifest", ""));
             audio.setGenreId(json.optInt("genre_id", 0));
             audio.setGenreStr(json.optString("genre_str", ""));
