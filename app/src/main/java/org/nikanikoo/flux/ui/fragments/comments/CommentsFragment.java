@@ -586,6 +586,8 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
     }
 
     private void sendComment(String commentText) {
+        final boolean hasAttachment = selectedImageUri != null;
+        
         // Используем единый метод для создания комментария (с изображением или без)
         commentsManager.createComment(originalPost.getOwnerId(), originalPost.getPostId(),
                 commentText, selectedImageUri, new CommentsManager.CreateCommentCallback() {
@@ -593,8 +595,6 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
             public void onSuccess(Comment comment) {
                 if (getActivity() != null) {
                     getActivity().runOnUiThread(() -> {
-                        comments.add(comment);
-                        commentsAdapter.notifyItemInserted(comments.size() - 1);
                         editComment.setText("");
                         selectedImageUri = null;
                         updateImageAttachmentIndicator();
@@ -602,6 +602,16 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
                         // Обновляем счетчик комментариев
                         originalPost.setCommentCount(originalPost.getCommentCount() + 1);
                         originalPostCommentCount.setText(String.valueOf(originalPost.getCommentCount()));
+                        
+                        if (hasAttachment) {
+                            // Если было изображение, перезагружаем всё, чтобы получить URL картинки
+                            loadComments();
+                        } else {
+                            // Если только текст, просто добавляем в список для скорости
+                            comments.add(comment);
+                            commentsAdapter.notifyItemInserted(comments.size() - 1);
+                            recyclerComments.scrollToPosition(comments.size() - 1);
+                        }
                         
                         Toast.makeText(getContext(), getString(R.string.comments_added), Toast.LENGTH_SHORT).show();
                     });
