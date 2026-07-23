@@ -93,7 +93,6 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         }
     }
 
-    @SuppressLint("ResourceAsColor")
     private void bindOutgoingMessage(OutgoingMessageViewHolder holder, Message message) {
         String sanitizedText = ValidationUtils.SanitizeText(message.getText());
         holder.messageText.setText(MentionUtils.formatMentions(sanitizedText, (id, name, isGroup) -> {
@@ -120,7 +119,6 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         }
     }
 
-    @SuppressLint("ResourceAsColor")
     private void bindIncomingMessage(IncomingMessageViewHolder holder, Message message) {
         String sanitizedText = ValidationUtils.SanitizeText(message.getText());
         holder.messageText.setText(MentionUtils.formatMentions(sanitizedText, (id, name, isGroup) -> {
