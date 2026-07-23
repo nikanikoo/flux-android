@@ -2,6 +2,7 @@ package org.nikanikoo.flux.ui.adapters.messages;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.graphics.Color;
 import android.text.util.Linkify;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
@@ -103,11 +104,8 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         Linkify.addLinks(holder.messageText, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES);
         holder.messageText.setMovementMethod(SafeLinkMovementMethod.getInstance());
         
-        // Разрешаем цвет из темы для ссылок в исходящих сообщениях (на фоне primary)
-        TypedValue typedValue = new TypedValue();
-        context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorTertiaryContainer, typedValue, true);
-        holder.messageText.setLinkTextColor(typedValue.data);
-        holder.messageText.setLinkTextColor(androidx.appcompat.R.attr.selectableItemBackgroundBorderless);
+        // Устанавливаем цвет ссылок таким же, как у обычного текста
+        holder.messageText.setLinkTextColor(holder.messageText.getCurrentTextColor());
         
         // Форматирование времени
         Date date = new Date(message.getDate() * 1000);
@@ -133,11 +131,8 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         Linkify.addLinks(holder.messageText, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES);
         holder.messageText.setMovementMethod(SafeLinkMovementMethod.getInstance());
         
-        // Разрешаем цвет из темы для ссылок во входящих сообщениях (как в комментариях)
-        TypedValue typedValue = new TypedValue();
-        context.getTheme().resolveAttribute(androidx.appcompat.R.attr.colorPrimary, typedValue, true);
-        holder.messageText.setLinkTextColor(typedValue.data);
-        holder.messageText.setLinkTextColor(androidx.appcompat.R.attr.selectableItemBackgroundBorderless);
+        // Устанавливаем цвет ссылок таким же, как у обычного текста
+        holder.messageText.setLinkTextColor(holder.messageText.getCurrentTextColor());
         
         // Форматирование времени
         Date date = new Date(message.getDate() * 1000);
