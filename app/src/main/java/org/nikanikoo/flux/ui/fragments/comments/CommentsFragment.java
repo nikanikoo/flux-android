@@ -860,16 +860,20 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
             public void onSuccess(org.json.JSONObject response) {
                 if (getActivity() != null) {
                     getActivity().runOnUiThread(() -> {
-                        comment.setText(newText);
-                        if (attachments != null) {
-                            // Пометим, что изображение есть
-                            comment.setImageUrl(""); 
-                        }
-                        int index = comments.indexOf(comment);
-                        if (index >= 0) {
-                            commentsAdapter.notifyItemChanged(index);
-                        }
                         cancelEditing();
+                        
+                        if (attachments != null) {
+                            // Если были вложения, перезагружаем список, чтобы получить актуальные URL
+                            loadComments();
+                        } else {
+                            // Если только текст, обновляем локально для скорости
+                            comment.setText(newText);
+                            int index = comments.indexOf(comment);
+                            if (index >= 0) {
+                                commentsAdapter.notifyItemChanged(index);
+                            }
+                        }
+
                         Toast.makeText(getContext(), R.string.comments_edited, Toast.LENGTH_SHORT).show();
                     });
                 }
