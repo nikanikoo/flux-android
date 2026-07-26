@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="?attr/colorSurface"
-    tools:context=".ui.fragments.media.PhotosFragment">
+    tools:context=".ui.fragments.media.AlbumPhotosFragment">
 
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipe_refresh"
@@ -18,15 +18,12 @@
             android:layout_height="match_parent">
 
             <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/recycler_albums"
+                android:id="@+id/recycler_photos"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:clipToPadding="false"
-                android:paddingStart="4dp"
-                android:paddingEnd="4dp"
-                android:paddingTop="8dp"
                 android:paddingBottom="88dp"
-                tools:listitem="@layout/item_album" />
+                tools:listitem="@layout/item_photo_grid" />
 
             <include
                 android:id="@+id/empty_state"
@@ -45,16 +42,5 @@
         </FrameLayout>
 
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
-
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fab_add_album"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="16dp"
-        android:src="@drawable/ic_add"
-        app:tint="?attr/colorOnPrimaryContainer"
-        app:backgroundTint="?attr/colorPrimaryContainer"
-        android:contentDescription="Create album" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

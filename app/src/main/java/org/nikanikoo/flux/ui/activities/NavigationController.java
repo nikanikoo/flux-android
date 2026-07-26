@@ -25,6 +25,7 @@ import org.nikanikoo.flux.ui.custom.CustomDrawerLayout;
 import org.nikanikoo.flux.ui.fragments.friends.FriendsListFragment;
 import org.nikanikoo.flux.ui.fragments.groups.GroupsListFragment;
 import org.nikanikoo.flux.ui.fragments.media.MusicListFragment;
+import org.nikanikoo.flux.ui.fragments.media.PhotosFragment;
 import org.nikanikoo.flux.ui.fragments.media.VideoListFragment;
 import org.nikanikoo.flux.ui.fragments.messages.MessagesListFragment;
 import org.nikanikoo.flux.ui.fragments.news.NewsFragment;
@@ -489,6 +490,10 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
             fragment = new VideoListFragment();
             tag = "videos";
             activity.setToolbarTitle(activity.getString(R.string.nav_videos));
+        } else if (id == R.id.drawer_photos) {
+            fragment = new PhotosFragment();
+            tag = "photos";
+            activity.setToolbarTitle(activity.getString(R.string.nav_photos));
         } else if (id == R.id.drawer_notification) {
             fragment = new NotificationsFragment();
             tag = "notifications";

@@ -281,6 +281,20 @@
     <string name="download_select_quality">Выберите качество</string>
     <string name="download_quality_max">Оригинал (максимальное)</string>
     <string name="download_folder_name">OpenVK Flux</string>
+    <string name="albums_empty_title">Нет альбомов</string>
+    <string name="albums_empty_message">У вас пока нет фотоальбомов</string>
+    <string name="photos_empty_title">Нет фотографий</string>
+    <string name="photos_empty_message">В этом альбоме пока нет фотографий</string>
+    <string name="album_create_title">Новый альбом</string>
+    <string name="album_edit_title">Редактировать альбом</string>
+    <string name="album_title_hint">Название альбома</string>
+    <string name="album_description_hint">Описание (необязательно)</string>
+    <string name="album_btn_create">Создать</string>
+    <string name="album_btn_save">Сохранить</string>
+    <string name="album_fill_title_error">Введите название альбома</string>
+    <string name="album_created_success">Альбом создан</string>
+    <string name="album_updated_success">Альбом обновлён</string>
+
 
     <!-- Videos -->
     <string name="videos_title">Видео</string>
