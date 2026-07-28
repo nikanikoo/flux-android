@@ -16,10 +16,8 @@
         android:layout_height="?attr/actionBarSize"
         android:background="?attr/colorSurfaceContainer"
         android:theme="@style/ThemeOverlay.AppCompat.DayNight.ActionBar"
-        app:title="@string/post_create_title"
-        app:titleTextColor="?attr/colorOnSurface" />
-        android:background="?attr/colorSurface"
         app:navigationIconTint="?attr/colorOnSurface"
+        app:title="@string/post_create_title"
         app:titleTextColor="?attr/colorOnSurface">
 
         <TextView

@@ -34,6 +34,7 @@
                         android:orientation="vertical"
                         android:padding="20dp"
                         android:background="?attr/colorSurface">
+
                     <androidx.cardview.widget.CardView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -75,6 +76,7 @@
 
                         </LinearLayout>
                     </androidx.cardview.widget.CardView>
+                    </LinearLayout>
 
                     <TextView
                         android:layout_width="match_parent"
@@ -94,6 +96,7 @@
                         android:nestedScrollingEnabled="false" />
 
                 </LinearLayout>
+
             </androidx.core.widget.NestedScrollView>
 
         </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>

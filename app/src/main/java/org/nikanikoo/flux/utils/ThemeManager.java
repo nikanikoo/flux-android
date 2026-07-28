@@ -17,6 +17,7 @@ public class ThemeManager {
     private static final String KEY_THEME_STYLE = "theme_style";
     private static final String KEY_CONTRAST_MODE = "contrast_mode";
     private static final String KEY_CUSTOM_COLOR = "custom_theme_color";
+    private static final String KEY_SHOW_ARTS = "show_arts";
 
     public static final int THEME_LIGHT = 0;
     public static final int THEME_DARK = 1;
@@ -154,6 +155,14 @@ public class ThemeManager {
     
     public int getContrastMode() {
         return prefs.getInt(KEY_CONTRAST_MODE, CONTRAST_NORMAL);
+    }
+
+    public boolean isShowArts() {
+        return prefs.getBoolean(KEY_SHOW_ARTS, true);
+    }
+
+    public void setShowArts(boolean show) {
+        prefs.edit().putBoolean(KEY_SHOW_ARTS, show).apply();
     }
 
     public boolean isDynamicColorsAvailable() {

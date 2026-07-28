@@ -163,9 +163,7 @@ public class LoginActivity extends AppCompatActivity {
                     dimOverlay.setVisibility(View.GONE);
                 }
             }
-        });
 
-        findViewById(R.id.text_forgot_password).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onSlide(View bottomSheet, float slideOffset) {
                 if (slideOffset > 0) {

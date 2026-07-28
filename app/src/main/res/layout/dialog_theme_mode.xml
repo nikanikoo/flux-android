@@ -38,7 +38,12 @@
                 android:text="@string/appearance_theme_dark"
                 android:padding="12dp" />
 
-
+            <com.google.android.material.radiobutton.MaterialRadioButton
+                android:id="@+id/radio_theme_amoled"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/appearance_theme_amoled"
+                android:padding="12dp" />
 
             <com.google.android.material.radiobutton.MaterialRadioButton
                 android:id="@+id/radio_theme_system"

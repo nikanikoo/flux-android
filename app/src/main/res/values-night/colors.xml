@@ -42,4 +42,6 @@
     <color name="md_theme_dark_surfaceContainer">#1E2025</color>
     <color name="md_theme_dark_surfaceContainerHigh">#282A2F</color>
     <color name="md_theme_dark_surfaceContainerHighest">#33353A</color>
+
+    <color name="like_active_background">#26E91E63</color>
 </resources>
