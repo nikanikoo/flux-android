@@ -47,8 +47,8 @@
                         android:id="@+id/post_author_name"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
                         android:textStyle="bold"
-                        android:textSize="16sp"
                         android:textColor="?attr/colorOnSurface"
                         android:maxLines="1"
                         android:ellipsize="end" />
@@ -74,7 +74,7 @@
                         android:id="@+id/post_timestamp"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textSize="12sp"
+                        android:textAppearance="?attr/textAppearanceLabelSmall"
                         android:textColor="?attr/colorOnSurfaceVariant" />
 
                     <ImageView
@@ -132,7 +132,8 @@
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="12dp"
                     android:visibility="gone"
-                    app:cardCornerRadius="12dp"
+                    app:cardCornerRadius="16dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceContainerLow"
                     android:clickable="true"
                     android:focusable="true"
                     android:foreground="?attr/selectableItemBackground">
@@ -176,8 +177,8 @@
                                         android:id="@+id/original_post_author_name"
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
+                                        android:textAppearance="?attr/textAppearanceTitleSmall"
                                         android:textStyle="bold"
-                                        android:textSize="14sp"
                                         android:textColor="?attr/colorOnSurface"
                                         android:maxLines="1"
                                         android:ellipsize="end" />
@@ -517,52 +518,54 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:gravity="center_vertical"
+            android:layout_marginTop="4dp">
 
             <LinearLayout
                 android:id="@+id/post_like_button"
                 android:layout_width="wrap_content"
-                android:layout_height="36dp"
+                android:layout_height="38dp"
                 android:orientation="horizontal"
                 android:gravity="center"
                 android:clickable="true"
                 android:focusable="true"
                 android:background="@drawable/bg_post_action_button"
-                android:paddingHorizontal="12dp"
+                android:paddingHorizontal="16dp"
                 android:layout_marginEnd="8dp">
 
                 <ImageView
                     android:id="@+id/post_like_icon"
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
                     android:src="@drawable/ic_favorite"
-                    app:tint="@color/like_inactive" />
+                    app:tint="?attr/colorOnSurfaceVariant" />
 
                 <TextView
                     android:id="@+id/post_like_count"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="12sp"
-                    android:textColor="@color/like_inactive"
-                    android:layout_marginStart="6dp" />
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:layout_marginStart="8dp" />
 
             </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/post_comment_button"
                 android:layout_width="wrap_content"
-                android:layout_height="36dp"
+                android:layout_height="38dp"
                 android:orientation="horizontal"
                 android:gravity="center"
                 android:clickable="true"
                 android:focusable="true"
                 android:background="@drawable/bg_post_action_button"
-                android:paddingHorizontal="12dp"
+                android:paddingHorizontal="16dp"
                 android:layout_marginEnd="8dp">
 
                 <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
                     android:src="@drawable/ic_comment"
                     app:tint="?attr/colorOnSurfaceVariant" />
 
@@ -570,26 +573,27 @@
                     android:id="@+id/post_comment_count"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="12sp"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
                     android:textColor="?attr/colorOnSurfaceVariant"
-                    android:layout_marginStart="6dp" />
+                    android:layout_marginStart="8dp" />
 
             </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/post_share_button"
                 android:layout_width="wrap_content"
-                android:layout_height="36dp"
+                android:layout_height="38dp"
                 android:orientation="horizontal"
                 android:gravity="center"
                 android:clickable="true"
                 android:focusable="true"
                 android:background="@drawable/bg_post_action_button"
-                android:paddingHorizontal="12dp">
+                android:paddingHorizontal="16dp">
 
                 <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
+                    android:layout_width="18dp"
+                    android:layout_height="18dp"
                     android:src="@drawable/ic_share"
                     app:tint="?attr/colorOnSurfaceVariant" />
 
@@ -597,9 +601,10 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/share"
-                    android:textSize="12sp"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
                     android:textColor="?attr/colorOnSurfaceVariant"
-                    android:layout_marginStart="6dp" />
+                    android:layout_marginStart="8dp" />
 
             </LinearLayout>
 

@@ -750,23 +750,51 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     private void updateLikeState(PostViewHolder holder, Post post) {
         holder.likeCount.setText(String.valueOf(post.getLikeCount()));
         
-        System.out.println("Updating like state for post " + post.getPostId() + ": liked=" + post.isLiked() + " count=" + post.getLikeCount());
+        TypedValue typedValue = new TypedValue();
+        int foregroundColor;
+        int backgroundColor;
         
         if (post.isLiked()) {
-            holder.likeIcon.setColorFilter(androidx.core.content.ContextCompat.getColor(context, R.color.like_active));
-            holder.likeCount.setTextColor(androidx.core.content.ContextCompat.getColor(context, R.color.like_active));
+            // Active state: Tonal style with high contrast
+            // Foreground: colorOnPrimaryContainer (Darkest version of accent)
+            if (context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnPrimaryContainer, typedValue, true)) {
+                foregroundColor = (typedValue.type >= TypedValue.TYPE_FIRST_COLOR_INT && typedValue.type <= TypedValue.TYPE_LAST_COLOR_INT)
+                        ? typedValue.data : ContextCompat.getColor(context, typedValue.resourceId);
+            } else {
+                foregroundColor = 0xFF284677; // Fallback
+            }
+
+            // Background: colorPrimaryContainer (Light version of accent)
+            if (context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorPrimaryContainer, typedValue, true)) {
+                backgroundColor = (typedValue.type >= TypedValue.TYPE_FIRST_COLOR_INT && typedValue.type <= TypedValue.TYPE_LAST_COLOR_INT)
+                        ? typedValue.data : ContextCompat.getColor(context, typedValue.resourceId);
+            } else {
+                backgroundColor = 0xFFD7E3FF; // Fallback
+            }
+            
+            holder.likeIcon.setColorFilter(foregroundColor);
+            holder.likeCount.setTextColor(foregroundColor);
+            holder.likeCount.setTypeface(null, Typeface.BOLD);
+            
             if (holder.likeButton != null) {
-                holder.likeButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(
-                    androidx.core.content.ContextCompat.getColor(context, R.color.like_active_background)
-                ));
+                holder.likeButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(backgroundColor));
             }
         } else {
-            holder.likeIcon.setColorFilter(androidx.core.content.ContextCompat.getColor(context, R.color.like_inactive));
-            holder.likeCount.setTextColor(androidx.core.content.ContextCompat.getColor(context, R.color.like_inactive));
+            // Inactive state: colorOnSurfaceVariant (Grey-ish)
+            if (context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnSurfaceVariant, typedValue, true)) {
+                foregroundColor = (typedValue.type >= TypedValue.TYPE_FIRST_COLOR_INT && typedValue.type <= TypedValue.TYPE_LAST_COLOR_INT)
+                        ? typedValue.data : ContextCompat.getColor(context, typedValue.resourceId);
+            } else {
+                foregroundColor = 0xFF757575; // Fallback
+            }
+            
+            holder.likeIcon.setColorFilter(foregroundColor);
+            holder.likeCount.setTextColor(foregroundColor);
+            holder.likeCount.setTypeface(null, Typeface.NORMAL);
+            
             if (holder.likeButton != null) {
-                holder.likeButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(
-                    android.graphics.Color.TRANSPARENT
-                ));
+                // Return to default (colorSurfaceContainerHigh from XML)
+                holder.likeButton.setBackgroundTintList(null);
             }
         }
     }
