@@ -104,6 +104,8 @@ public class AudioPlayerActivity extends AppCompatActivity implements AudioPlaye
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        ThemeManager themeManager = ThemeManager.getInstance(this);
+        themeManager.applyThemeToActivity(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_audio_player);
         

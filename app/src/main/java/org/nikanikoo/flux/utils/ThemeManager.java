@@ -7,6 +7,8 @@ import android.os.Build;
 import android.view.WindowInsetsController;
 import android.view.View;
 import androidx.appcompat.app.AppCompatDelegate;
+import com.google.android.material.color.DynamicColors;
+import com.google.android.material.color.DynamicColorsOptions;
 import org.nikanikoo.flux.R;
 
 public class ThemeManager {
@@ -14,9 +16,7 @@ public class ThemeManager {
     private static final String KEY_THEME_MODE = "theme_mode";
     private static final String KEY_THEME_STYLE = "theme_style";
     private static final String KEY_CONTRAST_MODE = "contrast_mode";
-    private static final String KEY_DYNAMIC_COLORS = "dynamic_colors";
-    private static final String KEY_AMOLED_THEME = "amoled_theme";
-    private static final String KEY_SHOW_ARTS = "show_arts";
+    private static final String KEY_CUSTOM_COLOR = "custom_theme_color";
 
     public static final int THEME_LIGHT = 0;
     public static final int THEME_DARK = 1;
@@ -28,6 +28,7 @@ public class ThemeManager {
     public static final int STYLE_GREEN = 2;
     public static final int STYLE_PURPLE = 3;
     public static final int STYLE_RED = 4;
+    public static final int STYLE_CUSTOM_COLOR = 5;
 
     public static final int CONTRAST_NORMAL = 0;
     public static final int CONTRAST_MEDIUM = 1;
@@ -40,6 +41,7 @@ public class ThemeManager {
     private ThemeManager(Context context) {
         this.context = context.getApplicationContext();
         prefs = this.context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        forceDynamicColorsSupport();
     }
     
     public static synchronized ThemeManager getInstance(Context context) {
@@ -47,6 +49,47 @@ public class ThemeManager {
             instance = new ThemeManager(context);
         }
         return instance;
+    }
+
+    private void forceDynamicColorsSupport() {
+        try {
+            java.lang.reflect.Field condField = com.google.android.material.color.DynamicColors.class.getDeclaredField("DEFAULT_DEVICE_SUPPORT_CONDITION");
+            condField.setAccessible(true);
+            Object defaultCondition = condField.get(null);
+
+            String[] mapNames = {"DYNAMIC_COLOR_SUPPORTED_BRANDS", "DYNAMIC_COLOR_SUPPORTED_MANUFACTURERS"};
+            for (String mapName : mapNames) {
+                try {
+                    java.lang.reflect.Field field = com.google.android.material.color.DynamicColors.class.getDeclaredField(mapName);
+                    field.setAccessible(true);
+                    Object mapObj = field.get(null);
+                    if (mapObj instanceof java.util.Map) {
+                        java.util.Map<String, Object> originalMap = (java.util.Map<String, Object>) mapObj;
+
+                        java.util.Map<String, Object> mutableMap = new java.util.HashMap<>(originalMap);
+
+                        String manufacturer = android.os.Build.MANUFACTURER.toLowerCase(java.util.Locale.ROOT);
+                        String brand = android.os.Build.BRAND.toLowerCase(java.util.Locale.ROOT);
+                        mutableMap.put(manufacturer, defaultCondition);
+                        mutableMap.put(brand, defaultCondition);
+                        mutableMap.put("unknown", defaultCondition);
+
+                        try {
+                            java.lang.reflect.Field modifiersField = java.lang.reflect.Field.class.getDeclaredField("modifiers");
+                            modifiersField.setAccessible(true);
+                            modifiersField.setInt(field, field.getModifiers() & ~java.lang.reflect.Modifier.FINAL);
+                            field.set(null, mutableMap);
+                        } catch (Exception ex) {
+                            field.set(null, mutableMap);
+                        }
+                    }
+                } catch (Exception e) {
+                    // Ignore: reflection failed for this map
+                }
+            }
+        } catch (Exception e) {
+            // Ignore: reflection failed
+        }
     }
 
     public void setThemeMode(int mode) {
@@ -71,50 +114,16 @@ public class ThemeManager {
     }
 
     public static void applySystemBarsAppearance(Activity activity) {
-        ThemeManager themeManager = ThemeManager.getInstance(activity);
-        boolean isLightTheme = !themeManager.isDarkMode();
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             WindowInsetsController windowInsetsController = activity.getWindow().getInsetsController();
             if (windowInsetsController != null) {
+                ThemeManager themeManager = ThemeManager.getInstance(activity);
+                boolean isLightTheme = !themeManager.isDarkMode();
                 windowInsetsController.setSystemBarsAppearance(
                         isLightTheme ? WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS : 0,
                         WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
                 );
             }
-        } else {
-            View decorView = activity.getWindow().getDecorView();
-            int flags = decorView.getSystemUiVisibility();
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                if (isLightTheme) {
-                    flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
-                } else {
-                    flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
-                }
-            } else {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    if (isLightTheme) {
-                        activity.getWindow().setStatusBarColor(android.graphics.Color.BLACK);
-                    }
-                }
-            }
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                if (isLightTheme) {
-                    flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
-                } else {
-                    flags &= ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
-                }
-            } else {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    if (isLightTheme) {
-                        activity.getWindow().setNavigationBarColor(android.graphics.Color.BLACK);
-                    }
-                }
-            }
-
-            decorView.setSystemUiVisibility(flags);
         }
     }
 
@@ -123,7 +132,20 @@ public class ThemeManager {
     }
     
     public int getThemeStyle() {
-        return prefs.getInt(KEY_THEME_STYLE, STYLE_DEFAULT);
+        int style = prefs.getInt(KEY_THEME_STYLE, STYLE_DEFAULT);
+        if (style != STYLE_DEFAULT && style != STYLE_MATERIAL_YOU && style != STYLE_CUSTOM_COLOR) {
+            style = STYLE_DEFAULT;
+            setThemeStyle(STYLE_DEFAULT);
+        }
+        return style;
+    }
+
+    public void setCustomColor(int color) {
+        prefs.edit().putInt(KEY_CUSTOM_COLOR, color).apply();
+    }
+
+    public int getCustomColor() {
+        return prefs.getInt(KEY_CUSTOM_COLOR, 0xFF2196F3);
     }
 
     public void setContrastMode(int contrast) {
@@ -134,30 +156,6 @@ public class ThemeManager {
         return prefs.getInt(KEY_CONTRAST_MODE, CONTRAST_NORMAL);
     }
 
-    public void setDynamicColors(boolean enabled) {
-        prefs.edit().putBoolean(KEY_DYNAMIC_COLORS, enabled).apply();
-    }
-    
-    public boolean isDynamicColorsEnabled() {
-        return prefs.getBoolean(KEY_DYNAMIC_COLORS, false);
-    }
-
-    public void setAmoledThemeEnabled(boolean enabled) {
-        prefs.edit().putBoolean(KEY_AMOLED_THEME, enabled).apply();
-    }
-
-    public boolean isAmoledThemeEnabled() {
-        return prefs.getBoolean(KEY_AMOLED_THEME, false);
-    }
-
-    public void setShowArts(boolean enabled) {
-        prefs.edit().putBoolean(KEY_SHOW_ARTS, enabled).apply();
-    }
-
-    public boolean isShowArts() {
-        return prefs.getBoolean(KEY_SHOW_ARTS, true);
-    }
-    
     public boolean isDynamicColorsAvailable() {
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.S;
     }
@@ -183,26 +181,35 @@ public class ThemeManager {
     }
 
     public void applyThemeToActivity(Activity activity) {
+        forceDynamicColorsSupport();
         int themeResId = getThemeResourceId();
-        int style = getThemeStyle();
-
-        Logger.d("ThemeManager", "Applying theme - Style: " + style +
-            " (MATERIAL_YOU=" + STYLE_MATERIAL_YOU + "), Theme ID: " + themeResId);
-        
         activity.setTheme(themeResId);
+
+        int style = getThemeStyle();
+        if (style == STYLE_MATERIAL_YOU && isDynamicColorsAvailable()) {
+            DynamicColors.applyToActivityIfAvailable(activity);
+        } else if (style == STYLE_CUSTOM_COLOR && isDynamicColorsAvailable()) {
+            int customColor = getCustomColor();
+            try {
+                int overlay = isDarkMode()
+                        ? com.google.android.material.R.style.ThemeOverlay_Material3_DynamicColors_Dark
+                        : com.google.android.material.R.style.ThemeOverlay_Material3_DynamicColors_Light;
+                DynamicColorsOptions options = new DynamicColorsOptions.Builder()
+                        .setContentBasedSource(customColor)
+                        .setThemeOverlay(overlay)
+                        .build();
+                DynamicColors.applyToActivityIfAvailable(activity, options);
+            } catch (Exception e) {
+                Logger.e("ThemeManager", "Error applying custom dynamic color", e);
+            }
+        }
     }
 
     public int getThemeResourceId() {
         int style = getThemeStyle();
         int contrast = getContrastMode();
-
-        Logger.d("ThemeManager", "getThemeResourceId - style: " + style +
-            ", STYLE_MATERIAL_YOU: " + STYLE_MATERIAL_YOU + 
-            ", isDynamicColorsAvailable: " + isDynamicColorsAvailable());
-
         int mode = getThemeMode();
-        boolean forceAmoled = isAmoledThemeEnabled() && isDarkMode();
-        if (mode == THEME_AMOLED || forceAmoled) {
+        if (mode == THEME_AMOLED) {
             switch (style) {
                 case STYLE_GREEN:
                     return getContrastTheme(R.style.Theme_Flux_Green_Amoled, contrast);
@@ -210,6 +217,10 @@ public class ThemeManager {
                     return getContrastTheme(R.style.Theme_Flux_Purple_Amoled, contrast);
                 case STYLE_RED:
                     return getContrastTheme(R.style.Theme_Flux_Red_Amoled, contrast);
+                case STYLE_CUSTOM_COLOR:
+                    if (isDynamicColorsAvailable()) {
+                        return getContrastTheme(R.style.Theme_Flux_CustomColor_Amoled, contrast);
+                    }
                 case STYLE_DEFAULT:
                 default:
                     return getContrastTheme(R.style.Theme_Flux_Amoled, contrast);
@@ -217,20 +228,21 @@ public class ThemeManager {
         }
 
         if (style == STYLE_MATERIAL_YOU && isDynamicColorsAvailable()) {
-            Logger.d("ThemeManager", "Returning DynamicColors theme");
             return getContrastTheme(R.style.Theme_Flux_DynamicColors, contrast);
+        }
+
+        if (style == STYLE_CUSTOM_COLOR && isDynamicColorsAvailable()) {
+            return getContrastTheme(R.style.Theme_Flux_CustomColor, contrast);
         }
 
         switch (style) {
             case STYLE_GREEN:
-                Logger.d("ThemeManager", "Returning Green theme");
                 return getContrastTheme(R.style.Theme_Flux_Green, contrast);
             case STYLE_PURPLE:
-                Logger.d("ThemeManager", "Returning Purple theme");
                 return getContrastTheme(R.style.Theme_Flux_Purple, contrast);
             case STYLE_RED:
-                Logger.d("ThemeManager", "Returning Red theme");
                 return getContrastTheme(R.style.Theme_Flux_Red, contrast);
+            case STYLE_CUSTOM_COLOR:
             case STYLE_DEFAULT:
             default:
                 Logger.d("ThemeManager", "Returning Default (Flux) theme");
@@ -278,6 +290,8 @@ public class ThemeManager {
                 return context.getString(R.string.appearance_color_purple);
             case STYLE_RED:
                 return context.getString(R.string.appearance_color_red);
+            case STYLE_CUSTOM_COLOR:
+                return context.getString(R.string.appearance_color_custom);
             case STYLE_DEFAULT:
             default:
                 return context.getString(R.string.appearance_color_blue);

@@ -45,6 +45,7 @@ public class NotificationsManager extends BaseManager<NotificationsManager> {
         if (startFrom > 0) {
             params.put("offset", String.valueOf(startFrom));
         }
+        params.put("archived", "0");
         params.put("filters", "wall,mentions,comments,likes,reposts,followers");
 
         api.callMethod("notifications.get", params, new OpenVKApi.ApiCallback() {
@@ -504,10 +505,16 @@ public class NotificationsManager extends BaseManager<NotificationsManager> {
                     // Для других типов ищем в feedback или parent
                     if (item.has("feedback") && !item.isNull("feedback")) {
                         JSONObject feedbackObj = item.getJSONObject("feedback");
-                        if (feedbackObj.has("from_id")) {
-                            fromId = feedbackObj.getInt("from_id");
-                        } else if (feedbackObj.has("id")) {
-                            fromId = feedbackObj.getInt("id");
+                        if (feedbackObj.has("items")) {
+                            JSONArray feedbackItems = feedbackObj.getJSONArray("items");
+                            if (feedbackItems.length() > 0) {
+                                JSONObject feedbackItemsObj = feedbackItems.getJSONObject(0);
+                                if (feedbackItemsObj.has("from_id")) {
+                                    fromId = feedbackItemsObj.getInt("from_id");
+                                } else if (feedbackItemsObj.has("id")) {
+                                    fromId = feedbackItemsObj.getInt("id");
+                                }
+                            }
                         }
                     }
                     

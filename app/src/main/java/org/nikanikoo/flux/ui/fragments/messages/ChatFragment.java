@@ -353,7 +353,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                         } else {
                             errorViewHandler.hideError();
                         }
-                        
+
                         swipeRefreshLayout.setRefreshing(false);
 
                         if (shouldScrollToBottom && adapter.getItemCount() > 0) {
@@ -534,7 +534,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                     if (errorViewHandler != null) {
                         errorViewHandler.hideError();
                     }
-                    
+
                     // Загружаем информацию о пользователе для входящих сообщений
                     if (!isOut && fromId > 0) {
                         loadUserInfoForMessage(newMessage, fromId);
@@ -631,7 +631,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         if (this.peerId == peerId && getActivity() != null) {
             getActivity().runOnUiThread(() -> {
                 setActionBarSubtitle(getString(R.string.chat_typing));
-                
+
                 if (typingTimeoutHandler != null && typingTimeoutRunnable != null) {
                     typingTimeoutHandler.removeCallbacks(typingTimeoutRunnable);
                     typingTimeoutHandler.postDelayed(typingTimeoutRunnable, 6000);

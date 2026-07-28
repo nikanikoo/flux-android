@@ -168,10 +168,6 @@
     <string name="comments_post_not_found">Error: post not found</string>
 
     <!-- News -->
-    <string name="news_subsfeed_desc">A feed posts from users you follow. Stay updated with the content you chose yourself.</string>
-    <string name="news_globalfeed_desc">A global feed all posts from the community. Discover what\'s happening everywhere.</string>
-    <string name="news_settings_title">Feed settings</string>
-    <string name="news_settings_desc">Customize your feed: adjust post limits and filter sources.</string>
     <string name="news_loading_error">"Error loading news: "</string>
     <string name="news_refresh_error">Could not load new posts</string>
     <string name="news_public_loading_error">"Error loading public posts: "</string>
@@ -364,6 +360,10 @@
     <string name="appearance_color_green">Green</string>
     <string name="appearance_color_purple">Purple</string>
     <string name="appearance_color_red">Red</string>
+    <string name="appearance_color_custom">Custom color</string>
+    <string name="appearance_select_custom_color">Select color or enter HEX code:</string>
+    <string name="custom_color_hex_label">Color code (HEX)</string>
+    <string name="custom_color_hex_error">Invalid format (6 chars, A-F, 0-9 needed)</string>
     <string name="appearance_color_amoled">AMOLED</string>
     <string name="appearance_material_you_info">Material You is only available on Android 12+</string>
     <string name="appearance_select_theme">Select theme</string>
@@ -568,7 +568,7 @@
     <string name="settings_clear_logs_message">Are you sure you want to delete all saved application logs?</string>
     <string name="settings_logs_cleared">Logs cleared</string>
     <string name="settings_logs_clear_error">Error clearing logs</string>
-    
+
     <string name="crash_dialog_title">⚠️ Unexpected Crash</string>
     <string name="crash_dialog_message">The application closed unexpectedly last time. Select an action for the crash report:</string>
     <string name="crash_option_copy">Copy to clipboard</string>

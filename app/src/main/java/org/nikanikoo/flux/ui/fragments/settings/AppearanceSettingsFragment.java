@@ -2,20 +2,26 @@ package org.nikanikoo.flux.ui.fragments.settings;
 
 import android.app.Dialog;
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.RadioGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
+import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.radiobutton.MaterialRadioButton;
-import com.google.android.material.materialswitch.MaterialSwitch;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 
 import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.ui.activities.MainActivity;
@@ -28,12 +34,8 @@ public class AppearanceSettingsFragment extends Fragment {
     private TextView colorSchemeValue;
     private TextView contrastValue;
     private View settingsThemeMode;
-    private View settingsThemeAmoled;
-    private MaterialSwitch switchThemeAmoled;
     private View settingsColorScheme;
     private View settingsContrast;
-    private View settingsShowArts;
-    private MaterialSwitch switchShowArts;
 
     @Nullable
     @Override
@@ -55,47 +57,20 @@ public class AppearanceSettingsFragment extends Fragment {
         contrastValue = view.findViewById(R.id.contrast_value);
         
         settingsThemeMode = view.findViewById(R.id.settings_theme_mode);
-        settingsThemeAmoled = view.findViewById(R.id.settings_theme_amoled);
-        switchThemeAmoled = view.findViewById(R.id.switch_theme_amoled);
         settingsColorScheme = view.findViewById(R.id.settings_color_scheme);
         settingsContrast = view.findViewById(R.id.settings_contrast);
-        settingsShowArts = view.findViewById(R.id.settings_show_arts);
-        switchShowArts = view.findViewById(R.id.switch_show_arts);
     }
     
     private void setupClickListeners() {
         settingsThemeMode.setOnClickListener(v -> showThemeModeDialog());
-        settingsThemeAmoled.setOnClickListener(v -> {
-            if (switchThemeAmoled != null) {
-                boolean enabled = !switchThemeAmoled.isChecked();
-                switchThemeAmoled.setChecked(enabled);
-                themeManager.setAmoledThemeEnabled(enabled);
-                if (themeManager.isDarkMode()) {
-                    restartMainActivity();
-                }
-            }
-        });
         settingsColorScheme.setOnClickListener(v -> showColorSchemeDialog());
         settingsContrast.setOnClickListener(v -> showContrastDialog());
-        settingsShowArts.setOnClickListener(v -> {
-            if (switchShowArts != null) {
-                boolean enabled = !switchShowArts.isChecked();
-                switchShowArts.setChecked(enabled);
-                themeManager.setShowArts(enabled);
-            }
-        });
     }
     
     private void updateThemeValues() {
         themeModeValue.setText(themeManager.getThemeName(themeManager.getThemeMode()));
-        if (switchThemeAmoled != null) {
-            switchThemeAmoled.setChecked(themeManager.isAmoledThemeEnabled());
-        }
         colorSchemeValue.setText(themeManager.getStyleName(themeManager.getThemeStyle()));
         contrastValue.setText(themeManager.getContrastName(themeManager.getContrastMode()));
-        if (switchShowArts != null) {
-            switchShowArts.setChecked(themeManager.isShowArts());
-        }
     }
     
     private void showThemeModeDialog() {
@@ -103,6 +78,7 @@ public class AppearanceSettingsFragment extends Fragment {
         RadioGroup radioGroup = dialogView.findViewById(R.id.theme_mode_radio_group);
         MaterialRadioButton radioLight = dialogView.findViewById(R.id.radio_theme_light);
         MaterialRadioButton radioDark = dialogView.findViewById(R.id.radio_theme_dark);
+        MaterialRadioButton radioAmoled = dialogView.findViewById(R.id.radio_theme_amoled);
         MaterialRadioButton radioSystem = dialogView.findViewById(R.id.radio_theme_system);
         
         int currentTheme = themeManager.getThemeMode();
@@ -111,8 +87,10 @@ public class AppearanceSettingsFragment extends Fragment {
                 radioLight.setChecked(true);
                 break;
             case ThemeManager.THEME_DARK:
-            case ThemeManager.THEME_AMOLED:
                 radioDark.setChecked(true);
+                break;
+            case ThemeManager.THEME_AMOLED:
+                radioAmoled.setChecked(true);
                 break;
             case ThemeManager.THEME_SYSTEM:
                 radioSystem.setChecked(true);
@@ -129,6 +107,8 @@ public class AppearanceSettingsFragment extends Fragment {
                     newTheme = ThemeManager.THEME_LIGHT;
                 } else if (checkedId == R.id.radio_theme_dark) {
                     newTheme = ThemeManager.THEME_DARK;
+                } else if (checkedId == R.id.radio_theme_amoled) {
+                    newTheme = ThemeManager.THEME_AMOLED;
                 } else {
                     newTheme = ThemeManager.THEME_SYSTEM;
                 }
@@ -148,11 +128,14 @@ public class AppearanceSettingsFragment extends Fragment {
         RadioGroup radioGroup = dialogView.findViewById(R.id.color_scheme_radio_group);
         MaterialRadioButton radioDefault = dialogView.findViewById(R.id.radio_style_default);
         MaterialRadioButton radioMaterialYou = dialogView.findViewById(R.id.radio_style_material_you);
-        MaterialRadioButton radioGreen = dialogView.findViewById(R.id.radio_style_green);
-        MaterialRadioButton radioPurple = dialogView.findViewById(R.id.radio_style_purple);
-        MaterialRadioButton radioRed = dialogView.findViewById(R.id.radio_style_red);
+        MaterialRadioButton radioCustom = dialogView.findViewById(R.id.radio_style_custom);
         TextView materialYouInfo = dialogView.findViewById(R.id.text_material_you_info);
         
+        View customColorContainer = dialogView.findViewById(R.id.custom_color_container);
+        MaterialCardView previewView = dialogView.findViewById(R.id.custom_color_preview);
+        TextInputLayout inputLayout = dialogView.findViewById(R.id.custom_color_input_layout);
+        TextInputEditText editHex = dialogView.findViewById(R.id.edit_custom_color_hex);
+
         boolean materialYouAvailable = themeManager.isDynamicColorsAvailable();
         if (!materialYouAvailable) {
             radioMaterialYou.setEnabled(false);
@@ -171,17 +154,89 @@ public class AppearanceSettingsFragment extends Fragment {
                     radioDefault.setChecked(true);
                 }
                 break;
-            case ThemeManager.STYLE_GREEN:
-                radioGreen.setChecked(true);
-                break;
-            case ThemeManager.STYLE_PURPLE:
-                radioPurple.setChecked(true);
-                break;
-            case ThemeManager.STYLE_RED:
-                radioRed.setChecked(true);
+            case ThemeManager.STYLE_CUSTOM_COLOR:
+                radioCustom.setChecked(true);
+                customColorContainer.setVisibility(View.VISIBLE);
                 break;
         }
-        
+
+        org.nikanikoo.flux.ui.views.HsvGradientView hsvGradientView = dialogView.findViewById(R.id.hsv_gradient_view);
+        org.nikanikoo.flux.ui.views.HueSliderView hueSliderView = dialogView.findViewById(R.id.hue_slider_view);
+
+        int customColor = themeManager.getCustomColor();
+        String hexString = String.format("%06X", (0xFFFFFF & customColor));
+        editHex.setText(hexString);
+        previewView.setCardBackgroundColor(android.content.res.ColorStateList.valueOf(customColor));
+
+        if (hsvGradientView != null && hueSliderView != null) {
+            float[] hsv = new float[3];
+            Color.colorToHSV(customColor, hsv);
+            hsvGradientView.setColor(hsv[0], hsv[1], hsv[2]);
+            hueSliderView.setHue(hsv[0]);
+
+            hsvGradientView.setOnColorChangedListener((h, s, v) -> {
+                int selectedColor = Color.HSVToColor(new float[]{h, s, v});
+                previewView.setCardBackgroundColor(android.content.res.ColorStateList.valueOf(selectedColor));
+                if (!editHex.hasFocus()) {
+                    String hex = String.format("%06X", (0xFFFFFF & selectedColor));
+                    editHex.setText(hex);
+                    inputLayout.setError(null);
+                }
+            });
+
+            hueSliderView.setOnHueChangedListener(hue -> {
+                hsvGradientView.setHue(hue);
+                int selectedColor = Color.HSVToColor(new float[]{hue, hsvGradientView.getSaturation(), hsvGradientView.getValue()});
+                previewView.setCardBackgroundColor(android.content.res.ColorStateList.valueOf(selectedColor));
+                if (!editHex.hasFocus()) {
+                    String hex = String.format("%06X", (0xFFFFFF & selectedColor));
+                    editHex.setText(hex);
+                    inputLayout.setError(null);
+                }
+            });
+        }
+
+        radioGroup.setOnCheckedChangeListener((group, checkedId) -> {
+            if (checkedId == R.id.radio_style_custom) {
+                customColorContainer.setVisibility(View.VISIBLE);
+            } else {
+                customColorContainer.setVisibility(View.GONE);
+            }
+        });
+
+        editHex.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                String hex = s.toString().trim();
+                if (hex.length() == 6) {
+                    try {
+                        int parsedColor = Color.parseColor("#" + hex);
+                        previewView.setCardBackgroundColor(android.content.res.ColorStateList.valueOf(parsedColor));
+
+                        if (editHex.hasFocus() && hsvGradientView != null && hueSliderView != null) {
+                            float[] hsvVals = new float[3];
+                            Color.colorToHSV(parsedColor, hsvVals);
+                            hsvGradientView.setColor(hsvVals[0], hsvVals[1], hsvVals[2]);
+                            hueSliderView.setHue(hsvVals[0]);
+                        }
+                        inputLayout.setError(null);
+                    } catch (IllegalArgumentException e) {
+                        inputLayout.setError(getString(R.string.custom_color_hex_error));
+                    }
+                } else if (hex.length() > 0) {
+                    inputLayout.setError(getString(R.string.custom_color_hex_error));
+                } else {
+                    inputLayout.setError(null);
+                }
+            }
+        });
+
         Dialog dialog = new MaterialAlertDialogBuilder(requireContext())
             .setView(dialogView)
             .setPositiveButton(getString(R.string.apply), (d, which) -> {
@@ -190,12 +245,21 @@ public class AppearanceSettingsFragment extends Fragment {
                 
                 if (checkedId == R.id.radio_style_material_you) {
                     newStyle = ThemeManager.STYLE_MATERIAL_YOU;
-                } else if (checkedId == R.id.radio_style_green) {
-                    newStyle = ThemeManager.STYLE_GREEN;
-                } else if (checkedId == R.id.radio_style_purple) {
-                    newStyle = ThemeManager.STYLE_PURPLE;
-                } else if (checkedId == R.id.radio_style_red) {
-                    newStyle = ThemeManager.STYLE_RED;
+                } else if (checkedId == R.id.radio_style_custom) {
+                    newStyle = ThemeManager.STYLE_CUSTOM_COLOR;
+                    String hex = editHex.getText().toString().trim();
+                    int parsedColor = 0xFF2196F3;
+                    try {
+                        if (hex.length() == 6) {
+                            parsedColor = Color.parseColor("#" + hex);
+                        } else {
+                            throw new IllegalArgumentException();
+                        }
+                    } catch (Exception e) {
+                        Toast.makeText(getContext(), getString(R.string.custom_color_hex_error), Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    themeManager.setCustomColor(parsedColor);
                 } else {
                     newStyle = ThemeManager.STYLE_DEFAULT;
                 }

@@ -25,13 +25,12 @@ import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.data.managers.AudioCacheManager;
 import org.nikanikoo.flux.data.models.Audio;
 import org.nikanikoo.flux.ui.activities.AudioPlayerActivity;
+import com.squareup.picasso.Picasso;
+
 import org.nikanikoo.flux.utils.AlbumArtFetcher;
 import org.nikanikoo.flux.utils.Logger;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -196,7 +195,7 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
         this.playlist.addAll(audios);
         this.currentPosition = startPosition;
         clearPreloadedAudio();
-        
+
         Logger.d(TAG, "Playlist set: " + playlist.size() + " tracks, starting at " + startPosition);
         
         prepareAudio(playlist.get(currentPosition));
@@ -284,6 +283,12 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
                 
                 Logger.d(TAG, "Preparing audio: " + audio.getFullTitle());
                 
+                MediaMetadataCompat.Builder clearBuilder = new MediaMetadataCompat.Builder()
+                        .putString(MediaMetadataCompat.METADATA_KEY_TITLE, audio.getTitle())
+                        .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, audio.getArtist())
+                        .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, getDuration());
+                mediaSession.setMetadata(clearBuilder.build());
+
                 notifyTrackChanged(audio, currentPosition);
                 updateNotification();
             } catch (IOException e) {
@@ -508,16 +513,22 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
             if (albumArt == null) {
                 albumArt = loadAlbumArtFromLastFm(currentAudio);
             }
-            
+            if (albumArt == null) {
+                String itunesUrl = albumArtFetcher.fetchAlbumArtSync(
+                        currentAudio.getArtist(), currentAudio.getTitle());
+                if (itunesUrl != null) {
+                    albumArt = loadAlbumArt(itunesUrl);
+                }
+            }
+
             if (albumArt != null) {
                 Bitmap scaledArt = Bitmap.createScaledBitmap(albumArt, 512, 512, true);
                 metadataBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, scaledArt);
-                mediaSession.setMetadata(metadataBuilder.build());
-                updateNotification();
             } else {
                 metadataBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, null);
-                mediaSession.setMetadata(metadataBuilder.build());
             }
+            mediaSession.setMetadata(metadataBuilder.build());
+            updateNotification();
         });
     }
 
@@ -593,15 +604,7 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
 
     private Bitmap loadAlbumArt(String urlString) {
         try {
-            URL url = new URL(urlString);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-            connection.setDoInput(true);
-            connection.connect();
-            InputStream input = connection.getInputStream();
-            Bitmap bitmap = BitmapFactory.decodeStream(input);
-            input.close();
-            connection.disconnect();
-            
+            Bitmap bitmap = Picasso.get().load(urlString).get();
             if (bitmap != null) {
                 int size = 512;
                 return Bitmap.createScaledBitmap(bitmap, size, size, true);
@@ -785,7 +788,7 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
     @Override
     public void onDestroy() {
         super.onDestroy();
-        
+
         if (audioLoadExecutor != null) {
             audioLoadExecutor.shutdown();
             try {
@@ -803,7 +806,7 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
             audioPreloadExecutor = null;
         }
         clearPreloadedAudio();
-        
+
         if (mediaSession != null) {
             mediaSession.setActive(false);
             mediaSession.release();

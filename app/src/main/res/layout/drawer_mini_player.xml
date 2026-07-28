@@ -25,13 +25,30 @@
         android:focusable="true"
         android:background="?attr/selectableItemBackground">
 
-        <ImageView
-            android:id="@+id/mini_player_icon"
+        <FrameLayout
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:src="@drawable/ic_music_note"
-            android:scaleType="centerCrop"
-            android:contentDescription="Обложка трека"/>
+            android:background="@drawable/bg_audio_cover"
+            android:clipToOutline="true">
+
+            <ImageView
+                android:id="@+id/mini_player_icon_placeholder"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_music_note"
+                android:scaleType="centerInside"
+                android:alpha="0.4"
+                android:contentDescription="@null"/>
+
+            <ImageView
+                android:id="@+id/mini_player_icon"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:contentDescription="@string/audio_cover"/>
+
+        </FrameLayout>
 
         <LinearLayout
             android:layout_width="0dp"

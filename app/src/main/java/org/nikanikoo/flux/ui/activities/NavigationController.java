@@ -50,7 +50,7 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
     private final CustomDrawerLayout drawerLayout;
     private final NavigationView navigationView;
     private final View navigationRailView;
-    
+
     // Header views
     private TextView drawerName;
     private TextView drawerUsername;
@@ -72,8 +72,8 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
     private final AccountManager accountManager;
     
     public NavigationController(MainActivity activity, CustomDrawerLayout drawerLayout, 
-                                NavigationView navigationView, 
-                                View navigationRailView, 
+                                NavigationView navigationView,
+                                View navigationRailView,
                                 Toolbar toolbar) {
         this.activity = activity;
         this.drawerLayout = drawerLayout;
@@ -92,7 +92,7 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
             updateUserInfo(cachedProfile);
         }
     }
-    
+
     private void initNavigationRail() {
         if (navigationRailView != null) {
             View menuButton = navigationRailView.findViewById(R.id.rail_menu_button);
@@ -112,13 +112,13 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
                         if (iconView != null && item.getIcon() != null) {
                             iconView.setImageDrawable(item.getIcon());
                         }
-                        
+
                         itemView.setOnClickListener(v -> {
                             onNavigationItemSelected(item);
                         });
-                        
+
                         itemView.setTag(item.getItemId());
-                        
+
                         itemsContainer.addView(itemView);
                     }
                 }
@@ -138,10 +138,10 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
                 R.string.close_drawer);
         
         drawerLayout.addDrawerListener(drawerToggle);
-        
+
         boolean isTablet = navigationRailView != null && navigationRailView.getVisibility() == View.VISIBLE;
         drawerToggle.setDrawerIndicatorEnabled(!isTablet);
-        
+
         drawerToggle.syncState();
         
         Logger.d(TAG, "initDrawer: drawerIndicatorEnabled=" + drawerToggle.isDrawerIndicatorEnabled());
@@ -406,7 +406,7 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
         // Очищаем кэш
         org.nikanikoo.flux.data.managers.ProfileManager.getInstance(activity).clearCache();
         org.nikanikoo.flux.ui.fragments.news.NewsFragment.clearCache();
-        
+
         // Сбрасываем OpenVKApi
         org.nikanikoo.flux.data.managers.api.OpenVKApi.resetInstance();
         
@@ -520,7 +520,7 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
             }
         }
     }
-    
+
     /**
      * Перейти к фрагменту
      */
@@ -569,7 +569,7 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
             activity.setToolbarTitle(activity.getString(R.string.nav_settings));
         }
     }
-    
+
     /**
      * Установить ID текущего фрагмента
      */
@@ -661,9 +661,9 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
                 activity.getSupportActionBar().setDisplayHomeAsUpEnabled(!isTablet);
             }
             drawerToggle.setToolbarNavigationClickListener(null);
-            
+
             drawerToggle.syncState();
-            
+
             if (toolbar != null) {
                 if (isTablet) {
                     toolbar.setNavigationIcon(null);

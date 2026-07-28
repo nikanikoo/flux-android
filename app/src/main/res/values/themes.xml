@@ -56,7 +56,7 @@
         <!-- Component styles override -->
         <item name="materialCardViewStyle">@style/Widget.Material3.CardView.Elevated</item>
         <item name="textInputStyle">@style/Widget.Material3.TextInputLayout.OutlinedBox</item>
-        
+
         <!-- CardView стиль по умолчанию -->
         <item name="cardViewStyle">@style/Widget.App.CardView</item>
     </style>
@@ -64,7 +64,6 @@
     <!-- Стиль для CardView -->
     <style name="Widget.App.CardView" parent="Widget.Material3.CardView.Filled">
         <item name="cardBackgroundColor">?attr/colorSurfaceContainer</item>
-        <item name="strokeWidth">0dp</item>
     </style>
 
     <!-- Theme for PhotoViewer Activity -->

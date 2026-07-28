@@ -165,7 +165,7 @@ public class MusicListFragment extends BaseFragment implements AudioAdapter.OnAu
     private void setupRecyclerView() {
         layoutManager = new LinearLayoutManager(requireContext());
         recyclerAudios.setLayoutManager(layoutManager);
-        audioAdapter = new AudioAdapter(audios, this);
+        audioAdapter = new AudioAdapter(requireContext(), audios, this);
         recyclerAudios.setAdapter(audioAdapter);
     }
 

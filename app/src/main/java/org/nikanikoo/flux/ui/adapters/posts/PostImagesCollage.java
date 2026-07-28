@@ -172,13 +172,13 @@ public class PostImagesCollage extends FrameLayout {
                     .placeholder(android.R.drawable.ic_menu_gallery)
                     .error(android.R.drawable.ic_menu_gallery)
                     .fit();
-            
+
             if (imageView == image1Of1) {
                 requestCreator.centerCrop();
             } else {
                 requestCreator.centerCrop();
             }
-            
+
             requestCreator.into(imageView);
         } else {
             imageView.setImageResource(android.R.drawable.ic_menu_gallery);

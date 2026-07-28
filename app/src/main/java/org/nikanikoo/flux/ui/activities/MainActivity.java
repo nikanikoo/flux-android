@@ -6,7 +6,6 @@ import android.os.Build;
 import android.os.Bundle;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.TextView;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
@@ -14,6 +13,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
+import com.google.android.material.color.DynamicColors;
 import com.google.android.material.navigation.NavigationView;
 
 import org.nikanikoo.flux.R;
@@ -63,6 +63,7 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
     private int currentThemeMode = -1;
     private int currentThemeStyle = -1;
     private int currentContrastMode = -1;
+    private int currentCustomColor = -1;
 
     private final OnBackPressedCallback backPressedCallback = new OnBackPressedCallback(true) {
         @Override
@@ -107,9 +108,9 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
         if (ThemeTransitionHelper.isTransitioning()) {
             ThemeTransitionHelper.animateThemeChange(this);
         }
-        
+
         Logger.checkAndShowCrashReport(this);
-        
+
         initializeManagers();
         setupControllers(); // Setup controllers BEFORE toolbar (navigationController needed)
         setupToolbar();
@@ -121,16 +122,16 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
         getSupportFragmentManager().addOnBackStackChangedListener(() -> {
             int backStackCount = getSupportFragmentManager().getBackStackEntryCount();
             Logger.d(TAG, "BackStack changed, count=" + backStackCount);
-            
+
             for (int i = 0; i < backStackCount; i++) {
                 Logger.d(TAG, "  BackStack[" + i + "]: " + getSupportFragmentManager().getBackStackEntryAt(i).getName());
             }
-            
+
             if (navigationController != null) {
                 navigationController.updateDrawerToggleForBackStack(backStackCount);
             }
         });
-        
+
         if (savedInstanceState == null) {
             setupInitialFragment();
         } else {
@@ -149,7 +150,7 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
         ThemeManager.applySystemBarsAppearance(this);
         
         org.nikanikoo.flux.utils.UpdateChecker.checkForUpdates(this);
-        
+
         Logger.d(TAG, "onCreate completed");
     }
     
@@ -164,6 +165,12 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
         currentThemeMode = themeManager.getThemeMode();
         currentThemeStyle = themeManager.getThemeStyle();
         currentContrastMode = themeManager.getContrastMode();
+        currentCustomColor = themeManager.getCustomColor();
+
+        if (themeManager.getThemeStyle() == ThemeManager.STYLE_MATERIAL_YOU &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            DynamicColors.applyToActivityIfAvailable(this);
+        }
     }
     
     /**
@@ -210,17 +217,17 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayShowTitleEnabled(false);
         }
-        
+
         // Navigation Controller
         CustomDrawerLayout drawerLayout = findViewById(R.id.drawer_layout);
         NavigationView navigationView = findViewById(R.id.drawer_view);
         View navigationRailView = findViewById(R.id.navigation_rail);
-        
+
         boolean isTablet = getResources().getBoolean(R.bool.is_tablet);
         if (navigationRailView != null) {
             navigationRailView.setVisibility(isTablet ? View.VISIBLE : View.GONE);
         }
-        
+
         navigationController = new NavigationController(this, drawerLayout, navigationView, navigationRailView, toolbar);
         
         // Mini Player Controller
@@ -387,17 +394,18 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
     @Override
     protected void onResume() {
         super.onResume();
-        
+
         ThemeManager themeManager = ThemeManager.getInstance(this);
         if (currentThemeMode != themeManager.getThemeMode() ||
             currentThemeStyle != themeManager.getThemeStyle() ||
-            currentContrastMode != themeManager.getContrastMode()) {
-            
+            currentContrastMode != themeManager.getContrastMode() ||
+            currentCustomColor != themeManager.getCustomColor()) {
+
             Logger.d(TAG, "Theme changed, recreating MainActivity");
             recreate();
             return;
         }
-        
+
         if (longPollManager != null) {
             longPollManager.start();
         }
@@ -416,7 +424,7 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
             outState.putInt("current_fragment_id", navigationController.getCurrentFragmentId());
         }
     }
-    
+
     @Override
     protected void onPause() {
         super.onPause();
@@ -535,13 +543,13 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
                 runOnUiThread(() -> {
                     NavigationView navigationView = findViewById(R.id.drawer_view);
                     View navigationRailView = findViewById(R.id.navigation_rail);
-                    
+
                     if (navigationView != null) {
                         updateDrawerBadge(navigationView, R.id.drawer_notification, notifications, getString(R.string.notifications_title));
                         updateDrawerBadge(navigationView, R.id.drawer_messages, messages, getString(R.string.messages_title));
                         updateDrawerBadge(navigationView, R.id.drawer_friends, friends, getString(R.string.friends_title));
                     }
-                    
+
                     if (navigationRailView != null) {
                         updateRailBadge(navigationRailView, R.id.drawer_notification, notifications);
                         updateRailBadge(navigationRailView, R.id.drawer_messages, messages);
@@ -563,7 +571,7 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
         }
         NavigationView navigationView = findViewById(R.id.drawer_view);
         View navigationRailView = findViewById(R.id.navigation_rail);
-        
+
         int messages = Math.max(0, sCachedMessages);
         int notifications = Math.max(0, sCachedNotifications);
         int friends = Math.max(0, sCachedFriends);
@@ -573,14 +581,14 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
             updateDrawerBadge(navigationView, R.id.drawer_messages, messages, getString(R.string.messages_title));
             updateDrawerBadge(navigationView, R.id.drawer_friends, friends, getString(R.string.friends_title));
         }
-        
+
         if (navigationRailView != null) {
             updateRailBadge(navigationRailView, R.id.drawer_notification, notifications);
             updateRailBadge(navigationRailView, R.id.drawer_messages, messages);
             updateRailBadge(navigationRailView, R.id.drawer_friends, friends);
         }
     }
-    
+
     private void updateDrawerBadge(NavigationView navigationView, int itemId, int count, String defaultTitle) {
         MenuItem item = navigationView.getMenu().findItem(itemId);
         if (item != null) {
@@ -611,8 +619,7 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
             }
         }
     }
-    
-    
+
     @Override
     public void onNotificationBadgeUpdate() {
         updateAllBadges();
@@ -625,7 +632,7 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
     // ==================== Helper Methods ====================
     
     private void updateMessagesListIfVisible(int peerId, String text, long timestamp, boolean isOut) {
-        androidx.fragment.app.Fragment currentFragment = 
+        androidx.fragment.app.Fragment currentFragment =
                 getSupportFragmentManager().findFragmentById(R.id.fragment_container);
         if (currentFragment instanceof MessagesListFragment) {
             ((MessagesListFragment) currentFragment).onNewMessageReceived(peerId, text, timestamp, isOut);
@@ -633,7 +640,7 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
     }
 
     private void updateMessagesListOnRead(int peerId) {
-        androidx.fragment.app.Fragment currentFragment = 
+        androidx.fragment.app.Fragment currentFragment =
                 getSupportFragmentManager().findFragmentById(R.id.fragment_container);
         if (currentFragment instanceof MessagesListFragment) {
             ((MessagesListFragment) currentFragment).onMessageReadLocally(peerId);
