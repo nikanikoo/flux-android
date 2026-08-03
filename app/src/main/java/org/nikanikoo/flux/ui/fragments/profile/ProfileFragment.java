@@ -194,6 +194,9 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        if (getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).hideToolbarRating();
+        }
         presenter.detachView();
     }
 
@@ -289,6 +292,7 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
         infoController.updateProfileInfo(profile);
 
         updateButtonsVisibility(profile);
+        showToolbarRating(profile);
 
         // Загружаем посты после загрузки профиля
         loadPosts(true);
@@ -296,6 +300,48 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
         if (getActivity() != null) {
             getActivity().invalidateOptionsMenu();
         }
+    }
+
+    private void showToolbarRating(UserProfile profile) {
+        if (profile == null || getActivity() == null) {
+            return;
+        }
+        
+        int rating = 0;
+        String ratingStr = profile.getRating();
+        if (ratingStr != null && !ratingStr.isEmpty()) {
+            try {
+                rating = Integer.parseInt(ratingStr.trim());
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        
+        if (getActivity() instanceof MainActivity) {
+            MainActivity mainActivity = (MainActivity) getActivity();
+            if (rating > 0) {
+                String percentText = String.format(java.util.Locale.US, "%,d", rating).replace(",", "\u00A0") + "%";
+                mainActivity.setToolbarRating(percentText, getRatingLinePercent(rating));
+            } else {
+                mainActivity.hideToolbarRating();
+            }
+        }
+    }
+
+    private int getRatingLinePercent(int rating) {
+        if (rating <= 0) {
+            return 0;
+        }
+        if (rating < 100) {
+            return Math.min(rating, 100);
+        }
+        
+        long low = (long) Math.pow(10, (int) Math.log10(rating));
+        long high = low * 10;
+        double percent = ((rating - low) / (double) (high - low)) * 100.0;
+        if (percent <= 0) {
+            return 1;
+        }
+        return (int) Math.round(percent);
     }
 
     @Override

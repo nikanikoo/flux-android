@@ -63,30 +63,57 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center"
-                        android:orientation="horizontal"
+                        android:orientation="vertical"
                         android:gravity="center">
 
-                        <TextView
-                            android:id="@+id/toolbar_custom_title"
+                        <LinearLayout
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:textSize="20sp"
-                            android:textStyle="bold"
-                            android:textColor="?attr/colorOnSurface" />
+                            android:orientation="horizontal"
+                            android:gravity="center">
 
-                        <ImageView
-                            android:id="@+id/news_toolbar_arrow"
-                            android:layout_width="18dp"
-                            android:layout_height="18dp"
-                            android:src="@drawable/ic_keyboard_arrow_down"
-                            android:layout_marginStart="4dp"
-                            android:layout_gravity="center_vertical"
-                            app:tint="?attr/colorOnSurface"
+                            <TextView
+                                android:id="@+id/toolbar_custom_title"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textSize="20sp"
+                                android:textStyle="bold"
+                                android:textColor="?attr/colorOnSurface" />
+
+                            <ImageView
+                                android:id="@+id/news_toolbar_arrow"
+                                android:layout_width="18dp"
+                                android:layout_height="18dp"
+                                android:src="@drawable/ic_keyboard_arrow_down"
+                                android:layout_marginStart="4dp"
+                                android:layout_gravity="center_vertical"
+                                app:tint="?attr/colorOnSurface"
+                                android:visibility="gone" />
+
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/toolbar_rating_percent"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textSize="11sp"
+                            android:textStyle="bold"
+                            android:textColor="?attr/colorOnSurfaceVariant"
                             android:visibility="gone" />
 
                     </LinearLayout>
 
                 </com.google.android.material.appbar.MaterialToolbar>
+
+                <ProgressBar
+                    android:id="@+id/toolbar_rating_bar"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="4dp"
+                    android:progressDrawable="@drawable/toolbar_rating_bar"
+                    android:max="100"
+                    android:progress="0"
+                    android:visibility="gone" />
 
             </com.google.android.material.appbar.AppBarLayout>
 

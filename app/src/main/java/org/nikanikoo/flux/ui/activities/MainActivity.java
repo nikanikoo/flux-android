@@ -6,6 +6,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import androidx.activity.OnBackPressedCallback;
@@ -507,6 +508,32 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
                 toolbar.setOnClickListener(clickListener);
                 toolbar.setClickable(true);
             }
+        }
+    }
+
+    public void setToolbarRating(String percentText, int percent) {
+        TextView percentView = findViewById(R.id.toolbar_rating_percent);
+        if (percentView != null) {
+            percentView.setText(percentText);
+            percentView.setVisibility(View.VISIBLE);
+        }
+        
+        ProgressBar ratingBar = findViewById(R.id.toolbar_rating_bar);
+        if (ratingBar != null) {
+            ratingBar.setProgress(Math.min(Math.max(percent, 0), 100));
+            ratingBar.setVisibility(View.VISIBLE);
+        }
+    }
+
+    public void hideToolbarRating() {
+        TextView percentView = findViewById(R.id.toolbar_rating_percent);
+        if (percentView != null) {
+            percentView.setVisibility(View.GONE);
+        }
+        
+        ProgressBar ratingBar = findViewById(R.id.toolbar_rating_bar);
+        if (ratingBar != null) {
+            ratingBar.setVisibility(View.GONE);
         }
     }
     
