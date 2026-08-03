@@ -198,6 +198,10 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
                         originalPost.setLiked(post.isLiked());
                         originalPost.setImageUrls(post.getImageUrls());
                         
+                        if (commentsAdapter != null) {
+                            commentsAdapter.updatePostDetails(originalPost.getOwnerId(), originalPost.getAuthorId());
+                        }
+                        
                         displayOriginalPost();
                     });
                 }
@@ -427,7 +431,7 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
 
     private void setupRecyclerView() {
         recyclerComments.setLayoutManager(new LinearLayoutManager(getContext()));
-        commentsAdapter = new CommentsAdapter(getContext(), comments);
+        commentsAdapter = new CommentsAdapter(getContext(), comments, originalPost.getOwnerId(), originalPost.getAuthorId());
         commentsAdapter.setOnCommentClickListener(this);
         recyclerComments.setAdapter(commentsAdapter);
     }

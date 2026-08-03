@@ -84,7 +84,9 @@ public class SimpleCommentsFragment extends Fragment implements CommentsAdapter.
     
     private void setupRecyclerView() {
         recyclerComments.setLayoutManager(new LinearLayoutManager(getContext()));
-        commentsAdapter = new CommentsAdapter(getContext(), comments);
+        commentsAdapter = new CommentsAdapter(getContext(), comments, 
+                post != null ? post.getOwnerId() : 0, 
+                post != null ? post.getAuthorId() : 0);
         commentsAdapter.setOnCommentClickListener(this);
         recyclerComments.setAdapter(commentsAdapter);
     }

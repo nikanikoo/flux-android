@@ -112,7 +112,8 @@ public class NoteViewerFragment extends Fragment implements CommentsAdapter.OnCo
         FloatingActionButton fabEditNote = view.findViewById(R.id.fab_edit_note);
 
         recyclerComments.setLayoutManager(new LinearLayoutManager(requireContext()));
-        commentsAdapter = new CommentsAdapter(requireContext(), commentsList);
+        int ownerId = note != null ? note.getOwnerId() : 0;
+        commentsAdapter = new CommentsAdapter(requireContext(), commentsList, ownerId, ownerId);
         commentsAdapter.setOnCommentClickListener(this);
         recyclerComments.setAdapter(commentsAdapter);
 

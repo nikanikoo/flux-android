@@ -28,6 +28,8 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
     private Context context;
     private OnCommentClickListener clickListener;
     private int currentUserId;
+    private int postOwnerId;
+    private int postAuthorId;
 
     public interface OnCommentClickListener {
         void onAuthorClick(int authorId, String authorName, boolean isGroup);
@@ -39,8 +41,18 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
     }
 
     public CommentsAdapter(Context context, List<Comment> comments) {
+        this(context, comments, 0);
+    }
+
+    public CommentsAdapter(Context context, List<Comment> comments, int postOwnerId) {
+        this(context, comments, postOwnerId, 0);
+    }
+
+    public CommentsAdapter(Context context, List<Comment> comments, int postOwnerId, int postAuthorId) {
         this.context = context;
         this.comments = comments;
+        this.postOwnerId = postOwnerId;
+        this.postAuthorId = postAuthorId;
         
         AccountManager accountManager = AccountManager.getInstance(context);
         AccountManager.Account currentAccount = accountManager.getCurrentAccount();
@@ -55,6 +67,12 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
 
     public void setOnCommentClickListener(OnCommentClickListener listener) {
         this.clickListener = listener;
+    }
+
+    public void updatePostDetails(int ownerId, int authorId) {
+        this.postOwnerId = ownerId;
+        this.postAuthorId = authorId;
+        notifyDataSetChanged();
     }
 
     @NonNull
@@ -176,18 +194,23 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
         holder.avatar.setOnClickListener(authorClickListener);
         holder.authorName.setOnClickListener(authorClickListener);
 
-        // Кнопки редактирования и удаления (только для своих комментариев)
-        boolean isOwner = comment.getFromId() == currentUserId && comment.getFromId() != 0;
+        // Кнопки редактирования и удаления
+        boolean isCommentAuthor = comment.getFromId() == currentUserId && comment.getFromId() != 0;
+        
+        // Владелец поста на своей странице может удалять любые комментарии
+        boolean isMyPostOnMyWall = (postOwnerId == currentUserId) && (postAuthorId == currentUserId) && (currentUserId != 0);
         
         if (holder.editButton != null) {
-            holder.editButton.setVisibility(isOwner ? View.VISIBLE : View.GONE);
+            // Редактировать может только автор
+            holder.editButton.setVisibility(isCommentAuthor ? View.VISIBLE : View.GONE);
             holder.editButton.setOnClickListener(v -> {
                 if (clickListener != null) clickListener.onEditClick(comment);
             });
         }
         
         if (holder.deleteButton != null) {
-            holder.deleteButton.setVisibility(isOwner ? View.VISIBLE : View.GONE);
+            // Удалить может автор ИЛИ владелец своего поста на своей стене
+            holder.deleteButton.setVisibility((isCommentAuthor || isMyPostOnMyWall) ? View.VISIBLE : View.GONE);
             holder.deleteButton.setOnClickListener(v -> {
                 if (clickListener != null) clickListener.onDeleteClick(comment);
             });
