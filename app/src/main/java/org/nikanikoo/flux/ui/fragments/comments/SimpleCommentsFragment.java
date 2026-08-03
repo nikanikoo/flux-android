@@ -72,6 +72,28 @@ public class SimpleCommentsFragment extends Fragment implements CommentsAdapter.
         setupRecyclerView();
         setupCommentInput();
         loadComments();
+        checkAdminStatus();
+    }
+    
+    private void checkAdminStatus() {
+        if (post != null && post.getOwnerId() < 0) {
+            int groupId = -post.getOwnerId();
+            org.nikanikoo.flux.data.managers.GroupsManager.getInstance(requireContext())
+                    .getGroupById(groupId, new org.nikanikoo.flux.data.managers.GroupsManager.GroupCallback() {
+                @Override
+                public void onSuccess(org.nikanikoo.flux.data.models.Group group) {
+                    if (getActivity() != null) {
+                        getActivity().runOnUiThread(() -> {
+                            if (commentsAdapter != null) {
+                                commentsAdapter.setIsAdmin(group.isAdmin());
+                            }
+                        });
+                    }
+                }
+                @Override
+                public void onError(String error) {}
+            });
+        }
     }
     
     private void initViews(View view) {
@@ -89,6 +111,11 @@ public class SimpleCommentsFragment extends Fragment implements CommentsAdapter.
                 post != null ? post.getAuthorId() : 0);
         commentsAdapter.setOnCommentClickListener(this);
         recyclerComments.setAdapter(commentsAdapter);
+        
+        // Всегда проверяем админство для групп
+        if (post != null && post.getOwnerId() < 0) {
+            checkAdminStatus();
+        }
     }
     
     private void setupCommentInput() {

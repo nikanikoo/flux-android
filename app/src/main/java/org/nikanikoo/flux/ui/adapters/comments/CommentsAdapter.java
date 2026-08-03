@@ -30,6 +30,7 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
     private int currentUserId;
     private int postOwnerId;
     private int postAuthorId;
+    private boolean isAdmin;
 
     public interface OnCommentClickListener {
         void onAuthorClick(int authorId, String authorName, boolean isGroup);
@@ -72,6 +73,11 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
     public void updatePostDetails(int ownerId, int authorId) {
         this.postOwnerId = ownerId;
         this.postAuthorId = authorId;
+        notifyDataSetChanged();
+    }
+
+    public void setIsAdmin(boolean isAdmin) {
+        this.isAdmin = isAdmin;
         notifyDataSetChanged();
     }
 
@@ -195,10 +201,9 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
         holder.authorName.setOnClickListener(authorClickListener);
 
         // Кнопки редактирования и удаления
-        boolean isCommentAuthor = comment.getFromId() == currentUserId && comment.getFromId() != 0;
-        
-        // Владелец поста на своей странице может удалять любые комментарии
-        boolean isMyPostOnMyWall = (postOwnerId == currentUserId) && (postAuthorId == currentUserId) && (currentUserId != 0);
+        boolean isCommentAuthor = comment.getFromId() == currentUserId && currentUserId != 0;
+        boolean isPostAuthor = postAuthorId == currentUserId && currentUserId != 0;
+        boolean isAdminDelete = (postOwnerId < 0) && isAdmin;
         
         if (holder.editButton != null) {
             // Редактировать может только автор
@@ -209,8 +214,8 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
         }
         
         if (holder.deleteButton != null) {
-            // Удалить может автор ИЛИ владелец своего поста на своей стене
-            holder.deleteButton.setVisibility((isCommentAuthor || isMyPostOnMyWall) ? View.VISIBLE : View.GONE);
+            // Удалить может автор комментария, автор поста ИЛИ администратор группы
+            holder.deleteButton.setVisibility((isCommentAuthor || isPostAuthor || isAdminDelete) ? View.VISIBLE : View.GONE);
             holder.deleteButton.setOnClickListener(v -> {
                 if (clickListener != null) clickListener.onDeleteClick(comment);
             });

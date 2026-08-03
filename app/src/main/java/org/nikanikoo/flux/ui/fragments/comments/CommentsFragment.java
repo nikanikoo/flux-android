@@ -169,12 +169,36 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
     }
 
     private void setupOriginalPost() {
+        // Если это группа, загружаем информацию об админстве всегда
+        if (originalPost.getOwnerId() < 0) {
+            checkAdminStatus();
+        }
+
         // Если данные поста неполные, загружаем их
         if (originalPost.getAuthorName().equals(getString(R.string.loading)) || originalPost.getContent().isEmpty()) {
             loadPostData();
         } else {
             displayOriginalPost();
         }
+    }
+
+    private void checkAdminStatus() {
+        int groupId = -originalPost.getOwnerId();
+        org.nikanikoo.flux.data.managers.GroupsManager.getInstance(requireContext())
+                .getGroupById(groupId, new org.nikanikoo.flux.data.managers.GroupsManager.GroupCallback() {
+            @Override
+            public void onSuccess(org.nikanikoo.flux.data.models.Group group) {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        if (commentsAdapter != null) {
+                            commentsAdapter.setIsAdmin(group.isAdmin());
+                        }
+                    });
+                }
+            }
+            @Override
+            public void onError(String error) {}
+        });
     }
     
     private void loadPostData() {
@@ -813,7 +837,7 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
     }
 
     private void deleteComment(Comment comment) {
-        commentsManager.deleteComment(comment.getId(), new OpenVKApi.ApiCallback() {
+        commentsManager.deleteComment(originalPost.getOwnerId(), comment.getId(), new OpenVKApi.ApiCallback() {
             @Override
             public void onSuccess(org.json.JSONObject response) {
                 if (getActivity() != null) {
@@ -869,7 +893,7 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
     }
 
     private void performUpdateComment(Comment comment, String newText, String attachments) {
-        commentsManager.editComment(comment.getId(), newText, attachments, new OpenVKApi.ApiCallback() {
+        commentsManager.editComment(originalPost.getOwnerId(), comment.getId(), newText, attachments, new OpenVKApi.ApiCallback() {
             @Override
             public void onSuccess(org.json.JSONObject response) {
                 if (getActivity() != null) {
