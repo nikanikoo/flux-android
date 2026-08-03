@@ -7,7 +7,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.PopupMenu;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -177,16 +176,21 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
         holder.avatar.setOnClickListener(authorClickListener);
         holder.authorName.setOnClickListener(authorClickListener);
 
-        // Меню комментария (редактирование/удаление)
-        if (holder.commentMenu != null) {
-            // Показываем меню только если это комментарий текущего пользователя
-            // Или если у пользователя есть права модератора (в будущем)
-            if (comment.getFromId() == currentUserId && comment.getFromId() != 0) {
-                holder.commentMenu.setVisibility(View.VISIBLE);
-                holder.commentMenu.setOnClickListener(v -> showPopupMenu(v, comment));
-            } else {
-                holder.commentMenu.setVisibility(View.GONE);
-            }
+        // Кнопки редактирования и удаления (только для своих комментариев)
+        boolean isOwner = comment.getFromId() == currentUserId && comment.getFromId() != 0;
+        
+        if (holder.editButton != null) {
+            holder.editButton.setVisibility(isOwner ? View.VISIBLE : View.GONE);
+            holder.editButton.setOnClickListener(v -> {
+                if (clickListener != null) clickListener.onEditClick(comment);
+            });
+        }
+        
+        if (holder.deleteButton != null) {
+            holder.deleteButton.setVisibility(isOwner ? View.VISIBLE : View.GONE);
+            holder.deleteButton.setOnClickListener(v -> {
+                if (clickListener != null) clickListener.onDeleteClick(comment);
+            });
         }
 
         holder.likeButton.setOnClickListener(v -> {
@@ -223,28 +227,6 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
         }
     }
 
-    private void showPopupMenu(View view, Comment comment) {
-        PopupMenu popup = new PopupMenu(context, view);
-        popup.getMenu().add(0, 1, 0, context.getString(R.string.edit));
-        popup.getMenu().add(0, 2, 1, context.getString(R.string.delete));
-        
-        popup.setOnMenuItemClickListener(item -> {
-            if (clickListener == null) return false;
-            
-            switch (item.getItemId()) {
-                case 1:
-                    clickListener.onEditClick(comment);
-                    return true;
-                case 2:
-                    clickListener.onDeleteClick(comment);
-                    return true;
-                default:
-                    return false;
-            }
-        });
-        popup.show();
-    }
-
     public static class CommentViewHolder extends RecyclerView.ViewHolder {
         ImageView avatar;
         TextView authorName;
@@ -258,8 +240,9 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
         ImageView likeIcon;
         TextView likeCount;
         TextView replyButton;
+        TextView editButton;
+        TextView deleteButton;
         ImageView authorVerified;
-        View commentMenu;
 
         public CommentViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -275,8 +258,9 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
             likeIcon = itemView.findViewById(R.id.comment_like_icon);
             likeCount = itemView.findViewById(R.id.comment_like_count);
             replyButton = itemView.findViewById(R.id.comment_reply_button);
+            editButton = itemView.findViewById(R.id.comment_edit_button);
+            deleteButton = itemView.findViewById(R.id.comment_delete_button);
             authorVerified = itemView.findViewById(R.id.comment_author_verified);
-            commentMenu = itemView.findViewById(R.id.comment_menu);
         }
     }
     
