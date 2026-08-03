@@ -222,6 +222,12 @@
     <string name="group_joined">You joined the group</string>
     <string name="group_left">You left the group</string>
     <string name="group_load_error">"Error loading group: "</string>
+    <string name="group_members_label">members</string>
+    <string name="group_topics">topics</string>
+    <string name="group_activity">Activity:</string>
+    <string name="group_website">Website:</string>
+    <string name="group_country">Country:</string>
+    <string name="group_section_about">About the group</string>
 
     <!-- Photos -->
     <string name="photos_title">Photos</string>

@@ -2,6 +2,7 @@ package org.nikanikoo.flux.ui.fragments.profile;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -9,8 +10,8 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.cardview.widget.CardView;
-
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
 import com.squareup.picasso.Picasso;
 
@@ -40,6 +41,7 @@ public class GroupProfileFragment extends BaseProfileFragment {
     // Group specific views
     private ImageView groupAvatarLarge;
     private TextView groupNameLarge;
+    private ImageView groupVerified;
     private TextView groupType;
     private TextView groupStatus;
     private ProgressBar groupMainProgress;
@@ -49,28 +51,17 @@ public class GroupProfileFragment extends BaseProfileFragment {
     private TextView photosCount;
     private TextView videosCount;
     private TextView audiosCount;
+    private TextView topicsCount;
     private MaterialButton btnCreatePostGroup;
-    
-    // Details card views
-    private CardView groupMainCard;
-    private CardView groupDetailsCard;
-    private ImageView expandArrow;
-    private TextView groupIdText;
-    private TextView groupScreenName;
-    private TextView groupDescription;
-    private TextView groupActivity;
-    private TextView groupWebsite;
-    private TextView groupCity;
-    private TextView groupCountry;
-    private LinearLayout screenNameLayout;
-    private LinearLayout descriptionLayout;
-    private LinearLayout activityLayout;
-    private LinearLayout websiteLayout;
-    private LinearLayout cityLayout;
-    private LinearLayout countryLayout;
     private MaterialButton btnJoinLeave;
     
-    private boolean isDetailsExpanded = false;
+    // Info card views
+    private LinearLayout groupCityRow;
+    private TextView groupCityValue;
+    private View groupDetailsRow;
+    private LinearLayout membersCard;
+    private LinearLayout joinLeaveContainer;
+    
     private GroupsManager groupsManager;
     private Group currentGroup;
     
@@ -111,6 +102,7 @@ public class GroupProfileFragment extends BaseProfileFragment {
         // Initialize group specific views
         groupAvatarLarge = view.findViewById(R.id.group_avatar_large);
         groupNameLarge = view.findViewById(R.id.group_name_large);
+        groupVerified = view.findViewById(R.id.group_verified_indicator);
         groupType = view.findViewById(R.id.group_type);
         groupStatus = view.findViewById(R.id.group_status);
         groupMainProgress = view.findViewById(R.id.group_main_progress);
@@ -120,26 +112,16 @@ public class GroupProfileFragment extends BaseProfileFragment {
         photosCount = view.findViewById(R.id.photos_count);
         videosCount = view.findViewById(R.id.videos_count);
         audiosCount = view.findViewById(R.id.audios_count);
+        topicsCount = view.findViewById(R.id.topics_count);
         btnCreatePostGroup = view.findViewById(R.id.btn_create_post_group);
-        
-        // Details card
-        groupMainCard = view.findViewById(R.id.group_main_card);
-        groupDetailsCard = view.findViewById(R.id.group_details_card);
-        expandArrow = view.findViewById(R.id.expand_arrow);
-        groupIdText = view.findViewById(R.id.group_id);
-        groupScreenName = view.findViewById(R.id.group_screen_name);
-        groupDescription = view.findViewById(R.id.group_description);
-        groupActivity = view.findViewById(R.id.group_activity);
-        groupWebsite = view.findViewById(R.id.group_website);
-        groupCity = view.findViewById(R.id.group_city);
-        groupCountry = view.findViewById(R.id.group_country);
-        screenNameLayout = view.findViewById(R.id.screen_name_layout);
-        descriptionLayout = view.findViewById(R.id.description_layout);
-        activityLayout = view.findViewById(R.id.activity_layout);
-        websiteLayout = view.findViewById(R.id.website_layout);
-        cityLayout = view.findViewById(R.id.city_layout);
-        countryLayout = view.findViewById(R.id.country_layout);
         btnJoinLeave = view.findViewById(R.id.btn_join_leave);
+        
+        // Info card
+        groupCityRow = view.findViewById(R.id.group_city_row);
+        groupCityValue = view.findViewById(R.id.group_city_value);
+        groupDetailsRow = view.findViewById(R.id.group_details_row);
+        membersCard = view.findViewById(R.id.members_card);
+        joinLeaveContainer = view.findViewById(R.id.join_leave_container);
         
         showLoadingState();
         
@@ -157,9 +139,9 @@ public class GroupProfileFragment extends BaseProfileFragment {
             });
         }
         
-        // Expand details card
-        if (groupMainCard != null) {
-            groupMainCard.setOnClickListener(v -> toggleDetailsCard());
+        // Open details sheet
+        if (groupDetailsRow != null) {
+            groupDetailsRow.setOnClickListener(v -> showGroupDetailsSheet());
         }
         
         // Avatar click
@@ -173,7 +155,6 @@ public class GroupProfileFragment extends BaseProfileFragment {
         }
         
         // Members card click
-        CardView membersCard = view.findViewById(R.id.members_card);
         if (membersCard != null) {
             membersCard.setOnClickListener(v -> {
                 if (currentGroup != null) {
@@ -280,6 +261,10 @@ public class GroupProfileFragment extends BaseProfileFragment {
             groupNameLarge.setText(group.getName());
         }
         
+        if (groupVerified != null) {
+            groupVerified.setVisibility(group.isVerified() ? View.VISIBLE : View.GONE);
+        }
+        
         if (groupType != null) {
             groupType.setText(group.getTypeDisplayName());
             groupType.setVisibility(View.VISIBLE);
@@ -306,75 +291,49 @@ public class GroupProfileFragment extends BaseProfileFragment {
         if (photosCount != null) photosCount.setText(String.valueOf(group.getPhotosCount()));
         if (videosCount != null) videosCount.setText(String.valueOf(group.getVideosCount()));
         if (audiosCount != null) audiosCount.setText(String.valueOf(group.getAudiosCount()));
+        if (topicsCount != null) topicsCount.setText(String.valueOf(group.getTopicsCount()));
         
-        updateDetailedInfo(group);
+        updateCityRow(group);
         updateButtons(group);
     }
 
-    private void updateDetailedInfo(Group group) {
-        if (groupIdText != null) {
-            groupIdText.setText(getString(R.string.id) + group.getId());
+    private void updateCityRow(Group group) {
+        if (groupCityRow == null || groupCityValue == null) {
+            return;
         }
         
-        if (groupScreenName != null && screenNameLayout != null) {
-            if (group.getScreenName() != null && !group.getScreenName().isEmpty()) {
-                groupScreenName.setText(group.getScreenName());
-                screenNameLayout.setVisibility(View.VISIBLE);
-            } else {
-                screenNameLayout.setVisibility(View.GONE);
+        String city = group.getCity();
+        String country = group.getCountry();
+        
+        StringBuilder location = new StringBuilder();
+        if (city != null && !city.isEmpty() && !"null".equals(city)) {
+            location.append(city);
+        }
+        if (country != null && !country.isEmpty() && !"null".equals(country)) {
+            if (location.length() > 0) {
+                location.append(", ");
             }
+            location.append(country);
         }
         
-        if (groupDescription != null && descriptionLayout != null) {
-            if (group.getDescription() != null && !group.getDescription().isEmpty()) {
-                groupDescription.setText(group.getDescription());
-                descriptionLayout.setVisibility(View.VISIBLE);
-            } else {
-                descriptionLayout.setVisibility(View.GONE);
-            }
-        }
-        
-        if (groupActivity != null && activityLayout != null) {
-            if (group.getActivity() != null && !group.getActivity().isEmpty()) {
-                groupActivity.setText(group.getActivity());
-                activityLayout.setVisibility(View.VISIBLE);
-            } else {
-                activityLayout.setVisibility(View.GONE);
-            }
-        }
-        
-        if (groupWebsite != null && websiteLayout != null) {
-            if (group.getWebsite() != null && !group.getWebsite().isEmpty()) {
-                groupWebsite.setText(group.getWebsite());
-                websiteLayout.setVisibility(View.VISIBLE);
-            } else {
-                websiteLayout.setVisibility(View.GONE);
-            }
-        }
-        
-        if (groupCity != null && cityLayout != null) {
-            if (group.getCity() != null && !group.getCity().isEmpty()) {
-                groupCity.setText(group.getCity());
-                cityLayout.setVisibility(View.VISIBLE);
-            } else {
-                cityLayout.setVisibility(View.GONE);
-            }
-        }
-        
-        if (groupCountry != null && countryLayout != null) {
-            if (group.getCountry() != null && !group.getCountry().isEmpty()) {
-                groupCountry.setText(group.getCountry());
-                countryLayout.setVisibility(View.VISIBLE);
-            } else {
-                countryLayout.setVisibility(View.GONE);
-            }
+        if (location.length() > 0) {
+            groupCityValue.setText(location.toString());
+            groupCityRow.setVisibility(View.VISIBLE);
+        } else {
+            groupCityRow.setVisibility(View.GONE);
         }
     }
 
     private void updateButtons(Group group) {
+        boolean showJoinLeave = !(group.isClosed() && !group.isMember());
+        
         if (btnJoinLeave != null) {
             btnJoinLeave.setText(group.isMember() ? getString(R.string.group_leave) : getString(R.string.group_join));
-            btnJoinLeave.setVisibility(group.isClosed() && !group.isMember() ? View.GONE : View.VISIBLE);
+            btnJoinLeave.setVisibility(showJoinLeave ? View.VISIBLE : View.GONE);
+        }
+        
+        if (joinLeaveContainer != null) {
+            joinLeaveContainer.setVisibility(showJoinLeave ? View.VISIBLE : View.GONE);
         }
         
         if (btnCreatePostGroup != null) {
@@ -393,18 +352,109 @@ public class GroupProfileFragment extends BaseProfileFragment {
         if (groupContent != null) groupContent.setVisibility(View.VISIBLE);
     }
 
-    private void toggleDetailsCard() {
-        if (groupDetailsCard == null || expandArrow == null) return;
-        
-        if (isDetailsExpanded) {
-            groupDetailsCard.setVisibility(View.GONE);
-            expandArrow.setImageResource(R.drawable.ic_keyboard_arrow_down);
-            isDetailsExpanded = false;
-        } else {
-            groupDetailsCard.setVisibility(View.VISIBLE);
-            expandArrow.setImageResource(R.drawable.ic_keyboard_arrow_up);
-            isDetailsExpanded = true;
+    private void showGroupDetailsSheet() {
+        if (currentGroup == null || getActivity() == null) {
+            return;
         }
+        
+        View sheetView = LayoutInflater.from(getContext()).inflate(R.layout.sheet_group_details, null);
+        
+        BottomSheetDialog dialog = new BottomSheetDialog(requireContext());
+        dialog.setContentView(sheetView);
+        
+        MaterialButton btnClose = sheetView.findViewById(R.id.btn_close_details);
+        if (btnClose != null) {
+            btnClose.setOnClickListener(v -> dialog.dismiss());
+        }
+        
+        bindGroupDetails(sheetView, currentGroup);
+        
+        dialog.getBehavior().setState(BottomSheetBehavior.STATE_EXPANDED);
+        dialog.show();
+    }
+    
+    private void bindGroupDetails(View sheetView, Group group) {
+        if (sheetView == null || group == null) {
+            return;
+        }
+        
+        // Основная информация
+        setSheetText(sheetView, R.id.sheet_row_name,
+                getString(R.string.profile_name), group.getName());
+        setSheetText(sheetView, R.id.sheet_row_screen_name,
+                getString(R.string.profile_username), group.getScreenName(),
+                value -> "@" + value);
+        setSheetText(sheetView, R.id.sheet_row_id,
+                getString(R.string.id), String.valueOf(group.getId()));
+        
+        // Контактная информация
+        boolean hasContact = setSheetText(sheetView, R.id.sheet_row_city,
+                getString(R.string.profile_city), group.getCity());
+        hasContact |= setSheetText(sheetView, R.id.sheet_row_country,
+                getString(R.string.group_country), group.getCountry());
+        hasContact |= setSheetText(sheetView, R.id.sheet_row_website,
+                getString(R.string.group_website), group.getWebsite());
+        
+        View contactTitle = sheetView.findViewById(R.id.sheet_contact_title);
+        View contactCard = sheetView.findViewById(R.id.sheet_contact_card);
+        if (contactTitle != null) {
+            contactTitle.setVisibility(hasContact ? View.VISIBLE : View.GONE);
+        }
+        if (contactCard != null) {
+            contactCard.setVisibility(hasContact ? View.VISIBLE : View.GONE);
+        }
+        
+        // О группе
+        boolean hasAbout = setSheetText(sheetView, R.id.sheet_row_description,
+                getString(R.string.group_description), group.getDescription());
+        hasAbout |= setSheetText(sheetView, R.id.sheet_row_activity,
+                getString(R.string.group_activity), group.getActivity());
+        
+        View aboutTitle = sheetView.findViewById(R.id.sheet_about_title);
+        View aboutCard = sheetView.findViewById(R.id.sheet_about_card);
+        if (aboutTitle != null) {
+            aboutTitle.setVisibility(hasAbout ? View.VISIBLE : View.GONE);
+        }
+        if (aboutCard != null) {
+            aboutCard.setVisibility(hasAbout ? View.VISIBLE : View.GONE);
+        }
+    }
+    
+    private boolean setSheetText(View sheetView, int rowId, String label, String value) {
+        return setSheetText(sheetView, rowId, label, value, null);
+    }
+    
+    private boolean setSheetText(View sheetView, int rowId, String label, String value,
+                                 TextFormatter formatter) {
+        View row = sheetView.findViewById(rowId);
+        if (row == null) {
+            return false;
+        }
+        
+        TextView labelView = row.findViewById(R.id.item_info_row_label);
+        TextView valueView = row.findViewById(R.id.item_info_row_value);
+        if (labelView != null) {
+            labelView.setText(label);
+        }
+        
+        if (value != null && !value.isEmpty() && !"null".equals(value)) {
+            if (valueView != null) {
+                valueView.setText(formatter != null ? formatter.format(value) : value);
+                if (rowId == R.id.sheet_row_website) {
+                    android.text.util.Linkify.addLinks(valueView, android.text.util.Linkify.WEB_URLS);
+                    valueView.setMovementMethod(org.nikanikoo.flux.utils.SafeLinkMovementMethod.getInstance());
+                }
+            }
+            row.setVisibility(View.VISIBLE);
+            return true;
+        }
+        
+        row.setVisibility(View.GONE);
+        return false;
+    }
+    
+    private interface TextFormatter {
+        String format(String value);
     }
 
     private void handleJoinLeave() {

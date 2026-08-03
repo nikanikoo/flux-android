@@ -269,6 +269,12 @@
     <string name="group_joined">Вы вступили в группу</string>
     <string name="group_left">Вы покинули группу</string>
     <string name="group_load_error">Ошибка загрузки группы:\u0020</string>
+    <string name="group_members_label">участников</string>
+    <string name="group_topics">обсуждения</string>
+    <string name="group_activity">Деятельность:</string>
+    <string name="group_website">Сайт:</string>
+    <string name="group_country">Страна:</string>
+    <string name="group_section_about">О группе</string>
 
     <!-- Photos -->
     <string name="photos_title">Фотографии</string>
