@@ -2,6 +2,7 @@ package org.nikanikoo.flux.ui.fragments.profile;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -11,8 +12,8 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
-import androidx.cardview.widget.CardView;
-
+import com.google.android.material.bottomsheet.BottomSheetBehavior;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
 
 import org.nikanikoo.flux.R;
@@ -47,18 +48,16 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
     // Views
     private ProgressBar profileMainProgress;
     private View profileContent;
-    private CardView profileMainCard;
-    private CardView profileDetailsCard;
-    private ImageView expandArrow;
+    private LinearLayout friendButtonsContainer;
     private MaterialButton btnCreatePostProfile;
     private MaterialButton btnMessageProfile;
     private MaterialButton btnFriendProfile;
     private MaterialButton btnEditProfile;
     private LinearLayout editProfileContainer;
-    private CardView friendsCard;
+    private LinearLayout friendsCard;
+    private View profileDetailsRow;
     
     // State
-    private boolean isDetailsExpanded = false;
     private boolean isFriend = false;
     
     // Arguments
@@ -118,15 +117,14 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
         // Инициализация Views
         profileMainProgress = view.findViewById(R.id.profile_main_progress);
         profileContent = view.findViewById(R.id.profile_content);
-        profileMainCard = view.findViewById(R.id.profile_main_card);
-        profileDetailsCard = view.findViewById(R.id.profile_details_card);
-        expandArrow = view.findViewById(R.id.expand_arrow);
+        friendButtonsContainer = view.findViewById(R.id.friend_buttons_container);
         btnCreatePostProfile = view.findViewById(R.id.btn_create_post_profile);
         btnMessageProfile = view.findViewById(R.id.btn_message_profile);
         btnFriendProfile = view.findViewById(R.id.btn_friend_profile);
         btnEditProfile = view.findViewById(R.id.btn_edit_profile);
         editProfileContainer = view.findViewById(R.id.edit_profile_container);
         friendsCard = view.findViewById(R.id.friends_card);
+        profileDetailsRow = view.findViewById(R.id.profile_details_row);
         
         // Настройка обработчиков кликов
         setupClickListeners();
@@ -150,9 +148,8 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
             btnEditProfile.setOnClickListener(v -> presenter.onEditProfileClick());
         }
         
-        // Раскрытие деталей
-        if (profileMainCard != null) {
-            profileMainCard.setOnClickListener(v -> toggleDetailsCard());
+        if (profileDetailsRow != null) {
+            profileDetailsRow.setOnClickListener(v -> showDetailsSheet());
         }
         
         // Клик по аватару
@@ -412,6 +409,9 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
         }
 
         boolean showFriendButtons = !isOwnProfile;
+        if (friendButtonsContainer != null) {
+            friendButtonsContainer.setVisibility(showFriendButtons ? View.VISIBLE : View.GONE);
+        }
         if (btnMessageProfile != null) {
             btnMessageProfile.setVisibility(showFriendButtons ? View.VISIBLE : View.GONE);
         }
@@ -471,20 +471,32 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
         }
     }
 
-    private void toggleDetailsCard() {
-        if (profileDetailsCard == null || expandArrow == null) {
+    private void showDetailsSheet() {
+        if (presenter == null || getActivity() == null) {
             return;
         }
         
-        if (isDetailsExpanded) {
-            profileDetailsCard.setVisibility(View.GONE);
-            expandArrow.setImageResource(R.drawable.ic_keyboard_arrow_down);
-            isDetailsExpanded = false;
-        } else {
-            profileDetailsCard.setVisibility(View.VISIBLE);
-            expandArrow.setImageResource(R.drawable.ic_keyboard_arrow_up);
-            isDetailsExpanded = true;
+        UserProfile profile = presenter.getCurrentProfile();
+        if (profile == null) {
+            return;
         }
+        
+        View sheetView = LayoutInflater.from(getContext()).inflate(R.layout.sheet_profile_details, null);
+        
+        BottomSheetDialog dialog = new BottomSheetDialog(requireContext());
+        dialog.setContentView(sheetView);
+        
+        MaterialButton btnClose = sheetView.findViewById(R.id.btn_close_details);
+        if (btnClose != null) {
+            btnClose.setOnClickListener(v -> dialog.dismiss());
+        }
+        
+        if (infoController != null) {
+            infoController.bindDetailsSheet(sheetView, profile);
+        }
+        
+        dialog.getBehavior().setState(BottomSheetBehavior.STATE_EXPANDED);
+        dialog.show();
     }
 
     // ==================== Post Click Listeners ====================

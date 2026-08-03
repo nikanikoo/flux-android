@@ -4,7 +4,6 @@ import android.content.Context;
 import android.text.util.Linkify;
 import android.view.View;
 import android.widget.ImageView;
-import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.squareup.picasso.Picasso;
@@ -38,37 +37,6 @@ public class ProfileInfoController {
     private TextView videosCount;
     private TextView audiosCount;
     
-    // Детали профиля
-    private TextView profileId;
-    private TextView profileScreenName;
-    private TextView profileSex;
-    private TextView profileRegistrationDate;
-    private TextView profileLastSeen;
-    private TextView profileCity;
-    private TextView profileEmail;
-    private TextView profileTelegram;
-    private TextView profileAbout;
-    private TextView profileInterests;
-    private TextView profileMusic;
-    private TextView profileMovies;
-    private TextView profileBooks;
-    private TextView profileQuotes;
-    
-    // Layout'ы для скрытия/показа
-    private LinearLayout screenNameLayout;
-    private LinearLayout sexLayout;
-    private LinearLayout registrationDateLayout;
-    private LinearLayout lastSeenLayout;
-    private LinearLayout cityLayout;
-    private LinearLayout emailLayout;
-    private LinearLayout telegramLayout;
-    private LinearLayout aboutLayout;
-    private LinearLayout interestsLayout;
-    private LinearLayout musicLayout;
-    private LinearLayout moviesLayout;
-    private LinearLayout booksLayout;
-    private LinearLayout quotesLayout;
-    
     private SimpleDateFormat dateFormat;
     private SimpleDateFormat dateTimeFormat;
     private Context context;
@@ -95,37 +63,6 @@ public class ProfileInfoController {
         photosCount = view.findViewById(R.id.photos_count);
         videosCount = view.findViewById(R.id.videos_count);
         audiosCount = view.findViewById(R.id.audios_count);
-        
-        // Детали профиля
-        profileId = view.findViewById(R.id.profile_id);
-        profileScreenName = view.findViewById(R.id.profile_screen_name);
-        profileSex = view.findViewById(R.id.profile_sex);
-        profileRegistrationDate = view.findViewById(R.id.profile_registration_date);
-        profileLastSeen = view.findViewById(R.id.profile_last_seen);
-        profileCity = view.findViewById(R.id.profile_city);
-        profileEmail = view.findViewById(R.id.profile_email);
-        profileTelegram = view.findViewById(R.id.profile_telegram);
-        profileAbout = view.findViewById(R.id.profile_about);
-        profileInterests = view.findViewById(R.id.profile_interests);
-        profileMusic = view.findViewById(R.id.profile_music);
-        profileMovies = view.findViewById(R.id.profile_movies);
-        profileBooks = view.findViewById(R.id.profile_books);
-        profileQuotes = view.findViewById(R.id.profile_quotes);
-        
-        // Layout'ы
-        screenNameLayout = view.findViewById(R.id.screen_name_layout);
-        sexLayout = view.findViewById(R.id.sex_layout);
-        registrationDateLayout = view.findViewById(R.id.registration_date_layout);
-        lastSeenLayout = view.findViewById(R.id.last_seen_layout);
-        cityLayout = view.findViewById(R.id.city_layout);
-        emailLayout = view.findViewById(R.id.email_layout);
-        telegramLayout = view.findViewById(R.id.telegram_layout);
-        aboutLayout = view.findViewById(R.id.about_layout);
-        interestsLayout = view.findViewById(R.id.interests_layout);
-        musicLayout = view.findViewById(R.id.music_layout);
-        moviesLayout = view.findViewById(R.id.movies_layout);
-        booksLayout = view.findViewById(R.id.books_layout);
-        quotesLayout = view.findViewById(R.id.quotes_layout);
     }
     
     /**
@@ -138,7 +75,6 @@ public class ProfileInfoController {
         
         updateBasicInfo(profile);
         updateCounters(profile);
-        updateDetailedInfo(profile);
     }
     
     /**
@@ -154,7 +90,9 @@ public class ProfileInfoController {
         }
         
         if (profileOnline != null) {
-            profileOnline.setText(profile.isProfileOnline() ? "Online" : "Offline");
+            profileOnline.setText(profile.isProfileOnline()
+                    ? context.getString(R.string.profile_status_online)
+                    : context.getString(R.string.profile_status_offline));
             profileOnline.setVisibility(View.VISIBLE);
         }
         
@@ -189,58 +127,73 @@ public class ProfileInfoController {
         setTextSafe(videosCount, profile.getVideosCount());
         setTextSafe(audiosCount, profile.getAudiosCount());
     }
-    
-    /**
-     * Обновить детальную информацию
-     */
-    private void updateDetailedInfo(UserProfile profile) {
-        // ID
-        if (profileId != null) {
-            profileId.setText(String.valueOf(profile.getId()));
+
+    public void bindDetailsSheet(View sheetView, UserProfile profile) {
+        if (sheetView == null || profile == null) {
+            return;
         }
         
-        // Screen name
-        setTextWithLayout(profileScreenName, screenNameLayout, profile.getScreenName(), 
+        // Основная информация
+        boolean hasBasic = setSheetText(sheetView, R.id.sheet_row_name,
+                context.getString(R.string.profile_name), profile.getFullName());
+        hasBasic |= setSheetText(sheetView, R.id.sheet_row_screen_name,
+                context.getString(R.string.profile_username), profile.getScreenName(),
                 value -> "@" + value);
         
-        // Пол
-        setSexInfo(profile.getSex());
-        
-        // Дата регистрации
-        setDateWithLayout(profileRegistrationDate, registrationDateLayout, 
+        String status = profile.getProfileStatus();
+        if (status == null || status.isEmpty()) {
+            status = profile.isProfileOnline()
+                    ? context.getString(R.string.profile_status_online)
+                    : context.getString(R.string.profile_status_offline);
+        }
+        hasBasic |= setSheetText(sheetView, R.id.sheet_row_status,
+                context.getString(R.string.profile_status), status);
+        hasBasic |= setSheetSex(sheetView, profile.getSex());
+        hasBasic |= setSheetDate(sheetView, R.id.sheet_row_reg_date,
+                context.getString(R.string.profile_date_registered),
                 profile.getRegDate(), false);
-        
-        // Последняя активность
-        setDateWithLayout(profileLastSeen, lastSeenLayout, 
+        hasBasic |= setSheetDate(sheetView, R.id.sheet_row_last_seen,
+                context.getString(R.string.profile_last_activity),
                 profile.getLastSeen(), true);
         
-        // Город
-        setTextWithLayout(profileCity, cityLayout, profile.getCity(), null);
-        
-        // Email
-        setTextWithLayout(profileEmail, emailLayout, profile.getEmail(), null);
-        
-        // Telegram
-        setTextWithLayout(profileTelegram, telegramLayout, profile.getTelegram(), 
+        boolean hasContact = setSheetText(sheetView, R.id.sheet_row_city,
+                context.getString(R.string.profile_city), profile.getCity());
+        hasContact |= setSheetText(sheetView, R.id.sheet_row_email,
+                context.getString(R.string.profile_email), profile.getEmail());
+        hasContact |= setSheetText(sheetView, R.id.sheet_row_telegram,
+                context.getString(R.string.profile_telegram), profile.getTelegram(),
                 value -> "@" + value);
         
-        // О себе
-        setTextWithLayout(profileAbout, aboutLayout, profile.getAbout(), null);
+        View contactTitle = sheetView.findViewById(R.id.sheet_contact_title);
+        View contactCard = sheetView.findViewById(R.id.sheet_contact_card);
+        if (contactTitle != null) {
+            contactTitle.setVisibility(hasContact ? View.VISIBLE : View.GONE);
+        }
+        if (contactCard != null) {
+            contactCard.setVisibility(hasContact ? View.VISIBLE : View.GONE);
+        }
         
-        // Интересы
-        setTextWithLayout(profileInterests, interestsLayout, profile.getInterests(), null);
+        boolean hasPersonal = setSheetText(sheetView, R.id.sheet_row_about,
+                context.getString(R.string.profile_about), profile.getAbout());
+        hasPersonal |= setSheetText(sheetView, R.id.sheet_row_interests,
+                context.getString(R.string.profile_hobby), profile.getInterests());
+        hasPersonal |= setSheetText(sheetView, R.id.sheet_row_music,
+                context.getString(R.string.profile_favorite_music), profile.getMusic());
+        hasPersonal |= setSheetText(sheetView, R.id.sheet_row_movies,
+                context.getString(R.string.profile_favorite_film), profile.getMovies());
+        hasPersonal |= setSheetText(sheetView, R.id.sheet_row_books,
+                context.getString(R.string.profile_favorite_book), profile.getBooks());
+        hasPersonal |= setSheetText(sheetView, R.id.sheet_row_quotes,
+                context.getString(R.string.profile_favorite_quote), profile.getQuotes());
         
-        // Музыка
-        setTextWithLayout(profileMusic, musicLayout, profile.getMusic(), null);
-        
-        // Фильмы
-        setTextWithLayout(profileMovies, moviesLayout, profile.getMovies(), null);
-        
-        // Книги
-        setTextWithLayout(profileBooks, booksLayout, profile.getBooks(), null);
-        
-        // Цитаты
-        setTextWithLayout(profileQuotes, quotesLayout, profile.getQuotes(), null);
+        View personalTitle = sheetView.findViewById(R.id.sheet_personal_title);
+        View personalCard = sheetView.findViewById(R.id.sheet_personal_card);
+        if (personalTitle != null) {
+            personalTitle.setVisibility(hasPersonal ? View.VISIBLE : View.GONE);
+        }
+        if (personalCard != null) {
+            personalCard.setVisibility(hasPersonal ? View.VISIBLE : View.GONE);
+        }
     }
     
     /**
@@ -259,59 +212,90 @@ public class ProfileInfoController {
         }
     }
 
-    /**
-     * Установить текст с проверкой на null/empty и управлением видимостью layout
-     */
-    private void setTextWithLayout(TextView textView, LinearLayout layout,
-                                   String value, TextFormatter formatter) {
-        if (textView == null || layout == null) {
-            return;
+    private boolean setSheetText(View sheetView, int rowId, String label, String value) {
+        return setSheetText(sheetView, rowId, label, value, null);
+    }
+    
+    private boolean setSheetText(View sheetView, int rowId, String label, String value,
+                                 TextFormatter formatter) {
+        View row = sheetView.findViewById(rowId);
+        if (row == null) {
+            return false;
+        }
+        
+        TextView labelView = row.findViewById(R.id.item_info_row_label);
+        TextView valueView = row.findViewById(R.id.item_info_row_value);
+        if (labelView != null) {
+            labelView.setText(label);
         }
         
         if (value != null && !value.isEmpty() && !"null".equals(value)) {
-            textView.setText(formatter != null ? formatter.format(value) : value);
-            setupLinkify(textView);
-            layout.setVisibility(View.VISIBLE);
-        } else {
-            layout.setVisibility(View.GONE);
-        }
-    }
-    
-    /**
-     * Установить информацию о поле
-     */
-    private void setSexInfo(int sex) {
-        if (profileSex == null || sexLayout == null) {
-            return;
+            if (valueView != null) {
+                valueView.setText(formatter != null ? formatter.format(value) : value);
+                setupLinkify(valueView);
+            }
+            row.setVisibility(View.VISIBLE);
+            return true;
         }
         
-        if (sex == 1) {
-            profileSex.setText(context.getString(R.string.profile_sex_female));
-            sexLayout.setVisibility(View.VISIBLE);
-        } else if (sex == 2) {
-            profileSex.setText(context.getString(R.string.profile_sex_male));
-            sexLayout.setVisibility(View.VISIBLE);
-        } else {
-            sexLayout.setVisibility(View.GONE);
-        }
+        row.setVisibility(View.GONE);
+        return false;
     }
-    
-    /**
-     * Установить дату с форматированием
-     */
-    private void setDateWithLayout(TextView textView, LinearLayout layout, 
-                                   long timestamp, boolean includeTime) {
-        if (textView == null || layout == null) {
-            return;
+
+    private boolean setSheetDate(View sheetView, int rowId, String label,
+                                 long timestamp, boolean includeTime) {
+        View row = sheetView.findViewById(rowId);
+        if (row == null) {
+            return false;
+        }
+        
+        TextView labelView = row.findViewById(R.id.item_info_row_label);
+        TextView valueView = row.findViewById(R.id.item_info_row_value);
+        if (labelView != null) {
+            labelView.setText(label);
         }
         
         if (timestamp > 0) {
-            SimpleDateFormat format = includeTime ? dateTimeFormat : dateFormat;
-            textView.setText(format.format(new Date(timestamp * 1000)));
-            layout.setVisibility(View.VISIBLE);
-        } else {
-            layout.setVisibility(View.GONE);
+            if (valueView != null) {
+                SimpleDateFormat format = includeTime ? dateTimeFormat : dateFormat;
+                valueView.setText(format.format(new Date(timestamp * 1000)));
+            }
+            row.setVisibility(View.VISIBLE);
+            return true;
         }
+        
+        row.setVisibility(View.GONE);
+        return false;
+    }
+
+    private boolean setSheetSex(View sheetView, int sex) {
+        View row = sheetView.findViewById(R.id.sheet_row_sex);
+        if (row == null) {
+            return false;
+        }
+        
+        TextView labelView = row.findViewById(R.id.item_info_row_label);
+        TextView valueView = row.findViewById(R.id.item_info_row_value);
+        if (labelView != null) {
+            labelView.setText(context.getString(R.string.profile_gender));
+        }
+        
+        if (sex == 1) {
+            if (valueView != null) {
+                valueView.setText(context.getString(R.string.profile_sex_female));
+            }
+            row.setVisibility(View.VISIBLE);
+            return true;
+        } else if (sex == 2) {
+            if (valueView != null) {
+                valueView.setText(context.getString(R.string.profile_sex_male));
+            }
+            row.setVisibility(View.VISIBLE);
+            return true;
+        }
+        
+        row.setVisibility(View.GONE);
+        return false;
     }
     
     /**

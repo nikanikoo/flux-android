@@ -571,6 +571,11 @@
     <string name="profile_favorite_book">Любимая книга:</string>
     <string name="profile_favorite_quote">Любимые цитаты:</string>
     <string name="profile_info_desc">Подробная информация</string>
+    <string name="profile_posts_header">ЗАПИСИ</string>
+    <string name="profile_name">Имя</string>
+    <string name="profile_section_basic">Основная информация</string>
+    <string name="profile_section_contact">Контактная информация</string>
+    <string name="profile_section_personal">Личная информация</string>
     <string name="profile_status">Статус</string>
     <string name="profile_posts">Все записи</string>
     <string name="profile_friends">друзей</string>

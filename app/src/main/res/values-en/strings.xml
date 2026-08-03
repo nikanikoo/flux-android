@@ -438,6 +438,15 @@
     <string name="profile_favorite_book">Favorite book:</string>
     <string name="profile_favorite_quote">Favorite quotes:</string>
     <string name="profile_info_desc">Detailed information</string>
+    <string name="profile_posts_header">POSTS</string>
+    <string name="profile_name">Name</string>
+    <string name="profile_section_basic">Basic information</string>
+    <string name="profile_section_contact">Contact information</string>
+    <string name="profile_section_personal">Personal information</string>
+    <string name="profile_edit">Edit profile</string>
+    <string name="profile_message">Message</string>
+    <string name="profile_add_friend">Add to friends</string>
+    <string name="profile_friend">Remove from friends</string>
     <string name="profile_status">Status</string>
     <string name="profile_create_post">Create post</string>
     <string name="profile_posts_loading_error">"Error loading posts: "</string>
