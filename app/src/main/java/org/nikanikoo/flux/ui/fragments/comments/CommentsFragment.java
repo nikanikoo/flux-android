@@ -790,8 +790,9 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
 
     @Override
     public void onDeleteClick(Comment comment) {
-        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.comments_delete_confirm)
+                .setMessage(R.string.comments_delete_message)
                 .setPositiveButton(R.string.delete, (dialog, which) -> {
                     deleteComment(comment);
                 })

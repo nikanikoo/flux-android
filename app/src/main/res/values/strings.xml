@@ -200,6 +200,7 @@
     <string name="comments_edited">Комментарий изменен</string>
     <string name="comments_deleted">Комментарий удален</string>
     <string name="comments_delete_confirm">Удалить комментарий?</string>
+    <string name="comments_delete_message">Вы действительно хотите удалить этот комментарий? Это действие нельзя будет отменить.</string>
     <string name="comments_edit_hint">Редактировать комментарий...</string>
     <string name="comments_image_selected">Изображение выбрано</string>
     <string name="comments_post_not_found">Ошибка: пост не найден</string>

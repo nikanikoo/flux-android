@@ -421,6 +421,7 @@ public class NoteViewerFragment extends Fragment implements CommentsAdapter.OnCo
     public void onDeleteClick(Comment comment) {
         new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.comments_delete_confirm)
+                .setMessage(R.string.comments_delete_message)
                 .setPositiveButton(R.string.delete, (dialog, which) -> deleteComment(comment))
                 .setNegativeButton(R.string.cancel, null)
                 .show();
