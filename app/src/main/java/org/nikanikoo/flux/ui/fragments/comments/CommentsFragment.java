@@ -86,6 +86,7 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
     private TextView headerText;
     private ImageView btnCancelEdit;
     private Comment editingComment;
+    private String replyPrefix;
 
     public static CommentsFragment newInstance(Post post) {
         CommentsFragment fragment = new CommentsFragment();
@@ -619,10 +620,11 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
 
     private void sendComment(String commentText) {
         final boolean hasAttachment = selectedImageUri != null;
+        final String finalMessage = (replyPrefix != null ? replyPrefix : "") + commentText;
         
         // Используем единый метод для создания комментария (с изображением или без)
         commentsManager.createComment(originalPost.getOwnerId(), originalPost.getPostId(),
-                commentText, selectedImageUri, new CommentsManager.CreateCommentCallback() {
+                finalMessage, selectedImageUri, new CommentsManager.CreateCommentCallback() {
             @Override
             public void onSuccess(Comment comment) {
                 if (getActivity() != null) {
@@ -759,12 +761,11 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
     public void onReplyClick(Comment comment) {
         System.out.println("Reply clicked for comment: " + comment.getId() + " by " + comment.getAuthorName());
         
-        // Формируем текст ответа в формате [id|Имя]
-        String replyText = "[id" + comment.getFromId() + "|" + comment.getAuthorName() + "], ";
+        // Формируем текст ответа в формате [id|Имя] (храним скрыто)
+        replyPrefix = "[id" + comment.getFromId() + "|" + comment.getAuthorName() + "], ";
         
-        // Вставляем текст в поле ввода
-        editComment.setText(replyText);
-        editComment.setSelection(replyText.length()); // Устанавливаем курсор в конец
+        // Очищаем поле ввода, так как префикс теперь скрыт
+        editComment.setText("");
         
         // Показываем плашку ответа
         headerIcon.setImageResource(R.drawable.ic_comment);
@@ -813,6 +814,7 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
     @Override
     public void onEditClick(Comment comment) {
         editingComment = comment;
+        replyPrefix = null; // Сбрасываем префикс ответа при редактировании
         editComment.setText(comment.getText());
         if (comment.getText() != null) {
             editComment.setSelection(comment.getText().length());
@@ -837,6 +839,7 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
 
     private void cancelEditing() {
         editingComment = null;
+        replyPrefix = null;
         editComment.setText("");
         selectedImageUri = null;
         updateImageAttachmentIndicator();

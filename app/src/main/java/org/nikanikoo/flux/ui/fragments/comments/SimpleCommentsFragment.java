@@ -41,6 +41,7 @@ public class SimpleCommentsFragment extends Fragment implements CommentsAdapter.
     private TextView headerText;
     private ImageView btnCancelEdit;
     private Comment editingComment;
+    private String replyPrefix;
     
     public static SimpleCommentsFragment newInstance(Post post) {
         SimpleCommentsFragment fragment = new SimpleCommentsFragment();
@@ -170,7 +171,9 @@ public class SimpleCommentsFragment extends Fragment implements CommentsAdapter.
     private void sendComment(String text) {
         if (post == null) return;
         
-        commentsManager.createComment(post.getOwnerId(), post.getPostId(), text, new CommentsManager.CreateCommentCallback() {
+        String finalMessage = (replyPrefix != null ? replyPrefix : "") + text;
+        
+        commentsManager.createComment(post.getOwnerId(), post.getPostId(), finalMessage, new CommentsManager.CreateCommentCallback() {
             @Override
             public void onSuccess(Comment comment) {
                 if (getActivity() != null) {
@@ -266,9 +269,11 @@ public class SimpleCommentsFragment extends Fragment implements CommentsAdapter.
     
     @Override
     public void onReplyClick(Comment comment) {
-        String replyText = "[id" + comment.getFromId() + "|" + comment.getAuthorName() + "] ";
-        editComment.setText(replyText);
-        editComment.setSelection(replyText.length());
+        // Формируем текст ответа в формате [id|Имя] (скрыто)
+        replyPrefix = "[id" + comment.getFromId() + "|" + comment.getAuthorName() + "] ";
+        
+        // Очищаем поле ввода
+        editComment.setText("");
         
         // Показываем плашку ответа
         headerIcon.setImageResource(R.drawable.ic_comment);
@@ -298,6 +303,7 @@ public class SimpleCommentsFragment extends Fragment implements CommentsAdapter.
     @Override
     public void onEditClick(Comment comment) {
         editingComment = comment;
+        replyPrefix = null;
         editComment.setText(comment.getText());
         if (comment.getText() != null) {
             editComment.setSelection(comment.getText().length());
@@ -313,6 +319,7 @@ public class SimpleCommentsFragment extends Fragment implements CommentsAdapter.
 
     private void cancelEditing() {
         editingComment = null;
+        replyPrefix = null;
         editComment.setText("");
         editCommentHeader.setVisibility(View.GONE);
     }

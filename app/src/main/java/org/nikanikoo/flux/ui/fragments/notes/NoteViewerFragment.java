@@ -62,6 +62,7 @@ public class NoteViewerFragment extends Fragment implements CommentsAdapter.OnCo
     private TextView headerText;
     private ImageView btnCancelEdit;
     private Comment editingComment;
+    private String replyPrefix;
     
     private CommentsAdapter commentsAdapter;
     private List<Comment> commentsList = new ArrayList<>();
@@ -192,7 +193,9 @@ public class NoteViewerFragment extends Fragment implements CommentsAdapter.OnCo
 
     private void sendComment(String text) {
         btnSendComment.setEnabled(false);
-        notesManager.createComment(note.getOwnerId(), note.getId(), text, null, new CommentsManager.CreateCommentCallback() {
+        String finalMessage = (replyPrefix != null ? replyPrefix : "") + text;
+        
+        notesManager.createComment(note.getOwnerId(), note.getId(), finalMessage, null, new CommentsManager.CreateCommentCallback() {
             @Override
             public void onSuccess(Comment comment) {
                 if (!isAdded()) return;
@@ -238,6 +241,7 @@ public class NoteViewerFragment extends Fragment implements CommentsAdapter.OnCo
 
     private void cancelEditing() {
         editingComment = null;
+        replyPrefix = null;
         editComment.setText("");
         if (editCommentHeader != null) {
             editCommentHeader.setVisibility(View.GONE);
@@ -407,9 +411,11 @@ public class NoteViewerFragment extends Fragment implements CommentsAdapter.OnCo
 
     @Override
     public void onReplyClick(Comment comment) {
-        String replyText = "[id" + comment.getFromId() + "|" + comment.getAuthorName() + "] ";
-        editComment.setText(replyText);
-        editComment.setSelection(replyText.length());
+        // Формируем скрытый префикс ответа
+        replyPrefix = "[id" + comment.getFromId() + "|" + comment.getAuthorName() + "] ";
+        
+        // Очищаем поле ввода
+        editComment.setText("");
         
         // Показываем плашку ответа
         headerIcon.setImageResource(R.drawable.ic_comment);
@@ -441,6 +447,7 @@ public class NoteViewerFragment extends Fragment implements CommentsAdapter.OnCo
     @Override
     public void onEditClick(Comment comment) {
         editingComment = comment;
+        replyPrefix = null;
         editComment.setText(comment.getText());
         if (comment.getText() != null) {
             editComment.setSelection(comment.getText().length());
