@@ -15,6 +15,7 @@
     <string name="save">Save</string>
     <string name="delete">Delete</string>
     <string name="edit">Edit</string>
+    <string name="reply">Reply</string>
     <string name="edit_post_title">Edit post</string>
     <string name="edit_post_hint">What\'s new?</string>
     <string name="profile_edit_success">Changes saved</string>

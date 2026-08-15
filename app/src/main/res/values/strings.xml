@@ -16,6 +16,7 @@
     <string name="save">Сохранить</string>
     <string name="delete">Удалить</string>
     <string name="edit">Редактировать</string>
+    <string name="reply">Ответить</string>
     <string name="edit_post_title">Редактирование поста</string>
     <string name="edit_post_hint">Что нового?</string>
     <string name="profile_edit_success">Изменения сохранены</string>
