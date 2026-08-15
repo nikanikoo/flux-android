@@ -32,6 +32,9 @@
                     <include layout="@layout/settings_item_theme_mode" />
                     <include layout="@layout/settings_item_color_scheme" />
                     <include layout="@layout/settings_item_contrast" />
+                    <include layout="@layout/settings_item_navigation_mode" />
+                    <include layout="@layout/settings_item_navigation_labels" />
+                    <include layout="@layout/settings_item_navigation_sections" />
 
                 </LinearLayout>
 

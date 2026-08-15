@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <item name="tag_album_art_key" type="id"/>
+    <item name="drawer_menu_dashboard" type="id"/>
 </resources>

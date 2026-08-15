@@ -15,27 +15,51 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.radiobutton.MaterialRadioButton;
+import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
 import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.ui.activities.MainActivity;
+import org.nikanikoo.flux.ui.fragments.menu.MenuDashboardFragment;
 import org.nikanikoo.flux.utils.ThemeManager;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 public class AppearanceSettingsFragment extends Fragment {
+
+    private static final String[] NAV_TAGS = {
+            "drawer_news", "drawer_notification", "drawer_friends", "drawer_photos",
+            "drawer_videos", "drawer_audio", "drawer_messages", "drawer_groups",
+            "drawer_notes", "drawer_settings"
+    };
+
+    private static final int[] NAV_TAG_NAMES = {
+            R.string.nav_news, R.string.nav_notifications, R.string.nav_friends, R.string.nav_photos,
+            R.string.nav_videos, R.string.nav_music, R.string.nav_messages, R.string.nav_groups,
+            R.string.nav_notes, R.string.nav_settings
+    };
 
     private ThemeManager themeManager;
     private TextView themeModeValue;
     private TextView colorSchemeValue;
     private TextView contrastValue;
+    private TextView navigationModeValue;
+    private TextView navigationSectionsValue;
     private View settingsThemeMode;
     private View settingsColorScheme;
     private View settingsContrast;
+    private View settingsNavigationMode;
+    private View settingsNavigationSections;
+    private SwitchMaterial switchNavigationLabels;
 
     @Nullable
     @Override
@@ -55,22 +79,50 @@ public class AppearanceSettingsFragment extends Fragment {
         themeModeValue = view.findViewById(R.id.theme_mode_value);
         colorSchemeValue = view.findViewById(R.id.color_scheme_value);
         contrastValue = view.findViewById(R.id.contrast_value);
+        navigationModeValue = view.findViewById(R.id.navigation_mode_value);
+        navigationSectionsValue = view.findViewById(R.id.navigation_sections_value);
+        switchNavigationLabels = view.findViewById(R.id.switch_navigation_labels);
         
         settingsThemeMode = view.findViewById(R.id.settings_theme_mode);
         settingsColorScheme = view.findViewById(R.id.settings_color_scheme);
         settingsContrast = view.findViewById(R.id.settings_contrast);
+        settingsNavigationMode = view.findViewById(R.id.settings_navigation_mode);
+        settingsNavigationSections = view.findViewById(R.id.settings_navigation_sections);
     }
     
     private void setupClickListeners() {
         settingsThemeMode.setOnClickListener(v -> showThemeModeDialog());
         settingsColorScheme.setOnClickListener(v -> showColorSchemeDialog());
         settingsContrast.setOnClickListener(v -> showContrastDialog());
+        settingsNavigationMode.setOnClickListener(v -> showNavigationModeDialog());
+        settingsNavigationSections.setOnClickListener(v -> showNavigationSectionsDialog());
+        switchNavigationLabels.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            requireContext().getSharedPreferences(
+                    MenuDashboardFragment.PREFS_NAME, android.content.Context.MODE_PRIVATE)
+                    .edit().putBoolean(MenuDashboardFragment.KEY_BOTTOM_NAV_LABELS, isChecked).apply();
+        });
     }
     
     private void updateThemeValues() {
         themeModeValue.setText(themeManager.getThemeName(themeManager.getThemeMode()));
         colorSchemeValue.setText(themeManager.getStyleName(themeManager.getThemeStyle()));
         contrastValue.setText(themeManager.getContrastName(themeManager.getContrastMode()));
+        
+        android.content.SharedPreferences prefs = requireContext().getSharedPreferences(
+                MenuDashboardFragment.PREFS_NAME, android.content.Context.MODE_PRIVATE);
+        
+        boolean isBottomNav = prefs.getBoolean(MenuDashboardFragment.KEY_BOTTOM_NAV_ENABLED, false);
+        navigationModeValue.setText(getString(
+                isBottomNav ? R.string.navigation_style_bottom : R.string.navigation_style_drawer));
+        
+        switchNavigationLabels.setChecked(prefs.getBoolean(MenuDashboardFragment.KEY_BOTTOM_NAV_LABELS, true));
+        
+        String savedItems = prefs.getString(MenuDashboardFragment.KEY_BOTTOM_NAV_ITEMS,
+                MenuDashboardFragment.DEFAULT_BOTTOM_NAV_ITEMS);
+        int selectedCount = savedItems == null || savedItems.isEmpty()
+                ? 0 : savedItems.split(",").length;
+        navigationSectionsValue.setText(getString(R.string.navigation_sections_summary,
+                selectedCount, MenuDashboardFragment.MAX_BOTTOM_NAV_ITEMS));
     }
     
     private void showThemeModeDialog() {
@@ -316,6 +368,86 @@ public class AppearanceSettingsFragment extends Fragment {
             .create();
         
         dialog.show();
+    }
+    
+    private void showNavigationModeDialog() {
+        String[] options = {
+            getString(R.string.navigation_style_drawer),
+            getString(R.string.navigation_style_bottom)
+        };
+        
+        android.content.SharedPreferences prefs = requireContext().getSharedPreferences(
+                MenuDashboardFragment.PREFS_NAME, android.content.Context.MODE_PRIVATE);
+        boolean currentBottomNav = prefs.getBoolean(MenuDashboardFragment.KEY_BOTTOM_NAV_ENABLED, false);
+        int currentSelection = currentBottomNav ? 1 : 0;
+        
+        new MaterialAlertDialogBuilder(requireContext())
+            .setTitle(getString(R.string.navigation_style_title))
+            .setSingleChoiceItems(options, currentSelection, (dialog, which) -> {
+                boolean enableBottom = (which == 1);
+                prefs.edit().putBoolean(MenuDashboardFragment.KEY_BOTTOM_NAV_ENABLED, enableBottom).apply();
+                dialog.dismiss();
+                updateThemeValues();
+                restartMainActivity();
+            })
+            .setNegativeButton(getString(R.string.cancel), null)
+            .show();
+    }
+    
+    private void showNavigationSectionsDialog() {
+        android.content.SharedPreferences prefs = requireContext().getSharedPreferences(
+                MenuDashboardFragment.PREFS_NAME, android.content.Context.MODE_PRIVATE);
+        
+        CharSequence[] names = new CharSequence[NAV_TAGS.length];
+        for (int i = 0; i < NAV_TAGS.length; i++) {
+            names[i] = getString(NAV_TAG_NAMES[i]);
+        }
+        
+        String savedItems = prefs.getString(MenuDashboardFragment.KEY_BOTTOM_NAV_ITEMS,
+                MenuDashboardFragment.DEFAULT_BOTTOM_NAV_ITEMS);
+        List<String> activeTags = new ArrayList<>();
+        if (savedItems != null && !savedItems.isEmpty()) {
+            activeTags.addAll(Arrays.asList(savedItems.split(",")));
+        }
+        
+        final boolean[] checked = new boolean[NAV_TAGS.length];
+        for (int i = 0; i < NAV_TAGS.length; i++) {
+            checked[i] = activeTags.contains(NAV_TAGS[i]);
+        }
+        
+        new MaterialAlertDialogBuilder(requireContext())
+            .setTitle(getString(R.string.navigation_checklist_title))
+            .setMultiChoiceItems(names, checked, (dialog, which, isChecked) -> {
+                checked[which] = isChecked;
+                int count = countChecked(checked);
+                if (isChecked && count > MenuDashboardFragment.MAX_BOTTOM_NAV_ITEMS) {
+                    checked[which] = false;
+                    ((AlertDialog) dialog).getListView().setItemChecked(which, false);
+                    Toast.makeText(requireContext(),
+                            getString(R.string.navigation_max_items), Toast.LENGTH_SHORT).show();
+                }
+            })
+            .setPositiveButton(getString(R.string.apply), (dialog, which) -> {
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < NAV_TAGS.length; i++) {
+                    if (checked[i]) {
+                        if (sb.length() > 0) sb.append(",");
+                        sb.append(NAV_TAGS[i]);
+                    }
+                }
+                prefs.edit().putString(MenuDashboardFragment.KEY_BOTTOM_NAV_ITEMS, sb.toString()).apply();
+                updateThemeValues();
+            })
+            .setNegativeButton(getString(R.string.cancel), null)
+            .show();
+    }
+    
+    private int countChecked(boolean[] checked) {
+        int count = 0;
+        for (boolean b : checked) {
+            if (b) count++;
+        }
+        return count;
     }
     
     private void restartMainActivity() {

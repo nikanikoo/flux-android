@@ -637,4 +637,18 @@
     <string name="poll_error_vote">Voting error</string>
     <string name="poll_error_unvote">Error retracting vote</string>
 
+    <!-- Navigation Settings -->
+    <string name="navigation_style_title">Navigation menu style</string>
+    <string name="navigation_style_drawer">Side menu (Drawer)</string>
+    <string name="navigation_style_bottom">Bottom menu</string>
+    <string name="navigation_menu_title">Menu</string>
+    <string name="navigation_menu_sections">Sections</string>
+    <string name="navigation_menu_empty">All sections are already on the bottom panel</string>
+    <string name="navigation_show_labels_title">Section labels</string>
+    <string name="navigation_show_labels_desc">Show labels under icons</string>
+    <string name="navigation_checklist_title">Sections on the bottom panel</string>
+    <string name="navigation_sections_summary">%1$d of %2$d</string>
+    <string name="navigation_max_items">No more than 5 sections can be added to the panel</string>
+    <string name="navigation_go_to_profile">Go to profile</string>
+
 </resources>
