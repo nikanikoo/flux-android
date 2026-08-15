@@ -80,8 +80,10 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
     private ImageView btnSendComment;
     private Uri selectedImageUri;
     
-    // Новые Views для редактирования
+    // Новые Views для редактирования и ответов
     private View editCommentHeader;
+    private ImageView headerIcon;
+    private TextView headerText;
     private ImageView btnCancelEdit;
     private Comment editingComment;
 
@@ -158,6 +160,8 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
         btnAttachImage = view.findViewById(R.id.btn_attach_image);
         btnSendComment = view.findViewById(R.id.btn_send_comment);
         editCommentHeader = view.findViewById(R.id.edit_comment_header);
+        headerIcon = view.findViewById(R.id.header_icon);
+        headerText = view.findViewById(R.id.header_text);
         btnCancelEdit = view.findViewById(R.id.btn_cancel_edit);
     }
 
@@ -626,6 +630,7 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
                         editComment.setText("");
                         selectedImageUri = null;
                         updateImageAttachmentIndicator();
+                        editCommentHeader.setVisibility(View.GONE);
                         
                         // Обновляем счетчик комментариев
                         originalPost.setCommentCount(originalPost.getCommentCount() + 1);
@@ -761,6 +766,11 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
         editComment.setText(replyText);
         editComment.setSelection(replyText.length()); // Устанавливаем курсор в конец
         
+        // Показываем плашку ответа
+        headerIcon.setImageResource(R.drawable.ic_comment);
+        headerText.setText(getString(R.string.comments_reply_to, comment.getAuthorName()));
+        editCommentHeader.setVisibility(View.VISIBLE);
+        
         // Фокусируемся на поле ввода
         editComment.requestFocus();
         
@@ -807,7 +817,12 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
         if (comment.getText() != null) {
             editComment.setSelection(comment.getText().length());
         }
+        
+        // Настраиваем плашку редактирования
+        headerIcon.setImageResource(R.drawable.ic_edit);
+        headerText.setText(R.string.comments_edit_hint);
         editCommentHeader.setVisibility(View.VISIBLE);
+
         editComment.requestFocus();
         
         // Показываем клавиатуру

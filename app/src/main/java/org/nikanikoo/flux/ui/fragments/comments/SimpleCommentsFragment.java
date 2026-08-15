@@ -6,6 +6,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import org.nikanikoo.flux.data.managers.api.OpenVKApi;
@@ -36,6 +37,8 @@ public class SimpleCommentsFragment extends Fragment implements CommentsAdapter.
     private ImageView btnSendComment;
     
     private View editCommentHeader;
+    private ImageView headerIcon;
+    private TextView headerText;
     private ImageView btnCancelEdit;
     private Comment editingComment;
     
@@ -101,6 +104,8 @@ public class SimpleCommentsFragment extends Fragment implements CommentsAdapter.
         editComment = view.findViewById(R.id.edit_comment);
         btnSendComment = view.findViewById(R.id.btn_send_comment);
         editCommentHeader = view.findViewById(R.id.edit_comment_header);
+        headerIcon = view.findViewById(R.id.header_icon);
+        headerText = view.findViewById(R.id.header_text);
         btnCancelEdit = view.findViewById(R.id.btn_cancel_edit);
     }
     
@@ -173,6 +178,7 @@ public class SimpleCommentsFragment extends Fragment implements CommentsAdapter.
                         comments.add(comment);
                         commentsAdapter.notifyItemInserted(comments.size() - 1);
                         editComment.setText("");
+                        editCommentHeader.setVisibility(View.GONE);
                         recyclerComments.scrollToPosition(comments.size() - 1);
                     });
                 }
@@ -263,6 +269,12 @@ public class SimpleCommentsFragment extends Fragment implements CommentsAdapter.
         String replyText = "[id" + comment.getFromId() + "|" + comment.getAuthorName() + "] ";
         editComment.setText(replyText);
         editComment.setSelection(replyText.length());
+        
+        // Показываем плашку ответа
+        headerIcon.setImageResource(R.drawable.ic_comment);
+        headerText.setText(getString(R.string.comments_reply_to, comment.getAuthorName()));
+        editCommentHeader.setVisibility(View.VISIBLE);
+        
         editComment.requestFocus();
     }
     
@@ -290,7 +302,12 @@ public class SimpleCommentsFragment extends Fragment implements CommentsAdapter.
         if (comment.getText() != null) {
             editComment.setSelection(comment.getText().length());
         }
+        
+        // Настраиваем плашку редактирования
+        headerIcon.setImageResource(R.drawable.ic_edit);
+        headerText.setText(R.string.comments_edit_hint);
         editCommentHeader.setVisibility(View.VISIBLE);
+
         editComment.requestFocus();
     }
 
