@@ -64,7 +64,6 @@ public class AppearanceSettingsFragment extends Fragment {
         ALL_SECTIONS.add(new NavSectionMeta("drawer_videos", R.string.nav_videos, R.drawable.ic_video_library));
         ALL_SECTIONS.add(new NavSectionMeta("drawer_audio", R.string.nav_music, R.drawable.ic_library_music));
         ALL_SECTIONS.add(new NavSectionMeta("drawer_notes", R.string.nav_notes, R.drawable.ic_note_stack));
-        ALL_SECTIONS.add(new NavSectionMeta("drawer_settings", R.string.nav_settings, R.drawable.ic_settings));
     }
 
     private ThemeManager themeManager;

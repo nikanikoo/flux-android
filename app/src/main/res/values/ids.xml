@@ -4,4 +4,5 @@
     <item name="drawer_menu_dashboard" type="id"/>
     <item name="action_notifications" type="id"/>
     <item name="action_theme_toggle" type="id"/>
+    <item name="action_settings" type="id"/>
 </resources>

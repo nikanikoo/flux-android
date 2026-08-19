@@ -89,7 +89,6 @@ public class MenuDashboardFragment extends Fragment {
         allNavItems.add(new NavItem("drawer_videos", R.string.nav_videos, R.drawable.ic_video_library));
         allNavItems.add(new NavItem("drawer_audio", R.string.nav_music, R.drawable.ic_library_music));
         allNavItems.add(new NavItem("drawer_notes", R.string.nav_notes, R.drawable.ic_note_stack));
-        allNavItems.add(new NavItem("drawer_settings", R.string.nav_settings, R.drawable.ic_settings));
     }
 
     @Nullable
@@ -111,9 +110,15 @@ public class MenuDashboardFragment extends Fragment {
         menu.clear();
         ThemeManager themeManager = ThemeManager.getInstance(requireContext());
         boolean isDark = themeManager.isDarkMode();
+        
         MenuItem themeItem = menu.add(Menu.NONE, R.id.action_theme_toggle, 0, R.string.appearance_theme_mode);
         themeItem.setIcon(isDark ? R.drawable.ic_sunny : R.drawable.ic_bedtime);
         themeItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+
+        MenuItem settingsItem = menu.add(Menu.NONE, R.id.action_settings, 1, R.string.nav_settings);
+        settingsItem.setIcon(R.drawable.ic_settings);
+        settingsItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+
         super.onCreateOptionsMenu(menu, inflater);
     }
 
@@ -121,6 +126,15 @@ public class MenuDashboardFragment extends Fragment {
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (item.getItemId() == R.id.action_theme_toggle) {
             toggleThemeWithAnimation();
+            return true;
+        } else if (item.getItemId() == R.id.action_settings) {
+            MainActivity mainActivity = (MainActivity) getActivity();
+            if (mainActivity != null && mainActivity.getNavigationController() != null) {
+                mainActivity.getNavigationController().navigateToFragmentWithBackStack(
+                        new org.nikanikoo.flux.ui.fragments.settings.SettingsFragment(), "settings"
+                );
+                mainActivity.setToolbarTitle(getString(R.string.nav_settings));
+            }
             return true;
         }
         return super.onOptionsItemSelected(item);
