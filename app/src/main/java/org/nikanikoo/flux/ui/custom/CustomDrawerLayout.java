@@ -19,18 +19,21 @@ public class CustomDrawerLayout extends DrawerLayout {
     public CustomDrawerLayout(Context context) {
         super(context);
         mTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
+        setStatusBarBackground(null);
         initEdgeSize();
     }
 
     public CustomDrawerLayout(Context context, AttributeSet attrs) {
         super(context, attrs);
         mTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
+        setStatusBarBackground(null);
         initEdgeSize();
     }
 
     public CustomDrawerLayout(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
         mTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
+        setStatusBarBackground(null);
         initEdgeSize();
     }
 

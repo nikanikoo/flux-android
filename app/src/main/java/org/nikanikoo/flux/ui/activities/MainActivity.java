@@ -114,15 +114,22 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
         
         setContentView(R.layout.activity_main);
         
+        initializeManagers();
+        currentBottomNavEnabled = isBottomNavigationEnabled();
+        setupControllers();
+        
+        if (ThemeTransitionHelper.wasDrawerOpen()) {
+            CustomDrawerLayout drawerLayout = findViewById(R.id.drawer_layout);
+            if (drawerLayout != null) {
+                drawerLayout.openDrawer(androidx.core.view.GravityCompat.START, false);
+            }
+        }
+        
         if (ThemeTransitionHelper.isTransitioning()) {
             ThemeTransitionHelper.animateThemeChange(this);
         }
         
         Logger.checkAndShowCrashReport(this);
-        
-        initializeManagers();
-        currentBottomNavEnabled = isBottomNavigationEnabled();
-        setupControllers(); // Setup controllers BEFORE toolbar (navigationController needed)
         setupToolbar();
         setupLongPoll();
         loadUserProfile();
@@ -139,6 +146,22 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
             
             if (navigationController != null) {
                 navigationController.updateDrawerToggleForBackStack(backStackCount);
+                if (backStackCount == 0) {
+                    navigationController.updateToolbarForCurrentItem(navigationController.getCurrentFragmentId());
+                } else {
+                    androidx.fragment.app.FragmentManager.BackStackEntry topEntry =
+                            getSupportFragmentManager().getBackStackEntryAt(backStackCount - 1);
+                    if (topEntry != null && topEntry.getName() != null) {
+                        String name = topEntry.getName();
+                        if ("settings".equals(name)) {
+                            setToolbarTitle(getString(R.string.nav_settings));
+                        } else if ("profile".equals(name)) {
+                            setToolbarTitle(getString(R.string.nav_profile));
+                        } else if ("notifications".equals(name)) {
+                            setToolbarTitle(getString(R.string.nav_notifications));
+                        }
+                    }
+                }
             }
         });
         
@@ -148,6 +171,8 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
             int savedFragmentId = savedInstanceState.getInt("current_fragment_id", -1);
             if (savedFragmentId != -1 && navigationController != null) {
                 navigationController.setCurrentFragmentId(savedFragmentId);
+                navigationController.updateToolbarForCurrentItem(savedFragmentId);
+                syncBottomNavigationSelection(savedFragmentId);
             }
             if (navigationController != null) {
                 navigationController.updateDrawerToggleForBackStack(getSupportFragmentManager().getBackStackEntryCount());
@@ -226,6 +251,10 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
         
         // Navigation Controller
         CustomDrawerLayout drawerLayout = findViewById(R.id.drawer_layout);
+        if (drawerLayout != null) {
+            drawerLayout.setStatusBarBackground(null);
+            drawerLayout.setStatusBarBackgroundColor(android.graphics.Color.TRANSPARENT);
+        }
         NavigationView navigationView = findViewById(R.id.drawer_view);
         View navigationRailView = findViewById(R.id.navigation_rail);
         

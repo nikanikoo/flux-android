@@ -234,7 +234,7 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
                 int y = location[1] + v.getHeight() / 2;
 
                 Bitmap screenshot = ThemeTransitionHelper.takeScreenshot(activity);
-                ThemeTransitionHelper.setTransitionData(screenshot, x, y);
+                ThemeTransitionHelper.setTransitionData(screenshot, x, y, isDrawerOpen());
                 themeManager.setThemeMode(newMode);
                 activity.recreate();
                 activity.overridePendingTransition(0, 0);
@@ -517,6 +517,34 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
         }
         
         closeDrawer();
+    }
+
+    public void updateToolbarForCurrentItem(int id) {
+        String title = null;
+        if (id == R.id.drawer_news) {
+            title = activity.getString(R.string.nav_news);
+        } else if (id == R.id.drawer_messages) {
+            title = activity.getString(R.string.nav_messages);
+        } else if (id == R.id.drawer_friends) {
+            title = activity.getString(R.string.nav_friends);
+        } else if (id == R.id.drawer_groups) {
+            title = activity.getString(R.string.nav_groups);
+        } else if (id == R.id.drawer_photos) {
+            title = activity.getString(R.string.nav_photos);
+        } else if (id == R.id.drawer_audio) {
+            title = activity.getString(R.string.nav_music);
+        } else if (id == R.id.drawer_videos) {
+            title = activity.getString(R.string.nav_videos);
+        } else if (id == R.id.drawer_notes) {
+            title = activity.getString(R.string.nav_notes);
+        } else if (id == R.id.drawer_settings) {
+            title = activity.getString(R.string.nav_settings);
+        } else if (id == R.id.drawer_menu_dashboard) {
+            title = activity.getString(R.string.navigation_menu_title);
+        }
+        if (title != null) {
+            activity.setToolbarTitle(title);
+        }
     }
     
     /**

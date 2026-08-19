@@ -15,8 +15,13 @@ public class ThemeTransitionHelper {
     private static int sClickX;
     private static int sClickY;
     private static boolean sIsTransitioning = false;
+    private static boolean sDrawerOpen = false;
 
     public static void setTransitionData(Bitmap screenshot, int x, int y) {
+        setTransitionData(screenshot, x, y, false);
+    }
+
+    public static void setTransitionData(Bitmap screenshot, int x, int y, boolean drawerOpen) {
         if (sScreenshot != null && !sScreenshot.isRecycled()) {
             sScreenshot.recycle();
         }
@@ -24,10 +29,15 @@ public class ThemeTransitionHelper {
         sClickX = x;
         sClickY = y;
         sIsTransitioning = true;
+        sDrawerOpen = drawerOpen;
     }
 
     public static boolean isTransitioning() {
         return sIsTransitioning;
+    }
+
+    public static boolean wasDrawerOpen() {
+        return sDrawerOpen;
     }
 
     public static Bitmap getScreenshot() {
@@ -40,6 +50,7 @@ public class ThemeTransitionHelper {
         }
         sScreenshot = null;
         sIsTransitioning = false;
+        sDrawerOpen = false;
     }
 
     public static Bitmap takeScreenshot(Activity activity) {
@@ -99,13 +110,14 @@ public class ThemeTransitionHelper {
                 anim.addListener(new AnimatorListenerAdapter() {
                     @Override
                     public void onAnimationEnd(Animator animation) {
+                        super.onAnimationEnd(animation);
                         decor.removeView(imageView);
                         clear();
                     }
                 });
                 anim.start();
             } catch (Exception e) {
-                root.setVisibility(View.VISIBLE);
+                Logger.e("ThemeTransition", "Error during reveal animation", e);
                 decor.removeView(imageView);
                 clear();
             }

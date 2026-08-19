@@ -4,7 +4,8 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Build;
-import android.view.WindowInsetsController;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 import androidx.appcompat.app.AppCompatDelegate;
 import com.google.android.material.color.DynamicColors;
 import com.google.android.material.color.DynamicColorsOptions;
@@ -107,22 +108,82 @@ public class ThemeManager {
         } else if (mode == THEME_LIGHT) {
             return false;
         } else {
-            int nightMode = AppCompatDelegate.getDefaultNightMode();
-            return nightMode == AppCompatDelegate.MODE_NIGHT_YES;
+            int currentNightMode = context.getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
+            return currentNightMode == android.content.res.Configuration.UI_MODE_NIGHT_YES;
         }
     }
 
     public static void applySystemBarsAppearance(Activity activity) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            WindowInsetsController windowInsetsController = activity.getWindow().getInsetsController();
-            if (windowInsetsController != null) {
-                ThemeManager themeManager = ThemeManager.getInstance(activity);
-                boolean isLightTheme = !themeManager.isDarkMode();
-                windowInsetsController.setSystemBarsAppearance(
-                        isLightTheme ? WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS : 0,
-                        WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS | WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
+        if (activity == null || activity.getWindow() == null) return;
+
+        try {
+            android.view.Window window = activity.getWindow();
+            ThemeManager themeManager = ThemeManager.getInstance(activity);
+            boolean isDarkMode = themeManager.isDarkMode();
+            int themeMode = themeManager.getThemeMode();
+
+            int defaultSurface = isDarkMode ? 0xFF1F1F24 : 0xFFF2F2F7;
+            int surfaceContainerColor;
+            if (themeMode == THEME_AMOLED) {
+                surfaceContainerColor = 0xFF000000;
+            } else {
+                surfaceContainerColor = resolveThemeColor(
+                        activity,
+                        com.google.android.material.R.attr.colorSurfaceContainer,
+                        resolveThemeColor(activity, com.google.android.material.R.attr.colorSurface, defaultSurface)
                 );
             }
+
+            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+            window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION);
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                window.setStatusBarContrastEnforced(false);
+                window.setNavigationBarContrastEnforced(false);
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                window.setStatusBarColor(surfaceContainerColor);
+            } else {
+                window.setStatusBarColor(0xFF000000);
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                window.setNavigationBarColor(surfaceContainerColor);
+            } else {
+                window.setNavigationBarColor(0xFF000000);
+            }
+
+            android.view.View decorView = window.getDecorView();
+            if (decorView != null) {
+                WindowInsetsControllerCompat insetsController = WindowCompat.getInsetsController(window, decorView);
+                if (insetsController != null) {
+                    insetsController.setAppearanceLightStatusBars(!isDarkMode);
+                    insetsController.setAppearanceLightNavigationBars(!isDarkMode);
+                }
+            }
+        } catch (Exception e) {
+            Logger.e("ThemeManager", "Error applying system bars appearance", e);
+        }
+    }
+
+    public static int resolveThemeColor(Context context, int attrRes, int defaultColor) {
+        try {
+            return com.google.android.material.color.MaterialColors.getColor(context, attrRes, defaultColor);
+        } catch (Exception e) {
+            try {
+                android.util.TypedValue typedValue = new android.util.TypedValue();
+                if (context.getTheme().resolveAttribute(attrRes, typedValue, true)) {
+                    if (typedValue.type >= android.util.TypedValue.TYPE_FIRST_COLOR_INT &&
+                        typedValue.type <= android.util.TypedValue.TYPE_LAST_COLOR_INT) {
+                        return typedValue.data;
+                    } else if (typedValue.resourceId != 0) {
+                        return androidx.core.content.ContextCompat.getColor(context, typedValue.resourceId);
+                    }
+                }
+            } catch (Exception ignored) {}
+            return defaultColor;
         }
     }
 
@@ -202,6 +263,8 @@ public class ThemeManager {
                 Logger.e("ThemeManager", "Error applying custom dynamic color", e);
             }
         }
+        
+        applySystemBarsAppearance(activity);
     }
 
     public int getThemeResourceId() {
