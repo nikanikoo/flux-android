@@ -462,8 +462,6 @@ public class AppearanceSettingsFragment extends Fragment {
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_navigation_sections, null);
         RecyclerView recyclerView = dialogView.findViewById(R.id.sections_manage_recycler);
         TextView textSelectedCount = dialogView.findViewById(R.id.text_selected_count);
-        MaterialButton btnCancel = dialogView.findViewById(R.id.btn_cancel);
-        MaterialButton btnApply = dialogView.findViewById(R.id.btn_apply);
         
         recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
         
@@ -510,28 +508,33 @@ public class AppearanceSettingsFragment extends Fragment {
         textSelectedCount.setText(getString(R.string.navigation_dialog_selected_count,
                 adapter.getSelectedCount(), MenuDashboardFragment.MAX_BOTTOM_NAV_ITEMS));
         
-        Dialog dialog = new MaterialAlertDialogBuilder(requireContext())
+        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(requireContext())
                 .setView(dialogView)
+                .setPositiveButton(R.string.apply, null)
+                .setNegativeButton(R.string.cancel, null)
                 .create();
         
-        btnCancel.setOnClickListener(v -> dialog.dismiss());
-        
-        btnApply.setOnClickListener(v -> {
-            if (adapter.getSelectedCount() == 0) {
-                Toast.makeText(requireContext(), R.string.navigation_min_items, Toast.LENGTH_SHORT).show();
-                return;
+        dialog.setOnShowListener(d -> {
+            View applyBtn = dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE);
+            if (applyBtn != null) {
+                applyBtn.setOnClickListener(v -> {
+                    if (adapter.getSelectedCount() == 0) {
+                        Toast.makeText(requireContext(), R.string.navigation_min_items, Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    
+                    String selectedTags = adapter.getSelectedTagsString();
+                    prefs.edit().putString(MenuDashboardFragment.KEY_BOTTOM_NAV_ITEMS, selectedTags).apply();
+                    
+                    updateThemeValues();
+                    
+                    if (getActivity() instanceof MainActivity) {
+                        ((MainActivity) getActivity()).refreshBottomNavigation();
+                    }
+                    
+                    dialog.dismiss();
+                });
             }
-            
-            String selectedTags = adapter.getSelectedTagsString();
-            prefs.edit().putString(MenuDashboardFragment.KEY_BOTTOM_NAV_ITEMS, selectedTags).apply();
-            
-            updateThemeValues();
-            
-            if (getActivity() instanceof MainActivity) {
-                ((MainActivity) getActivity()).refreshBottomNavigation();
-            }
-            
-            dialog.dismiss();
         });
         
         dialog.show();

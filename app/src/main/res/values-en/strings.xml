@@ -648,7 +648,7 @@
     <string name="navigation_menu_empty">All sections are already on the bottom panel</string>
     <string name="navigation_show_labels_title">Section labels</string>
     <string name="navigation_show_labels_desc">Show labels under icons</string>
-    <string name="navigation_checklist_title">Sections on the bottom panel</string>
+    <string name="navigation_checklist_title">Panel sections</string>
     <string name="navigation_sections_summary">%1$d of %2$d</string>
     <string name="navigation_dialog_description">Select up to 4 sections for the bottom bar. Drag to change the display order. Remaining sections will appear in the \"Menu\" tab.</string>
     <string name="navigation_dialog_selected_count">Selected: %1$d of %2$d</string>
