@@ -485,6 +485,10 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
             fragment = new GroupsListFragment();
             tag = "groups";
             activity.setToolbarTitle(activity.getString(R.string.nav_groups));
+        } else if (id == R.id.drawer_photos) {
+            fragment = new org.nikanikoo.flux.ui.fragments.media.PhotosFragment();
+            tag = "photos";
+            activity.setToolbarTitle(activity.getString(R.string.nav_photos));
         } else if (id == R.id.drawer_audio) {
             fragment = new MusicListFragment();
             tag = "music";
@@ -493,10 +497,6 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
             fragment = new VideoListFragment();
             tag = "videos";
             activity.setToolbarTitle(activity.getString(R.string.nav_videos));
-        } else if (id == R.id.drawer_notification) {
-            fragment = new NotificationsFragment();
-            tag = "notifications";
-            activity.setToolbarTitle(activity.getString(R.string.nav_notifications));
         } else if (id == R.id.drawer_notes) {
             fragment = new org.nikanikoo.flux.ui.fragments.notes.NotesFragment();
             tag = "notes";

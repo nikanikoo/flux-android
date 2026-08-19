@@ -1,7 +1,8 @@
 package org.nikanikoo.flux.ui.fragments.settings;
 
 import android.app.Dialog;
-import android.content.Intent;
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.text.Editable;
@@ -15,9 +16,12 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.ItemTouchHelper;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.radiobutton.MaterialRadioButton;
@@ -32,21 +36,36 @@ import org.nikanikoo.flux.utils.ThemeManager;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class AppearanceSettingsFragment extends Fragment {
 
-    private static final String[] NAV_TAGS = {
-            "drawer_news", "drawer_notification", "drawer_friends", "drawer_photos",
-            "drawer_videos", "drawer_audio", "drawer_messages", "drawer_groups",
-            "drawer_notes", "drawer_settings"
-    };
+    private static class NavSectionMeta {
+        final String tag;
+        final int nameResId;
+        final int iconResId;
 
-    private static final int[] NAV_TAG_NAMES = {
-            R.string.nav_news, R.string.nav_notifications, R.string.nav_friends, R.string.nav_photos,
-            R.string.nav_videos, R.string.nav_music, R.string.nav_messages, R.string.nav_groups,
-            R.string.nav_notes, R.string.nav_settings
-    };
+        NavSectionMeta(String tag, int nameResId, int iconResId) {
+            this.tag = tag;
+            this.nameResId = nameResId;
+            this.iconResId = iconResId;
+        }
+    }
+
+    private static final List<NavSectionMeta> ALL_SECTIONS = new ArrayList<>();
+    static {
+        ALL_SECTIONS.add(new NavSectionMeta("drawer_news", R.string.nav_news, R.drawable.ic_newspaper));
+        ALL_SECTIONS.add(new NavSectionMeta("drawer_messages", R.string.nav_messages, R.drawable.ic_chat_bubble));
+        ALL_SECTIONS.add(new NavSectionMeta("drawer_friends", R.string.nav_friends, R.drawable.ic_contacts));
+        ALL_SECTIONS.add(new NavSectionMeta("drawer_groups", R.string.nav_groups, R.drawable.ic_group));
+        ALL_SECTIONS.add(new NavSectionMeta("drawer_photos", R.string.nav_photos, R.drawable.ic_photo));
+        ALL_SECTIONS.add(new NavSectionMeta("drawer_videos", R.string.nav_videos, R.drawable.ic_video_library));
+        ALL_SECTIONS.add(new NavSectionMeta("drawer_audio", R.string.nav_music, R.drawable.ic_library_music));
+        ALL_SECTIONS.add(new NavSectionMeta("drawer_notes", R.string.nav_notes, R.drawable.ic_note_stack));
+        ALL_SECTIONS.add(new NavSectionMeta("drawer_settings", R.string.nav_settings, R.drawable.ic_settings));
+    }
 
     private ThemeManager themeManager;
     private TextView themeModeValue;
@@ -98,31 +117,47 @@ public class AppearanceSettingsFragment extends Fragment {
         settingsNavigationSections.setOnClickListener(v -> showNavigationSectionsDialog());
         switchNavigationLabels.setOnCheckedChangeListener((buttonView, isChecked) -> {
             requireContext().getSharedPreferences(
-                    MenuDashboardFragment.PREFS_NAME, android.content.Context.MODE_PRIVATE)
+                    MenuDashboardFragment.PREFS_NAME, Context.MODE_PRIVATE)
                     .edit().putBoolean(MenuDashboardFragment.KEY_BOTTOM_NAV_LABELS, isChecked).apply();
+            
+            if (getActivity() instanceof MainActivity) {
+                ((MainActivity) getActivity()).refreshBottomNavigation();
+            }
         });
     }
     
     private void updateThemeValues() {
+        if (!isAdded()) return;
+
         themeModeValue.setText(themeManager.getThemeName(themeManager.getThemeMode()));
         colorSchemeValue.setText(themeManager.getStyleName(themeManager.getThemeStyle()));
         contrastValue.setText(themeManager.getContrastName(themeManager.getContrastMode()));
         
-        android.content.SharedPreferences prefs = requireContext().getSharedPreferences(
-                MenuDashboardFragment.PREFS_NAME, android.content.Context.MODE_PRIVATE);
+        SharedPreferences prefs = requireContext().getSharedPreferences(
+                MenuDashboardFragment.PREFS_NAME, Context.MODE_PRIVATE);
         
         boolean isBottomNav = prefs.getBoolean(MenuDashboardFragment.KEY_BOTTOM_NAV_ENABLED, false);
         navigationModeValue.setText(getString(
                 isBottomNav ? R.string.navigation_style_bottom : R.string.navigation_style_drawer));
         
         switchNavigationLabels.setChecked(prefs.getBoolean(MenuDashboardFragment.KEY_BOTTOM_NAV_LABELS, true));
+        switchNavigationLabels.setEnabled(isBottomNav);
         
         String savedItems = prefs.getString(MenuDashboardFragment.KEY_BOTTOM_NAV_ITEMS,
                 MenuDashboardFragment.DEFAULT_BOTTOM_NAV_ITEMS);
-        int selectedCount = savedItems == null || savedItems.isEmpty()
+        int selectedCount = (savedItems == null || savedItems.isEmpty())
                 ? 0 : savedItems.split(",").length;
-        navigationSectionsValue.setText(getString(R.string.navigation_sections_summary,
-                selectedCount, MenuDashboardFragment.MAX_BOTTOM_NAV_ITEMS));
+        
+        if (isBottomNav) {
+            navigationSectionsValue.setText(getString(R.string.navigation_sections_summary,
+                    selectedCount, MenuDashboardFragment.MAX_BOTTOM_NAV_ITEMS));
+            settingsNavigationSections.setEnabled(true);
+            settingsNavigationSections.setAlpha(1.0f);
+        } else {
+            navigationSectionsValue.setText(getString(R.string.navigation_bottom_nav_disabled_hint));
+            settingsNavigationSections.setEnabled(false);
+            settingsNavigationSections.setAlpha(0.6f);
+        }
     }
     
     private void showThemeModeDialog() {
@@ -376,8 +411,8 @@ public class AppearanceSettingsFragment extends Fragment {
             getString(R.string.navigation_style_bottom)
         };
         
-        android.content.SharedPreferences prefs = requireContext().getSharedPreferences(
-                MenuDashboardFragment.PREFS_NAME, android.content.Context.MODE_PRIVATE);
+        SharedPreferences prefs = requireContext().getSharedPreferences(
+                MenuDashboardFragment.PREFS_NAME, Context.MODE_PRIVATE);
         boolean currentBottomNav = prefs.getBoolean(MenuDashboardFragment.KEY_BOTTOM_NAV_ENABLED, false);
         int currentSelection = currentBottomNav ? 1 : 0;
         
@@ -395,13 +430,8 @@ public class AppearanceSettingsFragment extends Fragment {
     }
     
     private void showNavigationSectionsDialog() {
-        android.content.SharedPreferences prefs = requireContext().getSharedPreferences(
-                MenuDashboardFragment.PREFS_NAME, android.content.Context.MODE_PRIVATE);
-        
-        CharSequence[] names = new CharSequence[NAV_TAGS.length];
-        for (int i = 0; i < NAV_TAGS.length; i++) {
-            names[i] = getString(NAV_TAG_NAMES[i]);
-        }
+        SharedPreferences prefs = requireContext().getSharedPreferences(
+                MenuDashboardFragment.PREFS_NAME, Context.MODE_PRIVATE);
         
         String savedItems = prefs.getString(MenuDashboardFragment.KEY_BOTTOM_NAV_ITEMS,
                 MenuDashboardFragment.DEFAULT_BOTTOM_NAV_ITEMS);
@@ -410,44 +440,101 @@ public class AppearanceSettingsFragment extends Fragment {
             activeTags.addAll(Arrays.asList(savedItems.split(",")));
         }
         
-        final boolean[] checked = new boolean[NAV_TAGS.length];
-        for (int i = 0; i < NAV_TAGS.length; i++) {
-            checked[i] = activeTags.contains(NAV_TAGS[i]);
+        List<BottomNavSectionsAdapter.SectionItem> items = new ArrayList<>();
+        Set<String> addedTags = new HashSet<>();
+        
+        for (String tag : activeTags) {
+            for (NavSectionMeta meta : ALL_SECTIONS) {
+                if (meta.tag.equals(tag)) {
+                    items.add(new BottomNavSectionsAdapter.SectionItem(meta.tag, meta.nameResId, meta.iconResId, true));
+                    addedTags.add(tag);
+                    break;
+                }
+            }
         }
         
-        new MaterialAlertDialogBuilder(requireContext())
-            .setTitle(getString(R.string.navigation_checklist_title))
-            .setMultiChoiceItems(names, checked, (dialog, which, isChecked) -> {
-                checked[which] = isChecked;
-                int count = countChecked(checked);
-                if (isChecked && count > MenuDashboardFragment.MAX_BOTTOM_NAV_ITEMS) {
-                    checked[which] = false;
-                    ((AlertDialog) dialog).getListView().setItemChecked(which, false);
-                    Toast.makeText(requireContext(),
-                            getString(R.string.navigation_max_items), Toast.LENGTH_SHORT).show();
-                }
-            })
-            .setPositiveButton(getString(R.string.apply), (dialog, which) -> {
-                StringBuilder sb = new StringBuilder();
-                for (int i = 0; i < NAV_TAGS.length; i++) {
-                    if (checked[i]) {
-                        if (sb.length() > 0) sb.append(",");
-                        sb.append(NAV_TAGS[i]);
-                    }
-                }
-                prefs.edit().putString(MenuDashboardFragment.KEY_BOTTOM_NAV_ITEMS, sb.toString()).apply();
-                updateThemeValues();
-            })
-            .setNegativeButton(getString(R.string.cancel), null)
-            .show();
-    }
-    
-    private int countChecked(boolean[] checked) {
-        int count = 0;
-        for (boolean b : checked) {
-            if (b) count++;
+        for (NavSectionMeta meta : ALL_SECTIONS) {
+            if (!addedTags.contains(meta.tag)) {
+                items.add(new BottomNavSectionsAdapter.SectionItem(meta.tag, meta.nameResId, meta.iconResId, false));
+            }
         }
-        return count;
+        
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_navigation_sections, null);
+        RecyclerView recyclerView = dialogView.findViewById(R.id.sections_manage_recycler);
+        TextView textSelectedCount = dialogView.findViewById(R.id.text_selected_count);
+        MaterialButton btnCancel = dialogView.findViewById(R.id.btn_cancel);
+        MaterialButton btnApply = dialogView.findViewById(R.id.btn_apply);
+        
+        recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+        
+        final ItemTouchHelper[] itemTouchHelperRef = new ItemTouchHelper[1];
+        
+        BottomNavSectionsAdapter adapter = new BottomNavSectionsAdapter(
+                items,
+                viewHolder -> {
+                    if (itemTouchHelperRef[0] != null) {
+                        itemTouchHelperRef[0].startDrag(viewHolder);
+                    }
+                },
+                selectedCount -> {
+                    textSelectedCount.setText(getString(R.string.navigation_dialog_selected_count,
+                            selectedCount, MenuDashboardFragment.MAX_BOTTOM_NAV_ITEMS));
+                }
+        );
+        
+        recyclerView.setAdapter(adapter);
+        
+        ItemTouchHelper touchHelper = new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(
+                ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0) {
+            @Override
+            public boolean onMove(@NonNull RecyclerView recyclerView,
+                                  @NonNull RecyclerView.ViewHolder viewHolder,
+                                  @NonNull RecyclerView.ViewHolder target) {
+                adapter.onItemMove(viewHolder.getAdapterPosition(), target.getAdapterPosition());
+                return true;
+            }
+
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+            }
+
+            @Override
+            public boolean isLongPressDragEnabled() {
+                return false;
+            }
+        });
+        
+        itemTouchHelperRef[0] = touchHelper;
+        touchHelper.attachToRecyclerView(recyclerView);
+        
+        textSelectedCount.setText(getString(R.string.navigation_dialog_selected_count,
+                adapter.getSelectedCount(), MenuDashboardFragment.MAX_BOTTOM_NAV_ITEMS));
+        
+        Dialog dialog = new MaterialAlertDialogBuilder(requireContext())
+                .setView(dialogView)
+                .create();
+        
+        btnCancel.setOnClickListener(v -> dialog.dismiss());
+        
+        btnApply.setOnClickListener(v -> {
+            if (adapter.getSelectedCount() == 0) {
+                Toast.makeText(requireContext(), R.string.navigation_min_items, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            String selectedTags = adapter.getSelectedTagsString();
+            prefs.edit().putString(MenuDashboardFragment.KEY_BOTTOM_NAV_ITEMS, selectedTags).apply();
+            
+            updateThemeValues();
+            
+            if (getActivity() instanceof MainActivity) {
+                ((MainActivity) getActivity()).refreshBottomNavigation();
+            }
+            
+            dialog.dismiss();
+        });
+        
+        dialog.show();
     }
     
     private void restartMainActivity() {

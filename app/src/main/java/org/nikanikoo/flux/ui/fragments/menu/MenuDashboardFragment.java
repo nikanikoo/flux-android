@@ -2,15 +2,23 @@ package org.nikanikoo.flux.ui.fragments.menu;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.widget.Toolbar;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.imageview.ShapeableImageView;
 import com.squareup.picasso.Picasso;
@@ -20,6 +28,8 @@ import org.nikanikoo.flux.data.managers.ProfileManager;
 import org.nikanikoo.flux.data.models.UserProfile;
 import org.nikanikoo.flux.ui.activities.MainActivity;
 import org.nikanikoo.flux.ui.fragments.profile.ProfileFragment;
+import org.nikanikoo.flux.utils.ThemeManager;
+import org.nikanikoo.flux.utils.ThemeTransitionHelper;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -34,7 +44,7 @@ public class MenuDashboardFragment extends Fragment {
     public static final String KEY_BOTTOM_NAV_LABELS = "bottom_nav_show_labels";
     public static final String KEY_BOTTOM_NAV_ITEMS = "bottom_nav_items";
     public static final String DEFAULT_BOTTOM_NAV_ITEMS =
-            "drawer_news,drawer_messages,drawer_friends,drawer_notification";
+            "drawer_news,drawer_messages,drawer_friends";
     public static final int MAX_BOTTOM_NAV_ITEMS = 5;
 
     private ShapeableImageView profileAvatar;
@@ -44,39 +54,42 @@ public class MenuDashboardFragment extends Fragment {
 
     private TextView sectionsTitle;
     private TextView emptyHint;
+    private RecyclerView sectionsRecycler;
+    private MenuDashboardAdapter adapter;
 
-    private static class ToggleableNavItem {
-        final String tag;
-        final int nameResId;
-        final int cardResId;
+    public static class NavItem {
+        public final String tag;
+        public final int nameResId;
+        public final int iconResId;
 
-        ToggleableNavItem(String tag, int nameResId, int cardResId) {
+        public NavItem(String tag, int nameResId, int iconResId) {
             this.tag = tag;
             this.nameResId = nameResId;
-            this.cardResId = cardResId;
+            this.iconResId = iconResId;
         }
     }
 
-    private final List<ToggleableNavItem> navItems = new ArrayList<>();
+    private final List<NavItem> allNavItems = new ArrayList<>();
+    private final List<NavItem> displayedNavItems = new ArrayList<>();
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setupNavItemsList();
+        setHasOptionsMenu(true);
+        setupAllNavItems();
     }
 
-    private void setupNavItemsList() {
-        navItems.clear();
-        navItems.add(new ToggleableNavItem("drawer_news", R.string.nav_news, R.id.card_news));
-        navItems.add(new ToggleableNavItem("drawer_notification", R.string.nav_notifications, R.id.card_notifications));
-        navItems.add(new ToggleableNavItem("drawer_friends", R.string.nav_friends, R.id.card_friends));
-        navItems.add(new ToggleableNavItem("drawer_photos", R.string.nav_photos, R.id.card_photos));
-        navItems.add(new ToggleableNavItem("drawer_videos", R.string.nav_videos, R.id.card_videos));
-        navItems.add(new ToggleableNavItem("drawer_audio", R.string.nav_music, R.id.card_music));
-        navItems.add(new ToggleableNavItem("drawer_messages", R.string.nav_messages, R.id.card_messages));
-        navItems.add(new ToggleableNavItem("drawer_groups", R.string.nav_groups, R.id.card_groups));
-        navItems.add(new ToggleableNavItem("drawer_notes", R.string.nav_notes, R.id.card_notes));
-        navItems.add(new ToggleableNavItem("drawer_settings", R.string.nav_settings, R.id.card_settings));
+    private void setupAllNavItems() {
+        allNavItems.clear();
+        allNavItems.add(new NavItem("drawer_news", R.string.nav_news, R.drawable.ic_newspaper));
+        allNavItems.add(new NavItem("drawer_messages", R.string.nav_messages, R.drawable.ic_chat_bubble));
+        allNavItems.add(new NavItem("drawer_friends", R.string.nav_friends, R.drawable.ic_contacts));
+        allNavItems.add(new NavItem("drawer_groups", R.string.nav_groups, R.drawable.ic_group));
+        allNavItems.add(new NavItem("drawer_photos", R.string.nav_photos, R.drawable.ic_photo));
+        allNavItems.add(new NavItem("drawer_videos", R.string.nav_videos, R.drawable.ic_video_library));
+        allNavItems.add(new NavItem("drawer_audio", R.string.nav_music, R.drawable.ic_library_music));
+        allNavItems.add(new NavItem("drawer_notes", R.string.nav_notes, R.drawable.ic_note_stack));
+        allNavItems.add(new NavItem("drawer_settings", R.string.nav_settings, R.drawable.ic_settings));
     }
 
     @Nullable
@@ -86,11 +99,66 @@ public class MenuDashboardFragment extends Fragment {
 
         initViews(view);
         setupProfileCard();
-        setupNavigationClicks(view);
+        setupRecyclerView();
         updateCardsVisibility();
         loadUserProfile();
 
         return view;
+    }
+
+    @Override
+    public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
+        menu.clear();
+        ThemeManager themeManager = ThemeManager.getInstance(requireContext());
+        boolean isDark = themeManager.isDarkMode();
+        MenuItem themeItem = menu.add(Menu.NONE, R.id.action_theme_toggle, 0, R.string.appearance_theme_mode);
+        themeItem.setIcon(isDark ? R.drawable.ic_sunny : R.drawable.ic_bedtime);
+        themeItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+        super.onCreateOptionsMenu(menu, inflater);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        if (item.getItemId() == R.id.action_theme_toggle) {
+            toggleThemeWithAnimation();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    private void toggleThemeWithAnimation() {
+        if (getActivity() == null) return;
+        ThemeManager themeManager = ThemeManager.getInstance(requireContext());
+        int currentMode = themeManager.getThemeMode();
+        int newMode = (currentMode == ThemeManager.THEME_DARK || currentMode == ThemeManager.THEME_AMOLED)
+                ? ThemeManager.THEME_LIGHT
+                : ThemeManager.THEME_DARK;
+
+        Toolbar toolbar = getActivity().findViewById(R.id.toolbar);
+        int x = toolbar != null ? toolbar.getWidth() - 60 : 500;
+        int y = toolbar != null ? toolbar.getHeight() / 2 : 100;
+
+        if (toolbar != null) {
+            View actionItemView = toolbar.findViewById(R.id.action_theme_toggle);
+            if (actionItemView != null) {
+                int[] location = new int[2];
+                actionItemView.getLocationInWindow(location);
+                x = location[0] + actionItemView.getWidth() / 2;
+                y = location[1] + actionItemView.getHeight() / 2;
+            }
+        }
+
+        Bitmap screenshot = ThemeTransitionHelper.takeScreenshot(getActivity());
+        ThemeTransitionHelper.setTransitionData(screenshot, x, y);
+        themeManager.setThemeMode(newMode);
+        getActivity().recreate();
+        getActivity().overridePendingTransition(0, 0);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        updateCardsVisibility();
     }
 
     private void initViews(View view) {
@@ -100,6 +168,7 @@ public class MenuDashboardFragment extends Fragment {
         profileCard = view.findViewById(R.id.menu_profile_card);
         sectionsTitle = view.findViewById(R.id.menu_sections_title);
         emptyHint = view.findViewById(R.id.menu_empty_hint);
+        sectionsRecycler = view.findViewById(R.id.menu_sections_recycler);
     }
 
     private void setupProfileCard() {
@@ -114,13 +183,10 @@ public class MenuDashboardFragment extends Fragment {
         });
     }
 
-    private void setupNavigationClicks(View view) {
-        for (ToggleableNavItem item : navItems) {
-            View card = view.findViewById(item.cardResId);
-            if (card != null) {
-                card.setOnClickListener(v -> navigateToDrawerItem(item.tag));
-            }
-        }
+    private void setupRecyclerView() {
+        sectionsRecycler.setLayoutManager(new GridLayoutManager(requireContext(), 2));
+        adapter = new MenuDashboardAdapter(displayedNavItems, item -> navigateToDrawerItem(item.tag));
+        sectionsRecycler.setAdapter(adapter);
     }
 
     private void navigateToDrawerItem(String tag) {
@@ -130,7 +196,7 @@ public class MenuDashboardFragment extends Fragment {
         }
     }
 
-    private static int getDrawerIdForTag(String tag) {
+    public static int getDrawerIdForTag(String tag) {
         switch (tag) {
             case "drawer_news":
                 return R.id.drawer_news;
@@ -148,8 +214,6 @@ public class MenuDashboardFragment extends Fragment {
                 return R.id.drawer_audio;
             case "drawer_notes":
                 return R.id.drawer_notes;
-            case "drawer_notification":
-                return R.id.drawer_notification;
             case "drawer_settings":
                 return R.id.drawer_settings;
             default:
@@ -158,29 +222,33 @@ public class MenuDashboardFragment extends Fragment {
     }
 
     private void updateCardsVisibility() {
+        if (!isAdded()) return;
+
         SharedPreferences prefs = requireContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        Set<String> activeTags = new HashSet<>(Arrays.asList(
-                prefs.getString(KEY_BOTTOM_NAV_ITEMS, DEFAULT_BOTTOM_NAV_ITEMS).split(",")));
+        String savedItems = prefs.getString(KEY_BOTTOM_NAV_ITEMS, DEFAULT_BOTTOM_NAV_ITEMS);
 
-        int visibleCount = 0;
-        View view = getView();
-        if (view == null) return;
+        Set<String> activeTags = new HashSet<>();
+        if (savedItems != null && !savedItems.isEmpty()) {
+            activeTags.addAll(Arrays.asList(savedItems.split(",")));
+        }
 
-        for (ToggleableNavItem item : navItems) {
-            View card = view.findViewById(item.cardResId);
-            if (card == null) continue;
-            boolean onBottomBar = activeTags.contains(item.tag);
-            card.setVisibility(onBottomBar ? View.GONE : View.VISIBLE);
-            if (!onBottomBar) {
-                visibleCount++;
+        displayedNavItems.clear();
+        for (NavItem item : allNavItems) {
+            if (!activeTags.contains(item.tag)) {
+                displayedNavItems.add(item);
             }
         }
 
+        if (adapter != null) {
+            adapter.notifyDataSetChanged();
+        }
+
+        boolean hasItems = !displayedNavItems.isEmpty();
         if (sectionsTitle != null) {
-            sectionsTitle.setVisibility(visibleCount > 0 ? View.VISIBLE : View.GONE);
+            sectionsTitle.setVisibility(hasItems ? View.VISIBLE : View.GONE);
         }
         if (emptyHint != null) {
-            emptyHint.setVisibility(visibleCount == 0 ? View.VISIBLE : View.GONE);
+            emptyHint.setVisibility(hasItems ? View.GONE : View.VISIBLE);
         }
     }
 
@@ -221,6 +289,56 @@ public class MenuDashboardFragment extends Fragment {
                     .placeholder(R.drawable.camera_200)
                     .error(R.drawable.camera_200)
                     .into(profileAvatar);
+        }
+    }
+
+    private static class MenuDashboardAdapter extends RecyclerView.Adapter<MenuDashboardAdapter.ViewHolder> {
+        private final List<NavItem> items;
+        private final OnItemClickListener listener;
+
+        interface OnItemClickListener {
+            void onItemClick(NavItem item);
+        }
+
+        MenuDashboardAdapter(List<NavItem> items, OnItemClickListener listener) {
+            this.items = items;
+            this.listener = listener;
+        }
+
+        @NonNull
+        @Override
+        public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            View view = LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.item_menu_dashboard_section, parent, false);
+            return new ViewHolder(view);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+            NavItem item = items.get(position);
+            holder.titleView.setText(item.nameResId);
+            holder.iconView.setImageResource(item.iconResId);
+            holder.itemView.setOnClickListener(v -> {
+                if (listener != null) {
+                    listener.onItemClick(item);
+                }
+            });
+        }
+
+        @Override
+        public int getItemCount() {
+            return items.size();
+        }
+
+        static class ViewHolder extends RecyclerView.ViewHolder {
+            final TextView titleView;
+            final ImageView iconView;
+
+            ViewHolder(@NonNull View itemView) {
+                super(itemView);
+                titleView = itemView.findViewById(R.id.section_title);
+                iconView = itemView.findViewById(R.id.section_icon);
+            }
         }
     }
 }

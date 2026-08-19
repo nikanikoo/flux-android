@@ -72,6 +72,7 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
     private int currentContrastMode = -1;
     private int currentCustomColor = -1;
     private boolean currentBottomNavEnabled = false;
+    private boolean isSyncingBottomNav = false;
 
     private final OnBackPressedCallback backPressedCallback = new OnBackPressedCallback(true) {
         @Override
@@ -242,6 +243,9 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
         BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
         if (bottomNav != null) {
             bottomNav.setOnItemSelectedListener(item -> {
+                if (isSyncingBottomNav) {
+                    return true;
+                }
                 if (navigationController != null) {
                     navigationController.navigateToDrawerItem(item.getItemId());
                 }
@@ -558,7 +562,15 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
         
         List<String> items = new ArrayList<>();
         if (savedItems != null && !savedItems.isEmpty()) {
-            items.addAll(Arrays.asList(savedItems.split(",")));
+            for (String tag : savedItems.split(",")) {
+                String cleanTag = tag.trim();
+                if (!cleanTag.isEmpty() && items.size() < MenuDashboardFragment.MAX_BOTTOM_NAV_ITEMS && !cleanTag.equals("drawer_menu_dashboard")) {
+                    items.add(cleanTag);
+                }
+            }
+        }
+        if (items.isEmpty()) {
+            items.addAll(Arrays.asList(MenuDashboardFragment.DEFAULT_BOTTOM_NAV_ITEMS.split(",")));
         }
         
         items.add("drawer_menu_dashboard");
@@ -574,7 +586,13 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
         }
         
         int currentId = navigationController != null ? navigationController.getCurrentFragmentId() : -1;
-        bottomNav.setSelectedItemId(currentId);
+        isSyncingBottomNav = true;
+        if (bottomNav.getMenu().findItem(currentId) != null) {
+            bottomNav.setSelectedItemId(currentId);
+        } else if (bottomNav.getMenu().findItem(R.id.drawer_menu_dashboard) != null) {
+            bottomNav.setSelectedItemId(R.id.drawer_menu_dashboard);
+        }
+        isSyncingBottomNav = false;
         
         updateAllBadges();
     }
@@ -582,7 +600,13 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
     public void syncBottomNavigationSelection(int id) {
         BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
         if (bottomNav != null) {
-            bottomNav.setSelectedItemId(id);
+            if (bottomNav.getMenu().findItem(id) != null) {
+                if (bottomNav.getSelectedItemId() != id) {
+                    isSyncingBottomNav = true;
+                    bottomNav.setSelectedItemId(id);
+                    isSyncingBottomNav = false;
+                }
+            }
         }
     }
     
@@ -619,8 +643,6 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
                 return R.drawable.ic_library_music;
             case "drawer_notes":
                 return R.drawable.ic_note_stack;
-            case "drawer_notification":
-                return R.drawable.ic_notifications;
             case "drawer_settings":
                 return R.drawable.ic_settings;
             case "drawer_menu_dashboard":
@@ -648,8 +670,6 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
                 return R.string.nav_music;
             case "drawer_notes":
                 return R.string.nav_notes;
-            case "drawer_notification":
-                return R.string.nav_notifications;
             case "drawer_settings":
                 return R.string.nav_settings;
             case "drawer_menu_dashboard":
@@ -677,8 +697,6 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
                 return R.id.drawer_audio;
             case "drawer_notes":
                 return R.id.drawer_notes;
-            case "drawer_notification":
-                return R.id.drawer_notification;
             case "drawer_settings":
                 return R.id.drawer_settings;
             case "drawer_menu_dashboard":
@@ -753,19 +771,16 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
                     View navigationRailView = findViewById(R.id.navigation_rail);
                     
                     if (navigationView != null) {
-                        updateDrawerBadge(navigationView, R.id.drawer_notification, notifications, getString(R.string.notifications_title));
                         updateDrawerBadge(navigationView, R.id.drawer_messages, messages, getString(R.string.messages_title));
                         updateDrawerBadge(navigationView, R.id.drawer_friends, friends, getString(R.string.friends_title));
                     }
                     
                     if (navigationRailView != null) {
-                        updateRailBadge(navigationRailView, R.id.drawer_notification, notifications);
                         updateRailBadge(navigationRailView, R.id.drawer_messages, messages);
                         updateRailBadge(navigationRailView, R.id.drawer_friends, friends);
                     }
                     
                     if (isBottomNavigationEnabled()) {
-                        updateBottomBadge(R.id.drawer_notification, notifications);
                         updateBottomBadge(R.id.drawer_messages, messages);
                         updateBottomBadge(R.id.drawer_friends, friends);
                     }
@@ -787,23 +802,19 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
         View navigationRailView = findViewById(R.id.navigation_rail);
         
         int messages = Math.max(0, sCachedMessages);
-        int notifications = Math.max(0, sCachedNotifications);
         int friends = Math.max(0, sCachedFriends);
 
         if (navigationView != null) {
-            updateDrawerBadge(navigationView, R.id.drawer_notification, notifications, getString(R.string.notifications_title));
             updateDrawerBadge(navigationView, R.id.drawer_messages, messages, getString(R.string.messages_title));
             updateDrawerBadge(navigationView, R.id.drawer_friends, friends, getString(R.string.friends_title));
         }
         
         if (navigationRailView != null) {
-            updateRailBadge(navigationRailView, R.id.drawer_notification, notifications);
             updateRailBadge(navigationRailView, R.id.drawer_messages, messages);
             updateRailBadge(navigationRailView, R.id.drawer_friends, friends);
         }
         
         if (isBottomNavigationEnabled()) {
-            updateBottomBadge(R.id.drawer_notification, notifications);
             updateBottomBadge(R.id.drawer_messages, messages);
             updateBottomBadge(R.id.drawer_friends, friends);
         }

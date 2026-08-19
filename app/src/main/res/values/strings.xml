@@ -722,6 +722,8 @@
     <string name="poll_error_unvote">Ошибка при отмене голоса</string>
 
     <!-- Navigation Settings -->
+    <string name="navigation_settings_group_theme">Тема оформления</string>
+    <string name="navigation_settings_group_nav">Навигация</string>
     <string name="navigation_style_title">Стиль меню</string>
     <string name="navigation_style_drawer">Боковое меню (Drawer)</string>
     <string name="navigation_style_bottom">Нижнее меню</string>
@@ -732,7 +734,12 @@
     <string name="navigation_show_labels_desc">Показывать подписи под иконками</string>
     <string name="navigation_checklist_title">Разделы на нижней панели</string>
     <string name="navigation_sections_summary">%1$d из %2$d</string>
-    <string name="navigation_max_items">Нельзя добавить больше 5 разделов на панель</string>
+    <string name="navigation_dialog_description">Выберите до 4 разделов для нижней панели. Перетаскивайте их, чтобы настроить порядок. Остальные разделы будут доступны во вкладке «Меню».</string>
+    <string name="navigation_dialog_selected_count">Выбрано: %1$d из %2$d</string>
+    <string name="navigation_max_items">На панели может быть не более 4 разделов (+ Меню)</string>
+    <string name="navigation_min_items">Выберите хотя бы один раздел для нижней панели</string>
+    <string name="navigation_bottom_nav_disabled_hint">Доступно только при включенном нижнем меню</string>
     <string name="navigation_go_to_profile">Перейти в профиль</string>
+    <string name="drag_handle_description">Перетащить</string>
 
 </resources>
