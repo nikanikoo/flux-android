@@ -458,7 +458,7 @@
             android:clickable="true"
             android:focusable="true"
             android:layout_gravity="bottom"
-            app:tint="@color/primary_color" />
+            app:tint="?attr/colorPrimary" />
 
     </LinearLayout>
 
