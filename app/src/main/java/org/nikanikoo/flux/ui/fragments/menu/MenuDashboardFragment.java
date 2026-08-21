@@ -237,6 +237,8 @@ public class MenuDashboardFragment extends Fragment {
                 return new org.nikanikoo.flux.ui.fragments.notes.NotesFragment();
             case "drawer_settings":
                 return new org.nikanikoo.flux.ui.fragments.settings.SettingsFragment();
+            case "drawer_menu_dashboard":
+                return new MenuDashboardFragment();
             default:
                 return null;
         }
@@ -262,6 +264,8 @@ public class MenuDashboardFragment extends Fragment {
                 return "notes";
             case "drawer_settings":
                 return "settings";
+            case "drawer_menu_dashboard":
+                return "menu_dashboard";
             default:
                 return tag;
         }
@@ -314,6 +318,8 @@ public class MenuDashboardFragment extends Fragment {
                 return R.id.drawer_notes;
             case "drawer_settings":
                 return R.id.drawer_settings;
+            case "drawer_menu_dashboard":
+                return R.id.drawer_menu_dashboard;
             default:
                 return R.id.drawer_news;
         }
