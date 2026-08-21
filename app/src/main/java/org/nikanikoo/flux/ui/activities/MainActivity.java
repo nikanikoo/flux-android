@@ -352,6 +352,9 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
             String startSectionTag = getSharedPreferences(MenuDashboardFragment.PREFS_NAME, Context.MODE_PRIVATE)
                     .getString(org.nikanikoo.flux.ui.fragments.settings.AppearanceSettingsFragment.KEY_START_SECTION,
                             org.nikanikoo.flux.ui.fragments.settings.AppearanceSettingsFragment.DEFAULT_START_SECTION);
+            if (!isBottomNavigationEnabled() && "drawer_menu_dashboard".equals(startSectionTag)) {
+                startSectionTag = org.nikanikoo.flux.ui.fragments.settings.AppearanceSettingsFragment.DEFAULT_START_SECTION;
+            }
             int drawerId = MenuDashboardFragment.getDrawerIdForTag(startSectionTag);
             navigationController.navigateToDrawerItem(drawerId);
         }

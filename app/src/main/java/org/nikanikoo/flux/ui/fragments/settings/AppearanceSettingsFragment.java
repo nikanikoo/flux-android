@@ -148,6 +148,10 @@ public class AppearanceSettingsFragment extends Fragment {
                 isBottomNav ? R.string.navigation_style_bottom : R.string.navigation_style_drawer));
         
         String startSectionTag = prefs.getString(KEY_START_SECTION, DEFAULT_START_SECTION);
+        if (!isBottomNav && "drawer_menu_dashboard".equals(startSectionTag)) {
+            startSectionTag = DEFAULT_START_SECTION;
+            prefs.edit().putString(KEY_START_SECTION, DEFAULT_START_SECTION).apply();
+        }
         navigationStartSectionValue.setText(getSectionNameForTag(startSectionTag));
 
         switchNavigationLabels.setChecked(prefs.getBoolean(MenuDashboardFragment.KEY_BOTTOM_NAV_LABELS, true));
@@ -185,10 +189,16 @@ public class AppearanceSettingsFragment extends Fragment {
     private void showStartSectionDialog() {
         SharedPreferences prefs = requireContext().getSharedPreferences(
                 MenuDashboardFragment.PREFS_NAME, Context.MODE_PRIVATE);
+        boolean isBottomNav = prefs.getBoolean(MenuDashboardFragment.KEY_BOTTOM_NAV_ENABLED, false);
         String currentStartSection = prefs.getString(KEY_START_SECTION, DEFAULT_START_SECTION);
+        if (!isBottomNav && "drawer_menu_dashboard".equals(currentStartSection)) {
+            currentStartSection = DEFAULT_START_SECTION;
+        }
 
         List<NavSectionMeta> startSections = new ArrayList<>(ALL_SECTIONS);
-        startSections.add(new NavSectionMeta("drawer_menu_dashboard", R.string.navigation_menu_title, R.drawable.ic_menu));
+        if (isBottomNav) {
+            startSections.add(new NavSectionMeta("drawer_menu_dashboard", R.string.navigation_menu_title, R.drawable.ic_menu));
+        }
 
         String[] names = new String[startSections.size()];
         int selectedIndex = 0;
@@ -477,7 +487,15 @@ public class AppearanceSettingsFragment extends Fragment {
             .setTitle(getString(R.string.navigation_style_title))
             .setSingleChoiceItems(options, currentSelection, (dialog, which) -> {
                 boolean enableBottom = (which == 1);
-                prefs.edit().putBoolean(MenuDashboardFragment.KEY_BOTTOM_NAV_ENABLED, enableBottom).apply();
+                SharedPreferences.Editor editor = prefs.edit();
+                editor.putBoolean(MenuDashboardFragment.KEY_BOTTOM_NAV_ENABLED, enableBottom);
+                if (!enableBottom) {
+                    String startSection = prefs.getString(KEY_START_SECTION, DEFAULT_START_SECTION);
+                    if ("drawer_menu_dashboard".equals(startSection)) {
+                        editor.putString(KEY_START_SECTION, DEFAULT_START_SECTION);
+                    }
+                }
+                editor.apply();
                 dialog.dismiss();
                 updateThemeValues();
                 restartMainActivity();
