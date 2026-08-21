@@ -594,10 +594,21 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
         
         if (isBottomNav) {
             refreshBottomNavigation();
+        } else if (navigationController != null) {
+            navigationController.setupDrawerMenu();
         }
         
         if (navigationController != null) {
             navigationController.updateDrawerToggleForBackStack(getSupportFragmentManager().getBackStackEntryCount());
+        }
+    }
+
+    public void refreshNavigation() {
+        if (isBottomNavigationEnabled()) {
+            refreshBottomNavigation();
+        }
+        if (navigationController != null) {
+            navigationController.setupDrawerMenu();
         }
     }
 

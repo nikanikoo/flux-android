@@ -9,7 +9,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.switchmaterial.SwitchMaterial;
@@ -17,7 +16,6 @@ import com.google.android.material.switchmaterial.SwitchMaterial;
 import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.ui.fragments.menu.MenuDashboardFragment;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -28,12 +26,18 @@ public class BottomNavSectionsAdapter extends RecyclerView.Adapter<BottomNavSect
         public final int nameResId;
         public final int iconResId;
         public boolean isSelected;
+        public final boolean isFixed;
 
         public SectionItem(String tag, int nameResId, int iconResId, boolean isSelected) {
+            this(tag, nameResId, iconResId, isSelected, false);
+        }
+
+        public SectionItem(String tag, int nameResId, int iconResId, boolean isSelected, boolean isFixed) {
             this.tag = tag;
             this.nameResId = nameResId;
             this.iconResId = iconResId;
             this.isSelected = isSelected;
+            this.isFixed = isFixed;
         }
     }
 
@@ -46,13 +50,22 @@ public class BottomNavSectionsAdapter extends RecyclerView.Adapter<BottomNavSect
     }
 
     private final List<SectionItem> items;
+    private final int maxSelectableItems;
     private final OnStartDragListener dragListener;
     private final OnSelectionChangedListener selectionListener;
 
     public BottomNavSectionsAdapter(List<SectionItem> items,
                                     OnStartDragListener dragListener,
                                     OnSelectionChangedListener selectionListener) {
+        this(items, MenuDashboardFragment.MAX_BOTTOM_NAV_ITEMS, dragListener, selectionListener);
+    }
+
+    public BottomNavSectionsAdapter(List<SectionItem> items,
+                                    int maxSelectableItems,
+                                    OnStartDragListener dragListener,
+                                    OnSelectionChangedListener selectionListener) {
         this.items = items;
+        this.maxSelectableItems = maxSelectableItems;
         this.dragListener = dragListener;
         this.selectionListener = selectionListener;
     }
@@ -72,29 +85,37 @@ public class BottomNavSectionsAdapter extends RecyclerView.Adapter<BottomNavSect
         holder.iconView.setImageResource(item.iconResId);
 
         holder.switchView.setOnCheckedChangeListener(null);
-        holder.switchView.setChecked(item.isSelected);
 
-        holder.switchView.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isChecked) {
-                if (getSelectedCount() >= MenuDashboardFragment.MAX_BOTTOM_NAV_ITEMS) {
-                    holder.switchView.setChecked(false);
-                    Toast.makeText(holder.itemView.getContext(),
-                            R.string.navigation_max_items, Toast.LENGTH_SHORT).show();
-                    return;
+        if (item.isFixed) {
+            holder.switchView.setChecked(true);
+            holder.switchView.setEnabled(false);
+            holder.itemView.setOnClickListener(null);
+        } else {
+            holder.switchView.setEnabled(true);
+            holder.switchView.setChecked(item.isSelected);
+
+            holder.switchView.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                if (isChecked) {
+                    if (getSelectedCount() >= maxSelectableItems) {
+                        holder.switchView.setChecked(false);
+                        Toast.makeText(holder.itemView.getContext(),
+                                R.string.navigation_max_items, Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    item.isSelected = true;
+                } else {
+                    item.isSelected = false;
                 }
-                item.isSelected = true;
-            } else {
-                item.isSelected = false;
-            }
 
-            if (selectionListener != null) {
-                selectionListener.onSelectionChanged(getSelectedCount());
-            }
-        });
+                if (selectionListener != null) {
+                    selectionListener.onSelectionChanged(getSelectedCount());
+                }
+            });
 
-        holder.itemView.setOnClickListener(v -> {
-            holder.switchView.toggle();
-        });
+            holder.itemView.setOnClickListener(v -> {
+                holder.switchView.toggle();
+            });
+        }
 
         holder.dragHandle.setOnTouchListener((v, event) -> {
             if (event.getActionMasked() == MotionEvent.ACTION_DOWN && dragListener != null) {

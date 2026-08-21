@@ -743,5 +743,7 @@
     <string name="drag_handle_description">Перетащить</string>
     <string name="navigation_start_section_title">Главный раздел</string>
     <string name="navigation_start_section_desc">Раздел, открывающийся при запуске приложения</string>
+    <string name="navigation_drawer_checklist_title">Разделы бокового меню</string>
+    <string name="navigation_drawer_dialog_description">Выберите разделы для бокового меню. Перетаскивайте их, чтобы настроить порядок. Раздел «Настройки» обязателен.</string>
 
 </resources>

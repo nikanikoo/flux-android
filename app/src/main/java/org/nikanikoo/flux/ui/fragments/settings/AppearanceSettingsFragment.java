@@ -69,12 +69,29 @@ public class AppearanceSettingsFragment extends Fragment {
     public static final String KEY_START_SECTION = "start_section";
     public static final String DEFAULT_START_SECTION = "drawer_news";
 
+    public static final String KEY_DRAWER_NAV_ITEMS = "drawer_nav_items";
+    public static final String DEFAULT_DRAWER_NAV_ITEMS = "drawer_news,drawer_friends,drawer_photos,drawer_videos,drawer_audio,drawer_messages,drawer_groups,drawer_notes,drawer_settings";
+
+    private static final List<NavSectionMeta> DRAWER_SECTIONS = new ArrayList<>();
+    static {
+        DRAWER_SECTIONS.add(new NavSectionMeta("drawer_news", R.string.nav_news, R.drawable.ic_newspaper));
+        DRAWER_SECTIONS.add(new NavSectionMeta("drawer_friends", R.string.nav_friends, R.drawable.ic_contacts));
+        DRAWER_SECTIONS.add(new NavSectionMeta("drawer_photos", R.string.nav_photos, R.drawable.ic_photo));
+        DRAWER_SECTIONS.add(new NavSectionMeta("drawer_videos", R.string.nav_videos, R.drawable.ic_video_library));
+        DRAWER_SECTIONS.add(new NavSectionMeta("drawer_audio", R.string.nav_music, R.drawable.ic_library_music));
+        DRAWER_SECTIONS.add(new NavSectionMeta("drawer_messages", R.string.nav_messages, R.drawable.ic_chat_bubble));
+        DRAWER_SECTIONS.add(new NavSectionMeta("drawer_groups", R.string.nav_groups, R.drawable.ic_group));
+        DRAWER_SECTIONS.add(new NavSectionMeta("drawer_notes", R.string.nav_notes, R.drawable.ic_note_stack));
+        DRAWER_SECTIONS.add(new NavSectionMeta("drawer_settings", R.string.nav_settings, R.drawable.ic_settings));
+    }
+
     private ThemeManager themeManager;
     private TextView themeModeValue;
     private TextView colorSchemeValue;
     private TextView contrastValue;
     private TextView navigationModeValue;
     private TextView navigationStartSectionValue;
+    private TextView navigationSectionsTitle;
     private TextView navigationSectionsValue;
     private View settingsThemeMode;
     private View settingsColorScheme;
@@ -104,6 +121,7 @@ public class AppearanceSettingsFragment extends Fragment {
         contrastValue = view.findViewById(R.id.contrast_value);
         navigationModeValue = view.findViewById(R.id.navigation_mode_value);
         navigationStartSectionValue = view.findViewById(R.id.navigation_start_section_value);
+        navigationSectionsTitle = view.findViewById(R.id.navigation_sections_title);
         navigationSectionsValue = view.findViewById(R.id.navigation_sections_value);
         switchNavigationLabels = view.findViewById(R.id.switch_navigation_labels);
         
@@ -121,7 +139,7 @@ public class AppearanceSettingsFragment extends Fragment {
         settingsContrast.setOnClickListener(v -> showContrastDialog());
         settingsNavigationMode.setOnClickListener(v -> showNavigationModeDialog());
         settingsNavigationStartSection.setOnClickListener(v -> showStartSectionDialog());
-        settingsNavigationSections.setOnClickListener(v -> showNavigationSectionsDialog());
+        settingsNavigationSections.setOnClickListener(v -> onNavigationSectionsClicked());
         switchNavigationLabels.setOnCheckedChangeListener((buttonView, isChecked) -> {
             requireContext().getSharedPreferences(
                     MenuDashboardFragment.PREFS_NAME, Context.MODE_PRIVATE)
@@ -163,14 +181,24 @@ public class AppearanceSettingsFragment extends Fragment {
                 ? 0 : savedItems.split(",").length;
         
         if (isBottomNav) {
+            if (navigationSectionsTitle != null) {
+                navigationSectionsTitle.setText(R.string.navigation_checklist_title);
+            }
             navigationSectionsValue.setText(getString(R.string.navigation_sections_summary,
                     selectedCount, MenuDashboardFragment.MAX_BOTTOM_NAV_ITEMS));
             settingsNavigationSections.setEnabled(true);
             settingsNavigationSections.setAlpha(1.0f);
         } else {
-            navigationSectionsValue.setText(getString(R.string.navigation_bottom_nav_disabled_hint));
-            settingsNavigationSections.setEnabled(false);
-            settingsNavigationSections.setAlpha(0.6f);
+            if (navigationSectionsTitle != null) {
+                navigationSectionsTitle.setText(R.string.navigation_drawer_checklist_title);
+            }
+            String drawerSavedItems = prefs.getString(KEY_DRAWER_NAV_ITEMS, DEFAULT_DRAWER_NAV_ITEMS);
+            int drawerCount = (drawerSavedItems == null || drawerSavedItems.isEmpty())
+                    ? 0 : drawerSavedItems.split(",").length;
+            navigationSectionsValue.setText(getString(R.string.navigation_sections_summary,
+                    drawerCount, DRAWER_SECTIONS.size()));
+            settingsNavigationSections.setEnabled(true);
+            settingsNavigationSections.setAlpha(1.0f);
         }
     }
 
@@ -605,6 +633,145 @@ public class AppearanceSettingsFragment extends Fragment {
                     
                     if (getActivity() instanceof MainActivity) {
                         ((MainActivity) getActivity()).refreshBottomNavigation();
+                    }
+                    
+                    dialog.dismiss();
+                });
+            }
+        });
+        
+        dialog.show();
+    }
+
+    private void onNavigationSectionsClicked() {
+        SharedPreferences prefs = requireContext().getSharedPreferences(
+                MenuDashboardFragment.PREFS_NAME, Context.MODE_PRIVATE);
+        boolean isBottomNav = prefs.getBoolean(MenuDashboardFragment.KEY_BOTTOM_NAV_ENABLED, false);
+        if (isBottomNav) {
+            showNavigationSectionsDialog();
+        } else {
+            showDrawerNavigationSectionsDialog();
+        }
+    }
+
+    private void showDrawerNavigationSectionsDialog() {
+        SharedPreferences prefs = requireContext().getSharedPreferences(
+                MenuDashboardFragment.PREFS_NAME, Context.MODE_PRIVATE);
+        
+        String savedItems = prefs.getString(KEY_DRAWER_NAV_ITEMS, DEFAULT_DRAWER_NAV_ITEMS);
+        List<String> activeTags = new ArrayList<>();
+        if (savedItems != null && !savedItems.isEmpty()) {
+            for (String tag : savedItems.split(",")) {
+                String clean = tag.trim();
+                if (!clean.isEmpty() && !activeTags.contains(clean)) {
+                    activeTags.add(clean);
+                }
+            }
+        }
+        if (activeTags.isEmpty()) {
+            for (String tag : DEFAULT_DRAWER_NAV_ITEMS.split(",")) {
+                activeTags.add(tag.trim());
+            }
+        }
+        if (!activeTags.contains("drawer_settings")) {
+            activeTags.add("drawer_settings");
+        }
+        
+        List<BottomNavSectionsAdapter.SectionItem> items = new ArrayList<>();
+        Set<String> addedTags = new HashSet<>();
+        
+        for (String tag : activeTags) {
+            for (NavSectionMeta meta : DRAWER_SECTIONS) {
+                if (meta.tag.equals(tag)) {
+                    boolean isFixed = "drawer_settings".equals(meta.tag);
+                    items.add(new BottomNavSectionsAdapter.SectionItem(meta.tag, meta.nameResId, meta.iconResId, true, isFixed));
+                    addedTags.add(tag);
+                    break;
+                }
+            }
+        }
+        
+        for (NavSectionMeta meta : DRAWER_SECTIONS) {
+            if (!addedTags.contains(meta.tag)) {
+                boolean isFixed = "drawer_settings".equals(meta.tag);
+                items.add(new BottomNavSectionsAdapter.SectionItem(meta.tag, meta.nameResId, meta.iconResId, isFixed, isFixed));
+            }
+        }
+        
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_navigation_sections, null);
+        TextView dialogTitle = dialogView.findViewById(R.id.dialog_title);
+        if (dialogTitle != null) {
+            dialogTitle.setText(R.string.navigation_drawer_checklist_title);
+        }
+        RecyclerView recyclerView = dialogView.findViewById(R.id.sections_manage_recycler);
+        TextView textSelectedCount = dialogView.findViewById(R.id.text_selected_count);
+        
+        recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+        
+        final ItemTouchHelper[] itemTouchHelperRef = new ItemTouchHelper[1];
+        
+        BottomNavSectionsAdapter adapter = new BottomNavSectionsAdapter(
+                items,
+                DRAWER_SECTIONS.size(),
+                viewHolder -> {
+                    if (itemTouchHelperRef[0] != null) {
+                        itemTouchHelperRef[0].startDrag(viewHolder);
+                    }
+                },
+                selectedCount -> {
+                    textSelectedCount.setText(getString(R.string.navigation_dialog_selected_count,
+                            selectedCount, DRAWER_SECTIONS.size()));
+                }
+        );
+        
+        recyclerView.setAdapter(adapter);
+        
+        ItemTouchHelper touchHelper = new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(
+                ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0) {
+            @Override
+            public boolean onMove(@NonNull RecyclerView recyclerView,
+                                  @NonNull RecyclerView.ViewHolder viewHolder,
+                                  @NonNull RecyclerView.ViewHolder target) {
+                adapter.onItemMove(viewHolder.getAdapterPosition(), target.getAdapterPosition());
+                return true;
+            }
+
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+            }
+
+            @Override
+            public boolean isLongPressDragEnabled() {
+                return false;
+            }
+        });
+        
+        itemTouchHelperRef[0] = touchHelper;
+        touchHelper.attachToRecyclerView(recyclerView);
+        
+        textSelectedCount.setText(getString(R.string.navigation_dialog_selected_count,
+                adapter.getSelectedCount(), DRAWER_SECTIONS.size()));
+        
+        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(requireContext())
+                .setView(dialogView)
+                .setPositiveButton(R.string.apply, null)
+                .setNegativeButton(R.string.cancel, null)
+                .create();
+        
+        dialog.setOnShowListener(d -> {
+            View applyBtn = dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE);
+            if (applyBtn != null) {
+                applyBtn.setOnClickListener(v -> {
+                    String selectedTags = adapter.getSelectedTagsString();
+                    if (!selectedTags.contains("drawer_settings")) {
+                        selectedTags = selectedTags.isEmpty() ? "drawer_settings" : (selectedTags + ",drawer_settings");
+                    }
+                    prefs.edit().putString(KEY_DRAWER_NAV_ITEMS, selectedTags).apply();
+                    
+                    updateThemeValues();
+                    
+                    if (getActivity() instanceof MainActivity) {
+                        ((MainActivity) getActivity()).refreshNavigation();
                     }
                     
                     dialog.dismiss();
