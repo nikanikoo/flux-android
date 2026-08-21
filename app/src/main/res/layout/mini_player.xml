@@ -1,104 +1,275 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/mini_player_container"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:background="?attr/colorSurface"
-    android:elevation="8dp"
+    android:paddingStart="12dp"
+    android:paddingEnd="12dp"
+    android:paddingTop="4dp"
+    android:paddingBottom="12dp"
+    android:clipToPadding="false"
+    android:background="@android:color/transparent"
     android:visibility="gone">
 
-    <View
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/mini_player_card_preview"
         android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="?attr/colorOutline"/>
-
-    <com.google.android.material.progressindicator.LinearProgressIndicator
-        android:id="@+id/mini_player_progress"
-        android:layout_width="match_parent"
-        android:layout_height="4dp"
-        android:max="100"
-        android:progress="0"
-        app:trackColor="?attr/colorOutline"
-        app:indicatorColor="?attr/colorPrimary"
-        app:trackCornerRadius="0dp"
-        app:trackThickness="4dp"/>
-
-    <LinearLayout
-        android:id="@+id/mini_player_content"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="8dp"
-        android:gravity="center_vertical"
+        android:layout_height="64dp"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="4dp"
+        app:strokeWidth="1dp"
+        app:strokeColor="?attr/colorOutlineVariant"
+        app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
         android:clickable="false"
         android:focusable="false"
-        android:descendantFocusability="blocksDescendants"
-        android:background="?attr/selectableItemBackground">
+        android:visibility="gone">
 
-        <ImageView
-            android:id="@+id/mini_player_icon"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:src="@drawable/ic_music_note"
-            android:scaleType="centerCrop"
-            android:padding="8dp"
-            android:contentDescription="Обложка трека"
-            android:layout_marginStart="4dp"/>
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
 
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:layout_marginStart="8dp"
-            android:layout_marginEnd="4dp">
-
-            <TextView
-                android:id="@+id/mini_player_title"
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Название трека"
-                android:textSize="14sp"
-                android:textStyle="bold"
-                android:textColor="?android:attr/textColorPrimary"
-                android:maxLines="1"
-                android:ellipsize="end"/>
+                android:layout_height="match_parent"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="10dp"
+                android:paddingEnd="8dp">
 
-            <TextView
-                android:id="@+id/mini_player_artist"
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:clickable="false"
+                    android:focusable="false"
+                    app:cardCornerRadius="10dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceVariant">
+
+                    <ImageView
+                        android:id="@+id/mini_player_preview_icon"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:src="@drawable/ic_music_note"
+                        android:scaleType="centerCrop"
+                        android:clickable="false"
+                        android:focusable="false"
+                        android:contentDescription="Обложка трека"/>
+                </com.google.android.material.card.MaterialCardView>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginEnd="6dp">
+
+                    <TextView
+                        android:id="@+id/mini_player_preview_title"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Название трека"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textStyle="bold"
+                        android:textColor="?attr/colorOnSurface"
+                        android:maxLines="1"
+                        android:ellipsize="end"/>
+
+                    <TextView
+                        android:id="@+id/mini_player_preview_artist"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Исполнитель"
+                        android:textAppearance="?attr/textAppearanceLabelSmall"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:maxLines="1"
+                        android:ellipsize="end"
+                        android:layout_marginTop="2dp"/>
+
+                </LinearLayout>
+
+                <ImageButton
+                    android:id="@+id/mini_player_preview_play_pause"
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:src="@drawable/ic_play"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Воспроизвести/Пауза"
+                    android:scaleType="centerInside"
+                    android:padding="6dp"
+                    app:tint="?attr/colorOnSurface"/>
+
+                <ImageButton
+                    android:id="@+id/mini_player_preview_next"
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:src="@drawable/ic_skip_next"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Следующий трек"
+                    android:scaleType="centerInside"
+                    android:padding="6dp"
+                    app:tint="?attr/colorOnSurfaceVariant"/>
+
+                <ImageButton
+                    android:id="@+id/mini_player_preview_stop"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:src="@drawable/ic_close"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Закрыть"
+                    android:scaleType="centerInside"
+                    android:padding="6dp"
+                    app:tint="?attr/colorOnSurfaceVariant"/>
+
+            </LinearLayout>
+
+            <com.google.android.material.progressindicator.LinearProgressIndicator
+                android:id="@+id/mini_player_preview_progress"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Исполнитель"
-                android:textSize="12sp"
-                android:textColor="?android:attr/textColorSecondary"
-                android:maxLines="1"
-                android:ellipsize="end"
-                android:layout_marginTop="2dp"/>
+                android:layout_height="3dp"
+                android:layout_alignParentBottom="true"
+                android:max="100"
+                android:progress="0"
+                app:trackColor="@android:color/transparent"
+                app:indicatorColor="?attr/colorPrimary"
+                app:trackCornerRadius="2dp"
+                app:trackThickness="3dp"/>
 
-        </LinearLayout>
+        </RelativeLayout>
 
-        <ImageButton
-            android:id="@+id/mini_player_play_pause"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:src="@drawable/ic_play"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Воспроизвести/Пауза"
-            android:scaleType="centerInside"
-            android:padding="8dp"/>
+    </com.google.android.material.card.MaterialCardView>
 
-        <ImageButton
-            android:id="@+id/mini_player_stop"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:src="@drawable/ic_close"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:scaleType="centerInside"
-            android:padding="8dp"/>
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/mini_player_card"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="4dp"
+        app:strokeWidth="1dp"
+        app:strokeColor="?attr/colorOutlineVariant"
+        app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground">
 
-    </LinearLayout>
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
 
-</LinearLayout>
+            <LinearLayout
+                android:id="@+id/mini_player_content"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="10dp"
+                android:paddingEnd="8dp">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:clickable="false"
+                    android:focusable="false"
+                    app:cardCornerRadius="10dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp"
+                    app:cardBackgroundColor="?attr/colorSurfaceVariant">
+
+                    <ImageView
+                        android:id="@+id/mini_player_icon"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:src="@drawable/ic_music_note"
+                        android:scaleType="centerCrop"
+                        android:clickable="false"
+                        android:focusable="false"
+                        android:contentDescription="Обложка трека"/>
+                </com.google.android.material.card.MaterialCardView>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginEnd="6dp">
+
+                    <TextView
+                        android:id="@+id/mini_player_title"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Название трека"
+                        android:textAppearance="?attr/textAppearanceBodyMedium"
+                        android:textStyle="bold"
+                        android:textColor="?attr/colorOnSurface"
+                        android:maxLines="1"
+                        android:ellipsize="end"/>
+
+                    <TextView
+                        android:id="@+id/mini_player_artist"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Исполнитель"
+                        android:textAppearance="?attr/textAppearanceLabelSmall"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:maxLines="1"
+                        android:ellipsize="end"
+                        android:layout_marginTop="2dp"/>
+
+                </LinearLayout>
+
+                <ImageButton
+                    android:id="@+id/mini_player_play_pause"
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:src="@drawable/ic_play"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Воспроизвести/Пауза"
+                    android:scaleType="centerInside"
+                    android:padding="6dp"
+                    app:tint="?attr/colorOnSurface"/>
+
+                <ImageButton
+                    android:id="@+id/mini_player_next"
+                    android:layout_width="38dp"
+                    android:layout_height="38dp"
+                    android:src="@drawable/ic_skip_next"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Следующий трек"
+                    android:scaleType="centerInside"
+                    android:padding="6dp"
+                    app:tint="?attr/colorOnSurfaceVariant"/>
+
+                <ImageButton
+                    android:id="@+id/mini_player_stop"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:src="@drawable/ic_close"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Закрыть"
+                    android:scaleType="centerInside"
+                    android:padding="6dp"
+                    app:tint="?attr/colorOnSurfaceVariant"/>
+
+            </LinearLayout>
+
+            <com.google.android.material.progressindicator.LinearProgressIndicator
+                android:id="@+id/mini_player_progress"
+                android:layout_width="match_parent"
+                android:layout_height="3dp"
+                android:layout_alignParentBottom="true"
+                android:max="100"
+                android:progress="0"
+                app:trackColor="@android:color/transparent"
+                app:indicatorColor="?attr/colorPrimary"
+                app:trackCornerRadius="2dp"
+                app:trackThickness="3dp"/>
+
+        </RelativeLayout>
+
+    </com.google.android.material.card.MaterialCardView>
+
+</FrameLayout>

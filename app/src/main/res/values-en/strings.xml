@@ -632,4 +632,27 @@
     <string name="poll_error_vote">Voting error</string>
     <string name="poll_error_unvote">Error retracting vote</string>
 
+    <!-- Music & Playlists -->
+    <string name="audio_lyrics">Lyrics</string>
+    <string name="audio_lyrics_not_found">No lyrics available</string>
+    <string name="audio_lyrics_loading">Loading lyrics...</string>
+    <string name="audio_create_playlist">Create playlist</string>
+    <string name="audio_edit_playlist">Edit playlist</string>
+    <string name="audio_delete_playlist">Delete playlist</string>
+    <string name="audio_delete_playlist_confirm">Are you sure you want to delete playlist \"%1$s\"?</string>
+    <string name="audio_playlist_created">Playlist created</string>
+    <string name="audio_playlist_updated">Playlist updated</string>
+    <string name="audio_playlist_deleted">Playlist deleted</string>
+    <string name="audio_add_to_playlist">Add to playlist</string>
+    <string name="audio_remove_from_playlist">Remove from playlist</string>
+    <string name="audio_added_to_playlist">Added to playlist</string>
+    <string name="audio_removed_from_playlist">Removed from playlist</string>
+    <string name="audio_edit_track">Edit track</string>
+    <string name="audio_artist_hint">Artist</string>
+    <string name="audio_title_hint">Title</string>
+    <string name="audio_lyrics_hint">Lyrics (optional)</string>
+    <string name="audio_track_updated">Track updated</string>
+    <string name="audio_no_playlists">No playlists yet</string>
+    <string name="audio_select_playlist">Select playlist</string>
+
 </resources>

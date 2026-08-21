@@ -39,12 +39,13 @@ public class RecentlyPlayedManager {
     }
 
     public static class Item implements Serializable {
-        public String type; // "playlist" or "artist"
-        public int id; // playlist ID, 0 for artist
-        public int ownerId; // playlist owner ID, 0 for artist
-        public String title; // playlist title or artist name
-        public String creatorName; // playlist creator name, empty for artist
-        public String coverUrl; // cover image URL, empty for artist (fetched via Last.fm)
+        public String type; // "playlist", "track", or "artist"
+        public int id; // playlist ID or audio ID
+        public int ownerId; // playlist owner ID or audio owner ID
+        public String title; // playlist title, track title, or artist name
+        public String creatorName; // playlist creator name or track artist
+        public String coverUrl; // cover image URL or audio stream URL
+        public int duration; // track duration in seconds
         public long timestamp;
 
         public Item() {}
@@ -57,6 +58,7 @@ public class RecentlyPlayedManager {
             json.put("title", title);
             json.put("creatorName", creatorName);
             json.put("coverUrl", coverUrl);
+            json.put("duration", duration);
             json.put("timestamp", timestamp);
             return json;
         }
@@ -69,6 +71,7 @@ public class RecentlyPlayedManager {
             item.title = json.getString("title");
             item.creatorName = json.optString("creatorName", "");
             item.coverUrl = json.optString("coverUrl", "");
+            item.duration = json.optInt("duration", 0);
             item.timestamp = json.optLong("timestamp", 0);
             return item;
         }
@@ -112,6 +115,42 @@ public class RecentlyPlayedManager {
         } catch (Exception e) {
             Logger.e(TAG, "Error saving recently played items", e);
         }
+    }
+
+    public synchronized void addTrack(org.nikanikoo.flux.data.models.Audio audio) {
+        if (audio == null || audio.getTitle() == null || audio.getTitle().trim().isEmpty()) return;
+
+        List<Item> items = getItems();
+        Item existing = null;
+        for (Item item : items) {
+            if ("track".equals(item.type) && item.id == audio.getId() && item.ownerId == audio.getOwnerId()) {
+                existing = item;
+                break;
+            }
+        }
+
+        if (existing != null) {
+            items.remove(existing);
+        }
+
+        Item item = new Item();
+        item.type = "track";
+        item.id = audio.getId();
+        item.ownerId = audio.getOwnerId();
+        item.title = audio.getTitle();
+        item.creatorName = audio.getArtist() != null ? audio.getArtist() : "";
+        item.coverUrl = audio.getUrl() != null ? audio.getUrl() : "";
+        item.duration = audio.getDuration();
+        item.timestamp = System.currentTimeMillis();
+
+        items.add(0, item);
+
+        if (items.size() > MAX_ITEMS) {
+            items = items.subList(0, MAX_ITEMS);
+        }
+
+        saveItems(items);
+        Logger.d(TAG, "Added track to recently played: " + audio.getArtist() + " - " + audio.getTitle());
     }
 
     public synchronized void addPlaylist(AudioPlaylist playlist) {

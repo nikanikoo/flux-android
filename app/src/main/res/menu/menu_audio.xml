@@ -10,6 +10,12 @@
         app:actionViewClass="androidx.appcompat.widget.SearchView"/>
 
     <item
+        android:id="@+id/action_create_playlist"
+        android:title="@string/audio_create_playlist"
+        android:icon="@drawable/ic_add"
+        app:showAsAction="ifRoom"/>
+
+    <item
         android:id="@+id/action_download_all"
         android:title="@string/audio_download_all"
         android:icon="@drawable/ic_download"

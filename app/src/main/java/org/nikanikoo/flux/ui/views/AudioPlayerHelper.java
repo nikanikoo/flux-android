@@ -19,6 +19,13 @@ public class AudioPlayerHelper {
     private static final String TAG = "AudioPlayerHelper";
 
     public static void setPlaylist(Context context, List<Audio> playlist, int startPosition) {
+        setPlaylist(context, playlist, startPosition, false);
+    }
+
+    public static void setPlaylist(Context context, List<Audio> playlist, int startPosition, boolean openPlayer) {
+        Intent serviceIntent = new Intent(context, AudioPlayerService.class);
+        context.startService(serviceIntent);
+
         Intent intent = new Intent(context, AudioPlayerService.class);
         context.bindService(intent, new ServiceConnection() {
             @Override
@@ -28,6 +35,12 @@ public class AudioPlayerHelper {
                 playerService.setPlaylist(playlist, startPosition);
                 context.unbindService(this);
                 Logger.d(TAG, "Playlist set successfully");
+
+                if (openPlayer) {
+                    Intent playerIntent = new Intent(context, org.nikanikoo.flux.ui.activities.AudioPlayerActivity.class);
+                    playerIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    context.startActivity(playerIntent);
+                }
             }
 
             @Override

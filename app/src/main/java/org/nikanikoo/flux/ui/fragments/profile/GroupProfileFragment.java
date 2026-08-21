@@ -181,6 +181,20 @@ public class GroupProfileFragment extends BaseProfileFragment {
                 }
             });
         }
+
+        CardView audiosCard = view.findViewById(R.id.audios_card);
+        if (audiosCard != null) {
+            audiosCard.setOnClickListener(v -> {
+                String groupName = currentGroup != null ? currentGroup.getName() : getString(R.string.profile_audios);
+                if (getActivity() instanceof org.nikanikoo.flux.ui.activities.MainActivity) {
+                    ((org.nikanikoo.flux.ui.activities.MainActivity) getActivity()).getNavigationController()
+                            .navigateToFragmentWithBackStack(
+                                    org.nikanikoo.flux.ui.fragments.media.MyMusicTabFragment.newInstance(-groupId, groupName),
+                                    "group_audios"
+                            );
+                }
+            });
+        }
     }
 
     private void setToolbarTitleSafe(String title) {

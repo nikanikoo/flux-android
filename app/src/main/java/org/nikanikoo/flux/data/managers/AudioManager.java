@@ -46,6 +46,16 @@ public class AudioManager extends BaseManager<AudioManager> {
         void onError(String error);
     }
 
+    public interface LyricsCallback {
+        void onSuccess(String lyricsText);
+        void onError(String error);
+    }
+
+    public interface CreatePlaylistCallback {
+        void onSuccess(int playlistId);
+        void onError(String error);
+    }
+
     public void getAudio(int ownerId, int offset, int count, AudioCallback callback) {
         Map<String, String> params = new HashMap<>();
         params.put("owner_id", String.valueOf(ownerId));
@@ -350,6 +360,181 @@ public class AudioManager extends BaseManager<AudioManager> {
             @Override
             public void onError(String error) {
                 callback.onError(error);
+            }
+        });
+    }
+
+    public void getLyrics(int lyricsId, LyricsCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("lyrics_id", String.valueOf(lyricsId));
+
+        api.callMethod("audio.getLyrics", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                try {
+                    JSONObject responseObj = response.optJSONObject("response");
+                    String text = responseObj != null ? responseObj.optString("text", "") : "";
+                    callback.onSuccess(text);
+                } catch (Exception e) {
+                    Logger.e(TAG, "Error parsing lyrics", e);
+                    callback.onError("Ошибка обработки текста песни");
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    public void createPlaylist(String title, String description, int groupId, CreatePlaylistCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("title", title);
+        if (description != null && !description.isEmpty()) {
+            params.put("description", description);
+        }
+        if (groupId > 0) {
+            params.put("group_id", String.valueOf(groupId));
+        }
+
+        api.callMethod("audio.addAlbum", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                try {
+                    int playlistId = 0;
+                    if (response.has("response")) {
+                        Object respObj = response.get("response");
+                        if (respObj instanceof Number) {
+                            playlistId = ((Number) respObj).intValue();
+                        } else if (respObj instanceof JSONObject) {
+                            playlistId = ((JSONObject) respObj).optInt("album_id", ((JSONObject) respObj).optInt("id", 0));
+                        }
+                    }
+                    callback.onSuccess(playlistId);
+                } catch (Exception e) {
+                    Logger.e(TAG, "Error parsing create playlist response", e);
+                    callback.onError("Ошибка обработки ответа");
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    public void editPlaylist(int playlistId, String title, String description, AudioActionCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("album_id", String.valueOf(playlistId));
+        if (title != null) params.put("title", title);
+        if (description != null) params.put("description", description);
+
+        api.callMethod("audio.editAlbum", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                callback.onSuccess();
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    public void deletePlaylist(int playlistId, AudioActionCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("album_id", String.valueOf(playlistId));
+
+        api.callMethod("audio.deleteAlbum", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                callback.onSuccess();
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    public void addTracksToPlaylist(int playlistId, String audioIds, AudioActionCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("album_id", String.valueOf(playlistId));
+        params.put("audio_ids", audioIds);
+
+        api.callMethod("audio.moveToAlbum", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                callback.onSuccess();
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    public void removeTracksFromPlaylist(int playlistId, String audioIds, AudioActionCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("album_id", String.valueOf(playlistId));
+        params.put("audio_ids", audioIds);
+
+        api.callMethod("audio.removeFromAlbum", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                callback.onSuccess();
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    public void editAudio(int ownerId, int audioId, String artist, String title, String lyrics, int genreId, AudioActionCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("owner_id", String.valueOf(ownerId));
+        params.put("audio_id", String.valueOf(audioId));
+        if (artist != null) params.put("artist", artist);
+        if (title != null) params.put("title", title);
+        if (lyrics != null) params.put("text", lyrics);
+        if (genreId > 0) params.put("genre_id", String.valueOf(genreId));
+
+        api.callMethod("audio.edit", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                callback.onSuccess();
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    public void sendListenBeacon(int audioId, int groupId, AudioActionCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("aid", String.valueOf(audioId));
+        if (groupId > 0) {
+            params.put("gid", String.valueOf(groupId));
+        }
+
+        api.callMethod("audio.beacon", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                if (callback != null) callback.onSuccess();
+            }
+
+            @Override
+            public void onError(String error) {
+                if (callback != null) callback.onError(error);
             }
         });
     }

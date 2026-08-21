@@ -232,6 +232,14 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
         }
     }
 
+    public static final int REPEAT_MODE_NONE = 0;
+    public static final int REPEAT_MODE_ALL = 1;
+    public static final int REPEAT_MODE_ONE = 2;
+
+    private int repeatMode = REPEAT_MODE_ALL;
+    private boolean isShuffle = false;
+    private final java.util.Random random = new java.util.Random();
+
     private void prepareAudio(Audio audio) {
         if (audio == null || audio.getUrl() == null || audio.getUrl().isEmpty()) {
             Logger.e(TAG, "Invalid audio URL");
@@ -241,6 +249,21 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
             return;
         }
         System.out.println("AudioPlayerService: prepareAudio OK url=" + audio.getUrl());
+
+        if (mediaPlayer != null) {
+            try {
+                if (mediaPlayer.isPlaying()) {
+                    mediaPlayer.stop();
+                }
+                mediaPlayer.reset();
+            } catch (Exception ignored) {}
+            isPrepared = false;
+        }
+
+        updateMediaSessionMetadata();
+        updatePlaybackState(PlaybackStateCompat.STATE_BUFFERING);
+        notifyTrackChanged(audio, currentPosition);
+        updateNotification();
 
         int generation = ++prepareGeneration;
 
@@ -286,9 +309,6 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
                 mediaPlayer.prepareAsync();
                 
                 Logger.d(TAG, "Preparing audio: " + audio.getFullTitle());
-                
-                notifyTrackChanged(audio, currentPosition);
-                updateNotification();
             } catch (IOException e) {
                 Logger.e(TAG, "Error preparing audio", e);
                 notifyError("Ошибка загрузки аудио");
@@ -307,12 +327,34 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
         updateNotification();
         startProgressUpdates();
         preloadNextTrack();
+        sendListenBeacon();
+    }
+
+    private void sendListenBeacon() {
+        Audio audio = getCurrentAudio();
+        if (audio != null && audio.getId() > 0) {
+            org.nikanikoo.flux.data.managers.AudioManager.getInstance(this).sendListenBeacon(audio.getId(), 0, null);
+        }
     }
 
     @Override
     public void onCompletion(MediaPlayer mp) {
         Logger.d(TAG, "Audio completed");
-        next();
+        if (repeatMode == REPEAT_MODE_ONE) {
+            if (!playlist.isEmpty() && currentPosition < playlist.size()) {
+                prepareAudio(playlist.get(currentPosition));
+            }
+        } else if (repeatMode == REPEAT_MODE_ALL) {
+            next();
+        } else if (repeatMode == REPEAT_MODE_NONE) {
+            if (currentPosition < playlist.size() - 1) {
+                next();
+            } else {
+                stop();
+            }
+        } else {
+            next();
+        }
     }
 
     @Override
@@ -346,7 +388,15 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
     public void next() {
         if (playlist.isEmpty()) return;
         
-        currentPosition = (currentPosition + 1) % playlist.size();
+        if (isShuffle && playlist.size() > 1) {
+            int nextPos;
+            do {
+                nextPos = random.nextInt(playlist.size());
+            } while (nextPos == currentPosition);
+            currentPosition = nextPos;
+        } else {
+            currentPosition = (currentPosition + 1) % playlist.size();
+        }
         prepareAudio(playlist.get(currentPosition));
         Logger.d(TAG, "Next track: " + currentPosition);
     }
@@ -354,9 +404,48 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
     public void previous() {
         if (playlist.isEmpty()) return;
         
-        currentPosition = (currentPosition - 1 + playlist.size()) % playlist.size();
+        if (isPrepared && mediaPlayer != null && mediaPlayer.getCurrentPosition() > 3000) {
+            seekTo(0);
+            return;
+        }
+
+        if (isShuffle && playlist.size() > 1) {
+            int prevPos;
+            do {
+                prevPos = random.nextInt(playlist.size());
+            } while (prevPos == currentPosition);
+            currentPosition = prevPos;
+        } else {
+            currentPosition = (currentPosition - 1 + playlist.size()) % playlist.size();
+        }
         prepareAudio(playlist.get(currentPosition));
         Logger.d(TAG, "Previous track: " + currentPosition);
+    }
+
+    public int getRepeatMode() {
+        return repeatMode;
+    }
+
+    public void setRepeatMode(int mode) {
+        this.repeatMode = mode;
+    }
+
+    public int toggleRepeatMode() {
+        this.repeatMode = (this.repeatMode + 1) % 3;
+        return this.repeatMode;
+    }
+
+    public boolean isShuffle() {
+        return isShuffle;
+    }
+
+    public void setShuffle(boolean shuffle) {
+        this.isShuffle = shuffle;
+    }
+
+    public boolean toggleShuffle() {
+        this.isShuffle = !this.isShuffle;
+        return this.isShuffle;
     }
 
     public void seekTo(int position) {
@@ -411,6 +500,18 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
         return playlist.get(currentPosition);
     }
 
+    public Audio getNextAudio() {
+        if (playlist.isEmpty()) return null;
+        int nextPos = (currentPosition + 1) % playlist.size();
+        return playlist.get(nextPos);
+    }
+
+    public Audio getPreviousAudio() {
+        if (playlist.isEmpty()) return null;
+        int prevPos = (currentPosition - 1 + playlist.size()) % playlist.size();
+        return playlist.get(prevPos);
+    }
+
     public int getCurrentPosition() {
         return isPrepared ? mediaPlayer.getCurrentPosition() : 0;
     }
@@ -444,12 +545,12 @@ public class AudioPlayerService extends Service implements MediaPlayer.OnPrepare
     }
 
     private void notifyTrackChanged(Audio audio, int position) {
-        if (audio != null && audio.getArtist() != null) {
+        if (audio != null) {
             try {
                 org.nikanikoo.flux.data.managers.RecentlyPlayedManager.getInstance(getApplicationContext())
-                        .addArtist(audio.getArtist());
+                        .addTrack(audio);
             } catch (Exception e) {
-                Logger.e(TAG, "Error adding artist to recently played", e);
+                Logger.e(TAG, "Error adding track to recently played", e);
             }
         }
         for (PlayerCallback callback : callbacks) {

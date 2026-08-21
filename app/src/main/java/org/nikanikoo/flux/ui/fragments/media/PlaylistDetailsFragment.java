@@ -103,6 +103,19 @@ public class PlaylistDetailsFragment extends BaseFragment implements AudioAdapte
 
         Toolbar toolbar = view.findViewById(R.id.toolbar);
         toolbar.setNavigationOnClickListener(v -> requireActivity().getSupportFragmentManager().popBackStack());
+        if (playlistId > 0) {
+            toolbar.inflateMenu(R.menu.menu_playlist_details);
+            toolbar.setOnMenuItemClickListener(item -> {
+                if (item.getItemId() == R.id.action_edit_playlist) {
+                    showEditPlaylistDialog();
+                    return true;
+                } else if (item.getItemId() == R.id.action_delete_playlist) {
+                    showDeletePlaylistDialog();
+                    return true;
+                }
+                return false;
+            });
+        }
 
         coverImage = view.findViewById(R.id.playlist_details_cover);
         titleText = view.findViewById(R.id.playlist_details_title);
@@ -287,6 +300,10 @@ public class PlaylistDetailsFragment extends BaseFragment implements AudioAdapte
                 4,
                 3,
                 audio.isAdded() ? R.string.audio_remove_from_library : R.string.audio_add_to_library);
+        popupMenu.getMenu().add(Menu.NONE, 5, 4, R.string.audio_lyrics);
+        if (playlistId > 0) {
+            popupMenu.getMenu().add(Menu.NONE, 6, 5, R.string.audio_remove_from_playlist);
+        }
 
         popupMenu.setOnMenuItemClickListener(item -> {
             if (item.getItemId() == 1) {
@@ -308,9 +325,132 @@ public class PlaylistDetailsFragment extends BaseFragment implements AudioAdapte
                 onAddClick(audio, position);
                 return true;
             }
+            if (item.getItemId() == 5) {
+                showLyricsDialog(audio);
+                return true;
+            }
+            if (item.getItemId() == 6) {
+                removeTrackFromPlaylist(audio, position);
+                return true;
+            }
             return false;
         });
         popupMenu.show();
+    }
+
+    private void showLyricsDialog(Audio audio) {
+        LyricsBottomSheetDialogFragment dialog = LyricsBottomSheetDialogFragment.newInstance(
+                audio.getTitle(),
+                audio.getArtist(),
+                audio.getLyrics_id(),
+                null
+        );
+        dialog.show(getParentFragmentManager(), "audio_lyrics");
+    }
+
+    private void removeTrackFromPlaylist(Audio audio, int position) {
+        audioManager.removeTracksFromPlaylist(playlistId, String.valueOf(audio.getId()), new AudioManager.AudioActionCallback() {
+            @Override
+            public void onSuccess() {
+                if (!isAdded()) return;
+                requireActivity().runOnUiThread(() -> {
+                    if (position >= 0 && position < audios.size()) {
+                        audios.remove(position);
+                        audioAdapter.notifyItemRemoved(position);
+                        String info = audios.size() + " " + getTrackWord(audios.size());
+                        infoText.setText(info);
+                        Toast.makeText(requireContext(), R.string.audio_removed_from_playlist, Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                if (!isAdded()) return;
+                requireActivity().runOnUiThread(() ->
+                        Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show());
+            }
+        });
+    }
+
+    private void showEditPlaylistDialog() {
+        android.widget.LinearLayout layout = new android.widget.LinearLayout(requireContext());
+        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+        layout.setPadding(48, 16, 48, 16);
+
+        final android.widget.EditText inputTitle = new android.widget.EditText(requireContext());
+        inputTitle.setHint(R.string.audio_title_hint);
+        inputTitle.setText(title);
+        layout.addView(inputTitle);
+
+        final android.widget.EditText inputDesc = new android.widget.EditText(requireContext());
+        inputDesc.setHint(R.string.profile_info_desc);
+        inputDesc.setText(description != null ? description : "");
+        layout.addView(inputDesc);
+
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle(R.string.audio_edit_playlist)
+                .setView(layout)
+                .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                    String newTitle = inputTitle.getText().toString().trim();
+                    String newDesc = inputDesc.getText().toString().trim();
+                    if (newTitle.isEmpty()) return;
+
+                    audioManager.editPlaylist(playlistId, newTitle, newDesc, new AudioManager.AudioActionCallback() {
+                        @Override
+                        public void onSuccess() {
+                            if (!isAdded()) return;
+                            title = newTitle;
+                            description = newDesc;
+                            requireActivity().runOnUiThread(() -> {
+                                titleText.setText(newTitle);
+                                if (!newDesc.isEmpty()) {
+                                    descText.setText(newDesc);
+                                    descText.setVisibility(View.VISIBLE);
+                                } else {
+                                    descText.setVisibility(View.GONE);
+                                }
+                                Toast.makeText(requireContext(), R.string.audio_playlist_updated, Toast.LENGTH_SHORT).show();
+                            });
+                        }
+
+                        @Override
+                        public void onError(String error) {
+                            if (!isAdded()) return;
+                            requireActivity().runOnUiThread(() ->
+                                    Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show());
+                        }
+                    });
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void showDeletePlaylistDialog() {
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle(R.string.audio_delete_playlist)
+                .setMessage(getString(R.string.audio_delete_playlist_confirm, title))
+                .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                    audioManager.deletePlaylist(playlistId, new AudioManager.AudioActionCallback() {
+                        @Override
+                        public void onSuccess() {
+                            if (!isAdded()) return;
+                            requireActivity().runOnUiThread(() -> {
+                                Toast.makeText(requireContext(), R.string.audio_playlist_deleted, Toast.LENGTH_SHORT).show();
+                                requireActivity().getSupportFragmentManager().popBackStack();
+                            });
+                        }
+
+                        @Override
+                        public void onError(String error) {
+                            if (!isAdded()) return;
+                            requireActivity().runOnUiThread(() ->
+                                    Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show());
+                        }
+                    });
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
     }
 
     private void downloadAudio(Audio audio, int position) {

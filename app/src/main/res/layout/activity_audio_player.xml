@@ -61,43 +61,51 @@
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingLeft="10dp"
-                android:paddingRight="10dp">
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp">
 
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:orientation="vertical">
+                    android:orientation="vertical"
+                    android:layout_marginEnd="12dp">
 
                     <TextView
                         android:id="@+id/track_title"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="8dp"
                         android:ellipsize="end"
-                        android:gravity="center"
-                        android:maxLines="2"
+                        android:maxLines="1"
                         android:text="Название трека"
-                        android:textAlignment="viewStart"
-                        android:textColor="?android:attr/textColorPrimary"
-                        android:textSize="24sp"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textAppearance="?attr/textAppearanceTitleLarge"
                         android:textStyle="bold" />
 
                     <TextView
                         android:id="@+id/track_artist"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginBottom="24dp"
+                        android:layout_marginTop="4dp"
                         android:ellipsize="end"
-                        android:gravity="center"
                         android:maxLines="1"
                         android:text="Исполнитель"
-                        android:textAlignment="viewStart"
-                        android:textColor="?android:attr/textColorSecondary"
-                        android:textSize="18sp" />
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textAppearance="?attr/textAppearanceBodyMedium" />
 
                 </LinearLayout>
+
+                <ImageButton
+                    android:id="@+id/btn_lyrics"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/audio_lyrics"
+                    android:padding="12dp"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_lyrics"
+                    app:tint="?attr/colorOnSurfaceVariant"
+                    android:visibility="gone" />
 
                 <ImageButton
                     android:id="@+id/btn_add_to_library"
@@ -107,7 +115,8 @@
                     android:contentDescription="@string/audio_add_to_library"
                     android:padding="12dp"
                     android:scaleType="centerInside"
-                    android:src="@drawable/ic_add" />
+                    android:src="@drawable/ic_add"
+                    app:tint="?attr/colorOnSurface" />
 
             </LinearLayout>
 
@@ -116,13 +125,14 @@
                 android:id="@+id/seek_bar"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
                 android:layout_marginBottom="8dp" />
 
             <!-- Время -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="24dp"
+                android:layout_marginBottom="16dp"
                 android:orientation="horizontal"
                 android:paddingStart="8dp"
                 android:paddingEnd="8dp">
@@ -133,8 +143,8 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="0:00"
-                    android:textColor="?android:attr/textColorSecondary"
-                    android:textSize="12sp" />
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textAppearance="?attr/textAppearanceLabelSmall" />
 
                 <TextView
                     android:id="@+id/total_time"
@@ -143,12 +153,12 @@
                     android:layout_weight="1"
                     android:gravity="end"
                     android:text="0:00"
-                    android:textColor="?android:attr/textColorSecondary"
-                    android:textSize="12sp" />
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textAppearance="?attr/textAppearanceLabelSmall" />
 
             </LinearLayout>
 
-            <!-- Кнопки управления -->
+            <!-- Кнопки управления (5 кнопок) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -157,36 +167,63 @@
                 android:layout_marginBottom="24dp">
 
                 <ImageButton
+                    android:id="@+id/btn_shuffle"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Перемешать"
+                    android:padding="12dp"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_shuffle"
+                    app:tint="?attr/colorOnSurfaceVariant" />
+
+                <ImageButton
                     android:id="@+id/btn_previous"
                     android:layout_width="56dp"
                     android:layout_height="56dp"
+                    android:layout_marginStart="8dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/player_previous"
                     android:padding="12dp"
                     android:scaleType="centerInside"
-                    android:src="@drawable/ic_skip_previous" />
+                    android:src="@drawable/ic_skip_previous"
+                    app:tint="?attr/colorOnSurface" />
 
-                <ImageButton
+                <com.google.android.material.floatingactionbutton.FloatingActionButton
                     android:id="@+id/btn_play_pause"
-                    android:layout_width="72dp"
-                    android:layout_height="72dp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
                     android:layout_marginStart="16dp"
                     android:layout_marginEnd="16dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
+                    app:fabCustomSize="64dp"
+                    app:elevation="4dp"
+                    app:backgroundTint="?attr/colorPrimary"
+                    app:tint="?attr/colorOnPrimary"
                     android:contentDescription="@string/player_play_pause"
-                    android:padding="16dp"
-                    android:scaleType="fitCenter"
                     android:src="@drawable/ic_play" />
 
                 <ImageButton
                     android:id="@+id/btn_next"
                     android:layout_width="56dp"
                     android:layout_height="56dp"
+                    android:layout_marginEnd="8dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:contentDescription="@string/player_next"
                     android:padding="12dp"
                     android:scaleType="centerInside"
-                    android:src="@drawable/ic_skip_next" />
+                    android:src="@drawable/ic_skip_next"
+                    app:tint="?attr/colorOnSurface" />
+
+                <ImageButton
+                    android:id="@+id/btn_repeat"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="Повтор"
+                    android:padding="12dp"
+                    android:scaleType="centerInside"
+                    android:src="@drawable/ic_repeat"
+                    app:tint="?attr/colorOnSurfaceVariant" />
 
             </LinearLayout>
 

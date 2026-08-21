@@ -40,6 +40,8 @@ import java.util.List;
 public class MyMusicTabFragment extends BaseFragment implements AudioAdapter.OnAudioClickListener {
 
     private static final String TAG = "MyMusicTabFragment";
+    private static final String ARG_OWNER_ID = "owner_id";
+    private static final String ARG_OWNER_TITLE = "owner_title";
     private static final int AUDIOS_PER_PAGE = 20;
     private static final int PLAYBACK_QUEUE_PAGE_SIZE = 100;
 
@@ -58,6 +60,17 @@ public class MyMusicTabFragment extends BaseFragment implements AudioAdapter.OnA
     private boolean isQueueLoading = false;
     private String currentSearchQuery = "";
     private int currentUserId = 0;
+    private int ownerId = 0;
+    private String ownerTitle;
+
+    public static MyMusicTabFragment newInstance(int ownerId, String ownerTitle) {
+        MyMusicTabFragment fragment = new MyMusicTabFragment();
+        Bundle args = new Bundle();
+        args.putInt(ARG_OWNER_ID, ownerId);
+        args.putString(ARG_OWNER_TITLE, ownerTitle);
+        fragment.setArguments(args);
+        return fragment;
+    }
 
     private final BroadcastReceiver audioCacheReceiver = new BroadcastReceiver() {
         @Override
@@ -75,6 +88,15 @@ public class MyMusicTabFragment extends BaseFragment implements AudioAdapter.OnA
     };
 
     @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        if (getArguments() != null) {
+            ownerId = getArguments().getInt(ARG_OWNER_ID, 0);
+            ownerTitle = getArguments().getString(ARG_OWNER_TITLE, null);
+        }
+    }
+
+    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_music_list, container, false);
@@ -89,13 +111,17 @@ public class MyMusicTabFragment extends BaseFragment implements AudioAdapter.OnA
 
         View downloadedHeader = view.findViewById(R.id.downloaded_tracks_header);
         if (downloadedHeader != null) {
-            downloadedHeader.setVisibility(View.VISIBLE);
-            downloadedHeader.setOnClickListener(v -> {
-                if (requireActivity() instanceof MainActivity) {
-                    ((MainActivity) requireActivity()).getNavigationController()
-                            .navigateToFragmentWithBackStack(new DownloadedMusicTabFragment(), "offline_tracks");
-                }
-            });
+            if (ownerId != 0) {
+                downloadedHeader.setVisibility(View.GONE);
+            } else {
+                downloadedHeader.setVisibility(View.VISIBLE);
+                downloadedHeader.setOnClickListener(v -> {
+                    if (requireActivity() instanceof MainActivity) {
+                        ((MainActivity) requireActivity()).getNavigationController()
+                                .navigateToFragmentWithBackStack(new DownloadedMusicTabFragment(), "offline_tracks");
+                    }
+                });
+            }
         }
 
         audioManager = AudioManager.getInstance(requireContext());
@@ -118,6 +144,14 @@ public class MyMusicTabFragment extends BaseFragment implements AudioAdapter.OnA
         loadUserProfile();
 
         return view;
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (ownerTitle != null && !ownerTitle.isEmpty() && getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).setToolbarTitle(ownerTitle);
+        }
     }
 
     @Override
@@ -180,6 +214,12 @@ public class MyMusicTabFragment extends BaseFragment implements AudioAdapter.OnA
     }
 
     private void loadUserProfile() {
+        if (ownerId != 0) {
+            currentUserId = ownerId;
+            loadAudios(true);
+            return;
+        }
+
         profileManager.loadProfile(false, new ProfileManager.ProfileCallback() {
             @Override
             public void onSuccess(UserProfile profile) {
@@ -414,6 +454,11 @@ public class MyMusicTabFragment extends BaseFragment implements AudioAdapter.OnA
                 4,
                 3,
                 audio.isAdded() ? R.string.audio_remove_from_library : R.string.audio_add_to_library);
+        popupMenu.getMenu().add(Menu.NONE, 5, 4, R.string.audio_lyrics);
+        popupMenu.getMenu().add(Menu.NONE, 6, 5, R.string.audio_add_to_playlist);
+        if (audio.isEditable() || audio.getOwnerId() == currentUserId) {
+            popupMenu.getMenu().add(Menu.NONE, 7, 6, R.string.audio_edit_track);
+        }
 
         popupMenu.setOnMenuItemClickListener(item -> {
             if (item.getItemId() == 1) {
@@ -433,9 +478,169 @@ public class MyMusicTabFragment extends BaseFragment implements AudioAdapter.OnA
                 onAddClick(audio, position);
                 return true;
             }
+            if (item.getItemId() == 5) {
+                showLyricsDialog(audio);
+                return true;
+            }
+            if (item.getItemId() == 6) {
+                showAddToPlaylistDialog(audio);
+                return true;
+            }
+            if (item.getItemId() == 7) {
+                showEditAudioDialog(audio, position);
+                return true;
+            }
             return false;
         });
         popupMenu.show();
+    }
+
+    private void showLyricsDialog(Audio audio) {
+        LyricsBottomSheetDialogFragment dialog = LyricsBottomSheetDialogFragment.newInstance(
+                audio.getTitle(),
+                audio.getArtist(),
+                audio.getLyrics_id(),
+                null
+        );
+        dialog.show(getParentFragmentManager(), "audio_lyrics");
+    }
+
+    private void showAddToPlaylistDialog(Audio audio) {
+        if (currentUserId == 0) return;
+        audioManager.getPlaylists(currentUserId, 0, 50, new AudioManager.PlaylistsCallback() {
+            @Override
+            public void onSuccess(List<org.nikanikoo.flux.data.models.AudioPlaylist> playlists, int totalCount) {
+                if (!isAdded()) return;
+                requireActivity().runOnUiThread(() -> {
+                    if (playlists == null || playlists.isEmpty()) {
+                        Toast.makeText(requireContext(), R.string.audio_no_playlists, Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    String[] titles = new String[playlists.size()];
+                    for (int i = 0; i < playlists.size(); i++) {
+                        titles[i] = playlists.get(i).getTitle();
+                    }
+                    new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                            .setTitle(R.string.audio_select_playlist)
+                            .setItems(titles, (dialog, which) -> {
+                                org.nikanikoo.flux.data.models.AudioPlaylist playlist = playlists.get(which);
+                                audioManager.addTracksToPlaylist(playlist.getId(), String.valueOf(audio.getId()), new AudioManager.AudioActionCallback() {
+                                    @Override
+                                    public void onSuccess() {
+                                        if (!isAdded()) return;
+                                        requireActivity().runOnUiThread(() ->
+                                                Toast.makeText(requireContext(), R.string.audio_added_to_playlist, Toast.LENGTH_SHORT).show());
+                                    }
+
+                                    @Override
+                                    public void onError(String error) {
+                                        if (!isAdded()) return;
+                                        requireActivity().runOnUiThread(() ->
+                                                Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show());
+                                    }
+                                });
+                            })
+                            .setNegativeButton(android.R.string.cancel, null)
+                            .show();
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                if (!isAdded()) return;
+                requireActivity().runOnUiThread(() ->
+                        Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show());
+            }
+        });
+    }
+
+    private void showCreatePlaylistDialog() {
+        android.widget.LinearLayout layout = new android.widget.LinearLayout(requireContext());
+        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+        layout.setPadding(48, 16, 48, 16);
+
+        final android.widget.EditText inputTitle = new android.widget.EditText(requireContext());
+        inputTitle.setHint(R.string.audio_title_hint);
+        layout.addView(inputTitle);
+
+        final android.widget.EditText inputDesc = new android.widget.EditText(requireContext());
+        inputDesc.setHint(R.string.profile_info_desc);
+        layout.addView(inputDesc);
+
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle(R.string.audio_create_playlist)
+                .setView(layout)
+                .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                    String title = inputTitle.getText().toString().trim();
+                    String desc = inputDesc.getText().toString().trim();
+                    if (title.isEmpty()) return;
+
+                    int groupId = ownerId < 0 ? -ownerId : 0;
+                    audioManager.createPlaylist(title, desc, groupId, new AudioManager.CreatePlaylistCallback() {
+                        @Override
+                        public void onSuccess(int playlistId) {
+                            if (!isAdded()) return;
+                            requireActivity().runOnUiThread(() ->
+                                    Toast.makeText(requireContext(), R.string.audio_playlist_created, Toast.LENGTH_SHORT).show());
+                        }
+
+                        @Override
+                        public void onError(String error) {
+                            if (!isAdded()) return;
+                            requireActivity().runOnUiThread(() ->
+                                    Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show());
+                        }
+                    });
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void showEditAudioDialog(Audio audio, int position) {
+        android.widget.LinearLayout layout = new android.widget.LinearLayout(requireContext());
+        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+        layout.setPadding(48, 16, 48, 16);
+
+        final android.widget.EditText inputArtist = new android.widget.EditText(requireContext());
+        inputArtist.setHint(R.string.audio_artist_hint);
+        inputArtist.setText(audio.getArtist());
+        layout.addView(inputArtist);
+
+        final android.widget.EditText inputTitle = new android.widget.EditText(requireContext());
+        inputTitle.setHint(R.string.audio_title_hint);
+        inputTitle.setText(audio.getTitle());
+        layout.addView(inputTitle);
+
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle(R.string.audio_edit_track)
+                .setView(layout)
+                .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                    String artist = inputArtist.getText().toString().trim();
+                    String title = inputTitle.getText().toString().trim();
+                    if (title.isEmpty()) return;
+
+                    audioManager.editAudio(audio.getOwnerId(), audio.getId(), artist, title, null, audio.getGenreId(), new AudioManager.AudioActionCallback() {
+                        @Override
+                        public void onSuccess() {
+                            if (!isAdded()) return;
+                            audio.setArtist(artist);
+                            audio.setTitle(title);
+                            requireActivity().runOnUiThread(() -> {
+                                audioAdapter.notifyItemChanged(position);
+                                Toast.makeText(requireContext(), R.string.audio_track_updated, Toast.LENGTH_SHORT).show();
+                            });
+                        }
+
+                        @Override
+                        public void onError(String error) {
+                            if (!isAdded()) return;
+                            requireActivity().runOnUiThread(() ->
+                                    Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show());
+                        }
+                    });
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
     }
 
     private void removeDownloadedAudio(Audio audio, int position) {
@@ -564,6 +769,9 @@ public class MyMusicTabFragment extends BaseFragment implements AudioAdapter.OnA
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (item.getItemId() == R.id.action_download_all) {
             downloadAllAudios();
+            return true;
+        } else if (item.getItemId() == R.id.action_create_playlist) {
+            showCreatePlaylistDialog();
             return true;
         }
         return super.onOptionsItemSelected(item);

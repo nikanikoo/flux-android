@@ -88,7 +88,12 @@ public class RecentlyPlayedAdapter extends RecyclerView.Adapter<RecentlyPlayedAd
         void bind(RecentlyPlayedManager.Item item) {
             title.setText(item.title);
             
-            if ("playlist".equals(item.type)) {
+            if ("track".equals(item.type)) {
+                subtitle.setText(item.creatorName != null && !item.creatorName.isEmpty() ? item.creatorName : "Аудиозапись");
+                cover.setBackgroundColor(0);
+                cover.setImageTintList(null);
+                albumArtFetcher.loadAlbumArt(item.creatorName, item.title, cover, R.drawable.ic_music_note);
+            } else if ("playlist".equals(item.type)) {
                 subtitle.setText(item.creatorName != null && !item.creatorName.isEmpty() ? item.creatorName : "Плейлист");
                 if (item.id == -2) {
                     cover.setImageResource(R.drawable.ic_library_music);

@@ -56,6 +56,7 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
     private MaterialButton btnEditProfile;
     private LinearLayout editProfileContainer;
     private CardView friendsCard;
+    private CardView audiosCard;
     
     // State
     private boolean isDetailsExpanded = false;
@@ -127,6 +128,7 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
         btnEditProfile = view.findViewById(R.id.btn_edit_profile);
         editProfileContainer = view.findViewById(R.id.edit_profile_container);
         friendsCard = view.findViewById(R.id.friends_card);
+        audiosCard = view.findViewById(R.id.audios_card);
         
         // Настройка обработчиков кликов
         setupClickListeners();
@@ -164,6 +166,21 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
         // Клик по карточке друзей
         if (friendsCard != null) {
             friendsCard.setOnClickListener(v -> presenter.onFriendsClick());
+        }
+
+        if (audiosCard != null) {
+            audiosCard.setOnClickListener(v -> {
+                UserProfile profile = presenter.getCurrentProfile();
+                int targetId = isForeignProfile() ? userId : (profile != null ? profile.getId() : 0);
+                String name = profile != null ? profile.getFullName() : (userName != null ? userName : getString(R.string.profile_audios));
+                if (getActivity() instanceof org.nikanikoo.flux.ui.activities.MainActivity) {
+                    ((org.nikanikoo.flux.ui.activities.MainActivity) getActivity()).getNavigationController()
+                            .navigateToFragmentWithBackStack(
+                                    org.nikanikoo.flux.ui.fragments.media.MyMusicTabFragment.newInstance(targetId, name),
+                                    "user_audios"
+                            );
+                }
+            });
         }
     }
 

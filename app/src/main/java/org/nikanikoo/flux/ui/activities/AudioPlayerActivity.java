@@ -13,6 +13,7 @@ import android.view.GestureDetector;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
+import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.SeekBar;
@@ -57,9 +58,12 @@ public class AudioPlayerActivity extends AppCompatActivity implements AudioPlaye
     private TextView currentTime;
     private TextView totalTime;
     private SeekBar seekBar;
-    private ImageButton btnPlayPause;
+    private ImageView btnPlayPause;
     private ImageButton btnPrevious;
     private ImageButton btnNext;
+    private ImageButton btnShuffle;
+    private ImageButton btnRepeat;
+    private ImageButton btnLyrics;
     private ImageButton btnAddToLibrary;
 
     private AudioManager audioManager;
@@ -104,6 +108,10 @@ public class AudioPlayerActivity extends AppCompatActivity implements AudioPlaye
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        ThemeManager themeManager = ThemeManager.getInstance(this);
+        themeManager.applySavedTheme();
+        themeManager.applyThemeToActivity(this);
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_audio_player);
         
@@ -127,6 +135,9 @@ public class AudioPlayerActivity extends AppCompatActivity implements AudioPlaye
         btnPlayPause = findViewById(R.id.btn_play_pause);
         btnPrevious = findViewById(R.id.btn_previous);
         btnNext = findViewById(R.id.btn_next);
+        btnShuffle = findViewById(R.id.btn_shuffle);
+        btnRepeat = findViewById(R.id.btn_repeat);
+        btnLyrics = findViewById(R.id.btn_lyrics);
         btnAddToLibrary = findViewById(R.id.btn_add_to_library);
         drawerLayout = findViewById(R.id.drawer_layout);
         audioManager = AudioManager.getInstance(this);
@@ -235,6 +246,38 @@ public class AudioPlayerActivity extends AppCompatActivity implements AudioPlaye
         toolbar.setNavigationOnClickListener(v -> finish());
     }
 
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_audio_player, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.action_playlist) {
+            if (drawerLayout.isDrawerOpen(GravityCompat.END)) {
+                drawerLayout.closeDrawer(GravityCompat.END);
+            } else {
+                drawerLayout.openDrawer(GravityCompat.END);
+            }
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    private void showLyrics() {
+        if (!serviceBound || playerService == null || playerService.getCurrentAudio() == null) return;
+        Audio audio = playerService.getCurrentAudio();
+        org.nikanikoo.flux.ui.fragments.media.LyricsBottomSheetDialogFragment dialog =
+                org.nikanikoo.flux.ui.fragments.media.LyricsBottomSheetDialogFragment.newInstance(
+                        audio.getTitle(),
+                        audio.getArtist(),
+                        audio.getLyrics_id(),
+                        null
+                );
+        dialog.show(getSupportFragmentManager(), "audio_lyrics");
+    }
+
     private void setupControls() {
         btnPlayPause.setOnClickListener(v -> {
             if (serviceBound) {
@@ -257,6 +300,22 @@ public class AudioPlayerActivity extends AppCompatActivity implements AudioPlaye
                 playerService.next();
             }
         });
+
+        btnShuffle.setOnClickListener(v -> {
+            if (serviceBound) {
+                playerService.toggleShuffle();
+                updateShuffleButton();
+            }
+        });
+
+        btnRepeat.setOnClickListener(v -> {
+            if (serviceBound) {
+                playerService.toggleRepeatMode();
+                updateRepeatButton();
+            }
+        });
+
+        btnLyrics.setOnClickListener(v -> showLyrics());
 
         btnAddToLibrary.setOnClickListener(v -> toggleAddToLibrary());
 
@@ -305,23 +364,6 @@ public class AudioPlayerActivity extends AppCompatActivity implements AudioPlaye
         bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_audio_player, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == R.id.action_playlist) {
-            if (drawerLayout != null && !drawerLayout.isDrawerOpen(GravityCompat.END)) {
-                drawerLayout.openDrawer(GravityCompat.END);
-            }
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
-
     private void updateUI() {
         if (!serviceBound) return;
 
@@ -330,11 +372,14 @@ public class AudioPlayerActivity extends AppCompatActivity implements AudioPlaye
             trackTitle.setText(currentAudio.getTitle());
             trackArtist.setText(currentAudio.getArtist());
             loadAlbumArt(currentAudio.getArtist(), currentAudio.getTitle());
+            updateLyricsButton(currentAudio);
         }
 
         updatePlaylist();
         updatePlayPauseButton();
         updateAddToLibraryButton();
+        updateShuffleButton();
+        updateRepeatButton();
     }
 
     private void toggleAddToLibrary() {
@@ -477,9 +522,59 @@ public class AudioPlayerActivity extends AppCompatActivity implements AudioPlaye
             trackTitle.setText(audio.getTitle());
             trackArtist.setText(audio.getArtist());
             loadAlbumArt(audio.getArtist(), audio.getTitle());
+            updateLyricsButton(audio);
+            updateShuffleButton();
+            updateRepeatButton();
+            if (audio.getDuration() > 0) {
+                totalTime.setText(formatTime(audio.getDuration() * 1000));
+                seekBar.setMax(audio.getDuration() * 1000);
+            }
+            seekBar.setProgress(0);
+            currentTime.setText("0:00");
             updatePlaylist();
             updateAddToLibraryButton();
         });
+    }
+
+    private void updateLyricsButton(Audio audio) {
+        if (btnLyrics == null) return;
+        if (audio != null && audio.getLyrics_id() > 0) {
+            btnLyrics.setVisibility(View.VISIBLE);
+        } else {
+            btnLyrics.setVisibility(View.GONE);
+        }
+    }
+
+    private void updateShuffleButton() {
+        if (btnShuffle == null || !serviceBound || playerService == null) return;
+        boolean shuffle = playerService.isShuffle();
+        int color = getThemeColor(shuffle ? androidx.appcompat.R.attr.colorPrimary : com.google.android.material.R.attr.colorOnSurfaceVariant);
+        btnShuffle.setColorFilter(color);
+        btnShuffle.setAlpha(shuffle ? 1.0f : 0.5f);
+    }
+
+    private void updateRepeatButton() {
+        if (btnRepeat == null || !serviceBound || playerService == null) return;
+        int mode = playerService.getRepeatMode();
+        if (mode == AudioPlayerService.REPEAT_MODE_ONE) {
+            btnRepeat.setImageResource(R.drawable.ic_repeat_one);
+            btnRepeat.setColorFilter(getThemeColor(androidx.appcompat.R.attr.colorPrimary));
+            btnRepeat.setAlpha(1.0f);
+        } else if (mode == AudioPlayerService.REPEAT_MODE_ALL) {
+            btnRepeat.setImageResource(R.drawable.ic_repeat);
+            btnRepeat.setColorFilter(getThemeColor(androidx.appcompat.R.attr.colorPrimary));
+            btnRepeat.setAlpha(1.0f);
+        } else {
+            btnRepeat.setImageResource(R.drawable.ic_repeat);
+            btnRepeat.setColorFilter(getThemeColor(com.google.android.material.R.attr.colorOnSurfaceVariant));
+            btnRepeat.setAlpha(0.5f);
+        }
+    }
+
+    private int getThemeColor(int attrRes) {
+        android.util.TypedValue typedValue = new android.util.TypedValue();
+        getTheme().resolveAttribute(attrRes, typedValue, true);
+        return typedValue.data;
     }
 
     @Override

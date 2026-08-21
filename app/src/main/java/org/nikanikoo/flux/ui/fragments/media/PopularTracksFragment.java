@@ -228,6 +228,8 @@ public class PopularTracksFragment extends BaseFragment implements AudioAdapter.
                 4,
                 3,
                 audio.isAdded() ? R.string.audio_remove_from_library : R.string.audio_add_to_library);
+        popupMenu.getMenu().add(Menu.NONE, 5, 4, R.string.audio_lyrics);
+        popupMenu.getMenu().add(Menu.NONE, 6, 5, R.string.audio_add_to_playlist);
 
         popupMenu.setOnMenuItemClickListener(item -> {
             if (item.getItemId() == 1) {
@@ -249,9 +251,71 @@ public class PopularTracksFragment extends BaseFragment implements AudioAdapter.
                 onAddClick(audio, position);
                 return true;
             }
+            if (item.getItemId() == 5) {
+                LyricsBottomSheetDialogFragment dialog = LyricsBottomSheetDialogFragment.newInstance(
+                        audio.getTitle(),
+                        audio.getArtist(),
+                        audio.getLyrics_id(),
+                        null
+                );
+                dialog.show(getParentFragmentManager(), "audio_lyrics");
+                return true;
+            }
+            if (item.getItemId() == 6) {
+                showAddToPlaylistDialog(audio);
+                return true;
+            }
             return false;
         });
         popupMenu.show();
+    }
+
+    private void showAddToPlaylistDialog(Audio audio) {
+        audioManager.getPlaylists(0, 0, 50, new AudioManager.PlaylistsCallback() {
+            @Override
+            public void onSuccess(List<org.nikanikoo.flux.data.models.AudioPlaylist> playlists, int totalCount) {
+                if (!isAdded()) return;
+                requireActivity().runOnUiThread(() -> {
+                    if (playlists == null || playlists.isEmpty()) {
+                        Toast.makeText(requireContext(), R.string.audio_no_playlists, Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    String[] titles = new String[playlists.size()];
+                    for (int i = 0; i < playlists.size(); i++) {
+                        titles[i] = playlists.get(i).getTitle();
+                    }
+                    new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                            .setTitle(R.string.audio_select_playlist)
+                            .setItems(titles, (dialog, which) -> {
+                                org.nikanikoo.flux.data.models.AudioPlaylist playlist = playlists.get(which);
+                                audioManager.addTracksToPlaylist(playlist.getId(), String.valueOf(audio.getId()), new AudioManager.AudioActionCallback() {
+                                    @Override
+                                    public void onSuccess() {
+                                        if (!isAdded()) return;
+                                        requireActivity().runOnUiThread(() ->
+                                                Toast.makeText(requireContext(), R.string.audio_added_to_playlist, Toast.LENGTH_SHORT).show());
+                                    }
+
+                                    @Override
+                                    public void onError(String error) {
+                                        if (!isAdded()) return;
+                                        requireActivity().runOnUiThread(() ->
+                                                Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show());
+                                    }
+                                });
+                            })
+                            .setNegativeButton(android.R.string.cancel, null)
+                            .show();
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                if (!isAdded()) return;
+                requireActivity().runOnUiThread(() ->
+                        Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show());
+            }
+        });
     }
 
     private void downloadAudio(Audio audio, int position) {

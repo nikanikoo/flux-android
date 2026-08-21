@@ -1,17 +1,21 @@
 package org.nikanikoo.flux.ui.activities;
 
+import android.annotation.SuppressLint;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.graphics.Bitmap;
 import android.os.IBinder;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 
 import org.nikanikoo.flux.R;
@@ -31,13 +35,24 @@ public class MiniPlayerController {
     private final MainActivity activity;
     
     // Views
-    private LinearLayout miniPlayerContainer;
+    private View miniPlayerContainer;
+    private View miniPlayerCard;
     private ImageView miniPlayerIcon;
     private TextView miniPlayerTitle;
     private TextView miniPlayerArtist;
     private ImageButton miniPlayerPlayPause;
+    private ImageButton miniPlayerNext;
     private ImageButton miniPlayerStop;
     private LinearProgressIndicator miniPlayerProgress;
+
+    private View miniPlayerCardPreview;
+    private ImageView miniPlayerPreviewIcon;
+    private TextView miniPlayerPreviewTitle;
+    private TextView miniPlayerPreviewArtist;
+    private ImageButton miniPlayerPreviewPlayPause;
+    private ImageButton miniPlayerPreviewNext;
+    private ImageButton miniPlayerPreviewStop;
+    private LinearProgressIndicator miniPlayerPreviewProgress;
 
     private AlbumArtFetcher albumArtFetcher;
 
@@ -129,13 +144,37 @@ public class MiniPlayerController {
             miniPlayerView = rootView;
         }
 
-        miniPlayerContainer = (LinearLayout) miniPlayerView;
+        miniPlayerContainer = miniPlayerView;
+        miniPlayerCard = miniPlayerContainer.findViewById(R.id.mini_player_card);
         miniPlayerIcon = miniPlayerContainer.findViewById(R.id.mini_player_icon);
         miniPlayerTitle = miniPlayerContainer.findViewById(R.id.mini_player_title);
         miniPlayerArtist = miniPlayerContainer.findViewById(R.id.mini_player_artist);
         miniPlayerPlayPause = miniPlayerContainer.findViewById(R.id.mini_player_play_pause);
+        miniPlayerNext = miniPlayerContainer.findViewById(R.id.mini_player_next);
         miniPlayerStop = miniPlayerContainer.findViewById(R.id.mini_player_stop);
         miniPlayerProgress = miniPlayerContainer.findViewById(R.id.mini_player_progress);
+
+        miniPlayerCardPreview = miniPlayerContainer.findViewById(R.id.mini_player_card_preview);
+        if (miniPlayerCardPreview != null) {
+            miniPlayerPreviewIcon = miniPlayerCardPreview.findViewById(R.id.mini_player_preview_icon);
+            miniPlayerPreviewTitle = miniPlayerCardPreview.findViewById(R.id.mini_player_preview_title);
+            miniPlayerPreviewArtist = miniPlayerCardPreview.findViewById(R.id.mini_player_preview_artist);
+            miniPlayerPreviewPlayPause = miniPlayerCardPreview.findViewById(R.id.mini_player_preview_play_pause);
+            miniPlayerPreviewNext = miniPlayerCardPreview.findViewById(R.id.mini_player_preview_next);
+            miniPlayerPreviewStop = miniPlayerCardPreview.findViewById(R.id.mini_player_preview_stop);
+            miniPlayerPreviewProgress = miniPlayerCardPreview.findViewById(R.id.mini_player_preview_progress);
+
+            if (miniPlayerCard instanceof MaterialCardView && miniPlayerCardPreview instanceof MaterialCardView) {
+                MaterialCardView mainCard = (MaterialCardView) miniPlayerCard;
+                MaterialCardView previewCard = (MaterialCardView) miniPlayerCardPreview;
+                previewCard.setCardBackgroundColor(mainCard.getCardBackgroundColor());
+                previewCard.setStrokeColor(mainCard.getStrokeColorStateList());
+                previewCard.setStrokeWidth(mainCard.getStrokeWidth());
+                previewCard.setCardElevation(mainCard.getCardElevation());
+                previewCard.setMaxCardElevation(mainCard.getMaxCardElevation());
+                previewCard.setRadius(mainCard.getRadius());
+            }
+        }
 
         setupClickListeners();
     }
@@ -148,12 +187,208 @@ public class MiniPlayerController {
             miniPlayerPlayPause.setOnClickListener(v -> togglePlayPause());
         }
 
+        if (miniPlayerNext != null) {
+            miniPlayerNext.setOnClickListener(v -> {
+                if (playerServiceBound && playerService != null) {
+                    playerService.next();
+                }
+            });
+        }
+
         if (miniPlayerStop != null) {
             miniPlayerStop.setOnClickListener(v -> stopAudio());
         }
 
-        if (miniPlayerContainer != null) {
-            miniPlayerContainer.setOnClickListener(v -> openFullPlayer());
+        setupSwipeListener();
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private void setupSwipeListener() {
+        View targetView = miniPlayerCard != null ? miniPlayerCard : miniPlayerContainer;
+        if (targetView == null) return;
+
+        final float density = activity.getResources().getDisplayMetrics().density;
+        final float swipeThreshold = 52 * density;
+        final float swipeVelocityThreshold = 700 * density;
+
+        GestureDetector.SimpleOnGestureListener gestureListener = new GestureDetector.SimpleOnGestureListener() {
+            @Override
+            public boolean onSingleTapConfirmed(MotionEvent e) {
+                openFullPlayer();
+                return true;
+            }
+
+            @Override
+            public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+                if (e1 == null || e2 == null) return false;
+                float diffX = e2.getX() - e1.getX();
+                float diffY = e2.getY() - e1.getY();
+                if (Math.abs(diffX) > Math.abs(diffY)) {
+                    if (Math.abs(diffX) > 20 * density && Math.abs(velocityX) > swipeVelocityThreshold) {
+                        finishSwipe(diffX < 0);
+                        return true;
+                    }
+                }
+                return false;
+            }
+        };
+
+        GestureDetector gestureDetector = new GestureDetector(activity, gestureListener);
+
+        targetView.setOnTouchListener(new View.OnTouchListener() {
+            private float downX = 0f;
+            private float downY = 0f;
+            private boolean isDragging = false;
+            private Boolean lastDragDirection = null; // true = next (left), false = prev (right)
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                if (gestureDetector.onTouchEvent(event)) {
+                    return true;
+                }
+
+                float cardWidth = v.getWidth() > 0 ? v.getWidth() : (activity.getResources().getDisplayMetrics().widthPixels - 24 * density);
+
+                switch (event.getActionMasked()) {
+                    case MotionEvent.ACTION_DOWN:
+                        downX = event.getRawX();
+                        downY = event.getRawY();
+                        isDragging = false;
+                        lastDragDirection = null;
+                        break;
+
+                    case MotionEvent.ACTION_MOVE:
+                        float deltaX = event.getRawX() - downX;
+                        float deltaY = event.getRawY() - downY;
+                        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 6 * density) {
+                            if (!isDragging) {
+                                isDragging = true;
+                                v.setPressed(false);
+                                v.cancelPendingInputEvents();
+                            }
+                            boolean draggingNext = deltaX < 0;
+
+                            if (lastDragDirection == null || lastDragDirection != draggingNext) {
+                                lastDragDirection = draggingNext;
+                                preparePreviewCard(draggingNext);
+                            }
+
+                            v.setTranslationX(deltaX);
+
+                            if (miniPlayerCardPreview != null && miniPlayerCardPreview.getVisibility() == View.VISIBLE) {
+                                float previewOffset = draggingNext ? (cardWidth + deltaX + 16 * density) : (-cardWidth + deltaX - 16 * density);
+                                miniPlayerCardPreview.setTranslationX(previewOffset);
+                            }
+                        }
+                        break;
+
+                    case MotionEvent.ACTION_UP:
+                    case MotionEvent.ACTION_CANCEL:
+                        v.setPressed(false);
+                        float totalDeltaX = event.getRawX() - downX;
+                        if (isDragging) {
+                            if (totalDeltaX < -swipeThreshold) {
+                                finishSwipe(true);
+                            } else if (totalDeltaX > swipeThreshold) {
+                                finishSwipe(false);
+                            } else {
+                                cancelSwipe(cardWidth, lastDragDirection != null && lastDragDirection);
+                            }
+                            isDragging = false;
+                            return true;
+                        } else {
+                            v.animate().translationX(0f).setDuration(150).start();
+                            if (miniPlayerCardPreview != null) {
+                                miniPlayerCardPreview.setVisibility(View.GONE);
+                            }
+                        }
+                        break;
+                }
+                return false;
+            }
+        });
+    }
+
+    private void preparePreviewCard(boolean isNext) {
+        if (miniPlayerCardPreview == null || !playerServiceBound || playerService == null) return;
+        Audio previewTrack = isNext ? playerService.getNextAudio() : playerService.getPreviousAudio();
+        if (previewTrack == null) {
+            miniPlayerCardPreview.setVisibility(View.GONE);
+            return;
+        }
+
+        if (miniPlayerPreviewTitle != null) {
+            miniPlayerPreviewTitle.setText(previewTrack.getTitle());
+        }
+        if (miniPlayerPreviewArtist != null) {
+            miniPlayerPreviewArtist.setText(previewTrack.getArtist());
+        }
+        if (miniPlayerPreviewPlayPause != null) {
+            miniPlayerPreviewPlayPause.setImageResource(playerService.isPlaying() ? R.drawable.ic_pause : R.drawable.ic_play);
+        }
+        if (miniPlayerPreviewProgress != null) {
+            miniPlayerPreviewProgress.setProgress(0);
+        }
+        loadAlbumArt(previewTrack.getArtist(), previewTrack.getTitle(), miniPlayerPreviewIcon);
+
+        miniPlayerCardPreview.setVisibility(View.VISIBLE);
+        miniPlayerCardPreview.setAlpha(1.0f);
+    }
+
+    private void finishSwipe(boolean isNext) {
+        if (miniPlayerCard == null || !playerServiceBound || playerService == null) return;
+
+        float density = activity.getResources().getDisplayMetrics().density;
+        float cardWidth = miniPlayerCard.getWidth() > 0 ? miniPlayerCard.getWidth() : (activity.getResources().getDisplayMetrics().widthPixels - 24 * density);
+        float exitTarget = isNext ? (-cardWidth - 24 * density) : (cardWidth + 24 * density);
+
+        miniPlayerCard.animate()
+                .translationX(exitTarget)
+                .alpha(0.2f)
+                .setDuration(180)
+                .start();
+
+        if (miniPlayerCardPreview != null && miniPlayerCardPreview.getVisibility() == View.VISIBLE) {
+            miniPlayerCardPreview.animate()
+                    .translationX(0f)
+                    .alpha(1.0f)
+                    .setDuration(180)
+                    .withEndAction(() -> {
+                        if (isNext) {
+                            playerService.next();
+                        } else {
+                            playerService.previous();
+                        }
+                        miniPlayerCard.setTranslationX(0f);
+                        miniPlayerCard.setAlpha(1.0f);
+                        miniPlayerCard.setPressed(false);
+                        miniPlayerCardPreview.setVisibility(View.GONE);
+                    })
+                    .start();
+        } else {
+            if (isNext) {
+                playerService.next();
+            } else {
+                playerService.previous();
+            }
+            miniPlayerCard.setTranslationX(0f);
+            miniPlayerCard.setAlpha(1.0f);
+            miniPlayerCard.setPressed(false);
+        }
+    }
+
+    private void cancelSwipe(float cardWidth, boolean isNext) {
+        if (miniPlayerCard != null) {
+            miniPlayerCard.setPressed(false);
+            miniPlayerCard.animate().translationX(0f).alpha(1.0f).setDuration(200).start();
+        }
+        if (miniPlayerCardPreview != null && miniPlayerCardPreview.getVisibility() == View.VISIBLE) {
+            float resetX = isNext ? (cardWidth + 20) : (-cardWidth - 20);
+            miniPlayerCardPreview.animate()
+                    .translationX(resetX)
+                    .setDuration(200)
+                    .withEndAction(() -> miniPlayerCardPreview.setVisibility(View.GONE))
+                    .start();
         }
     }
     
@@ -255,15 +490,19 @@ public class MiniPlayerController {
     }
 
     private void loadAlbumArt(String artist, String title) {
-        if (miniPlayerIcon == null || artist == null || title == null || 
+        loadAlbumArt(artist, title, miniPlayerIcon);
+    }
+
+    private void loadAlbumArt(String artist, String title, ImageView targetView) {
+        if (targetView == null || artist == null || title == null || 
             artist.isEmpty() || title.isEmpty()) {
-            if (miniPlayerIcon != null) {
-                miniPlayerIcon.setImageResource(R.drawable.ic_music_note);
+            if (targetView != null) {
+                targetView.setImageResource(R.drawable.ic_music_note);
             }
             return;
         }
 
-        albumArtFetcher.loadAlbumArt(artist, title, miniPlayerIcon, R.drawable.ic_music_note);
+        albumArtFetcher.loadAlbumArt(artist, title, targetView, R.drawable.ic_music_note);
     }
     
     /**

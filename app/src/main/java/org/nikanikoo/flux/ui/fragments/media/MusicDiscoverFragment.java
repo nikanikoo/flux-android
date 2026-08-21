@@ -127,6 +127,13 @@ public class MusicDiscoverFragment extends BaseFragment {
 
         setupRecyclerViews();
 
+        androidx.core.widget.NestedScrollView nestedScrollView = view.findViewById(R.id.nested_scroll_discover);
+        if (nestedScrollView != null) {
+            nestedScrollView.setOnScrollChangeListener((androidx.core.widget.NestedScrollView.OnScrollChangeListener) (v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
+                swipeRefresh.setEnabled(scrollY == 0);
+            });
+        }
+
         swipeRefresh.setOnRefreshListener(() -> {
             loadAllSections(false);
         });
@@ -152,8 +159,54 @@ public class MusicDiscoverFragment extends BaseFragment {
         if (item.getItemId() == R.id.action_search) {
             openSearchFragment();
             return true;
+        } else if (item.getItemId() == R.id.action_create_playlist) {
+            showCreatePlaylistDialog();
+            return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void showCreatePlaylistDialog() {
+        android.widget.LinearLayout layout = new android.widget.LinearLayout(requireContext());
+        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+        layout.setPadding(48, 16, 48, 16);
+
+        final android.widget.EditText inputTitle = new android.widget.EditText(requireContext());
+        inputTitle.setHint(R.string.audio_title_hint);
+        layout.addView(inputTitle);
+
+        final android.widget.EditText inputDesc = new android.widget.EditText(requireContext());
+        inputDesc.setHint(R.string.profile_info_desc);
+        layout.addView(inputDesc);
+
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle(R.string.audio_create_playlist)
+                .setView(layout)
+                .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                    String title = inputTitle.getText().toString().trim();
+                    String desc = inputDesc.getText().toString().trim();
+                    if (title.isEmpty()) return;
+
+                    audioManager.createPlaylist(title, desc, 0, new AudioManager.CreatePlaylistCallback() {
+                        @Override
+                        public void onSuccess(int playlistId) {
+                            if (!isAdded()) return;
+                            requireActivity().runOnUiThread(() -> {
+                                Toast.makeText(requireContext(), R.string.audio_playlist_created, Toast.LENGTH_SHORT).show();
+                                loadMyPlaylists();
+                            });
+                        }
+
+                        @Override
+                        public void onError(String error) {
+                            if (!isAdded()) return;
+                            requireActivity().runOnUiThread(() ->
+                                    Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show());
+                        }
+                    });
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
     }
 
     @Override
@@ -168,7 +221,18 @@ public class MusicDiscoverFragment extends BaseFragment {
         GridLayoutManager recentlyPlayedLM = new GridLayoutManager(requireContext(), 3, GridLayoutManager.HORIZONTAL, false);
         recyclerRecentlyPlayed.setLayoutManager(recentlyPlayedLM);
         recentlyPlayedAdapter = new RecentlyPlayedAdapter(recentlyPlayedItems, item -> {
-            if ("playlist".equals(item.type)) {
+            if ("track".equals(item.type)) {
+                Audio audio = new Audio();
+                audio.setId(item.id);
+                audio.setOwnerId(item.ownerId);
+                audio.setTitle(item.title);
+                audio.setArtist(item.creatorName);
+                audio.setUrl(item.coverUrl);
+                audio.setDuration(item.duration);
+                List<Audio> singleList = new ArrayList<>();
+                singleList.add(audio);
+                startAudioPlayer(singleList, 0);
+            } else if ("playlist".equals(item.type)) {
                 openPlaylistDetails(item.id, item.ownerId, item.title, item.coverUrl, item.creatorName);
             } else {
                 openArtistTracks(item.title);
@@ -189,7 +253,6 @@ public class MusicDiscoverFragment extends BaseFragment {
             @Override
             public void onTrackClick(Audio audio, int position) {
                 System.out.println("MusicDiscoverFragment: Popular onTrackClick clicked position=" + position + " title=" + audio.getTitle());
-                RecentlyPlayedManager.getInstance(requireContext()).addArtist(audio.getArtist());
                 startAudioPlayer(popularTracksList, position);
             }
 
@@ -206,7 +269,6 @@ public class MusicDiscoverFragment extends BaseFragment {
             @Override
             public void onTrackClick(Audio audio, int position) {
                 System.out.println("MusicDiscoverFragment: New Tracks onTrackClick clicked position=" + position + " title=" + audio.getTitle());
-                RecentlyPlayedManager.getInstance(requireContext()).addArtist(audio.getArtist());
                 startAudioPlayer(newTracksList, position);
             }
 
@@ -223,7 +285,6 @@ public class MusicDiscoverFragment extends BaseFragment {
             @Override
             public void onTrackClick(Audio audio, int position) {
                 System.out.println("MusicDiscoverFragment: Long Tracks onTrackClick clicked position=" + position + " title=" + audio.getTitle());
-                RecentlyPlayedManager.getInstance(requireContext()).addArtist(audio.getArtist());
                 startAudioPlayer(longTracksList, position);
             }
 

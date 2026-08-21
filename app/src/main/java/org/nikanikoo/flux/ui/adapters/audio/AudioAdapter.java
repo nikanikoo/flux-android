@@ -95,8 +95,8 @@ public class AudioAdapter extends RecyclerView.Adapter<AudioAdapter.AudioViewHol
             moreButton.setImageResource(R.drawable.ic_more_vert);
             moreButton.setContentDescription(itemView.getContext().getString(R.string.audio_more));
 
-            audioCard.setOnClickListener(v -> {
-                System.out.println("AudioAdapter: audioCard CLICKED");
+            itemView.setOnClickListener(v -> {
+                System.out.println("AudioAdapter: audio item CLICKED");
                 dispatchPosition((currentAudio, position) ->
                         listener.onPlayClick(currentAudio, position));
             });
