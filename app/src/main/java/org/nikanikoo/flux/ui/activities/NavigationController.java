@@ -233,11 +233,9 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
                 int x = location[0] + v.getWidth() / 2;
                 int y = location[1] + v.getHeight() / 2;
 
-                Bitmap screenshot = ThemeTransitionHelper.takeScreenshot(activity);
-                ThemeTransitionHelper.setTransitionData(screenshot, x, y, isDrawerOpen());
-                themeManager.setThemeMode(newMode);
-                activity.recreate();
-                activity.overridePendingTransition(0, 0);
+                ThemeTransitionHelper.captureAndSwitchTheme(activity, x, y, isDrawerOpen(), () -> {
+                    themeManager.setThemeMode(newMode);
+                });
             });
         }
     }
@@ -288,6 +286,7 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
                     .load(profile.getPhoto200())
                     .placeholder(R.drawable.camera_200)
                     .error(R.drawable.camera_200)
+                    .transform(new org.nikanikoo.flux.ui.custom.CircularImageTransformation())
                     .into(drawerAvatar);
         }
     }
@@ -460,8 +459,10 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
     }
 
     public void navigateToDrawerItem(int id) {
-        // Предотвращаем повторное открытие текущего фрагмента
         if (id == currentFragmentId) {
+            if (activity.getSupportFragmentManager().getBackStackEntryCount() > 0) {
+                activity.getSupportFragmentManager().popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
+            }
             closeDrawer();
             return;
         }

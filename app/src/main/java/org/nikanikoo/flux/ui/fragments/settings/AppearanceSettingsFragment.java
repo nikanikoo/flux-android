@@ -66,16 +66,21 @@ public class AppearanceSettingsFragment extends Fragment {
         ALL_SECTIONS.add(new NavSectionMeta("drawer_notes", R.string.nav_notes, R.drawable.ic_note_stack));
     }
 
+    public static final String KEY_START_SECTION = "start_section";
+    public static final String DEFAULT_START_SECTION = "drawer_news";
+
     private ThemeManager themeManager;
     private TextView themeModeValue;
     private TextView colorSchemeValue;
     private TextView contrastValue;
     private TextView navigationModeValue;
+    private TextView navigationStartSectionValue;
     private TextView navigationSectionsValue;
     private View settingsThemeMode;
     private View settingsColorScheme;
     private View settingsContrast;
     private View settingsNavigationMode;
+    private View settingsNavigationStartSection;
     private View settingsNavigationSections;
     private SwitchMaterial switchNavigationLabels;
 
@@ -98,6 +103,7 @@ public class AppearanceSettingsFragment extends Fragment {
         colorSchemeValue = view.findViewById(R.id.color_scheme_value);
         contrastValue = view.findViewById(R.id.contrast_value);
         navigationModeValue = view.findViewById(R.id.navigation_mode_value);
+        navigationStartSectionValue = view.findViewById(R.id.navigation_start_section_value);
         navigationSectionsValue = view.findViewById(R.id.navigation_sections_value);
         switchNavigationLabels = view.findViewById(R.id.switch_navigation_labels);
         
@@ -105,6 +111,7 @@ public class AppearanceSettingsFragment extends Fragment {
         settingsColorScheme = view.findViewById(R.id.settings_color_scheme);
         settingsContrast = view.findViewById(R.id.settings_contrast);
         settingsNavigationMode = view.findViewById(R.id.settings_navigation_mode);
+        settingsNavigationStartSection = view.findViewById(R.id.settings_navigation_start_section);
         settingsNavigationSections = view.findViewById(R.id.settings_navigation_sections);
     }
     
@@ -113,6 +120,7 @@ public class AppearanceSettingsFragment extends Fragment {
         settingsColorScheme.setOnClickListener(v -> showColorSchemeDialog());
         settingsContrast.setOnClickListener(v -> showContrastDialog());
         settingsNavigationMode.setOnClickListener(v -> showNavigationModeDialog());
+        settingsNavigationStartSection.setOnClickListener(v -> showStartSectionDialog());
         settingsNavigationSections.setOnClickListener(v -> showNavigationSectionsDialog());
         switchNavigationLabels.setOnCheckedChangeListener((buttonView, isChecked) -> {
             requireContext().getSharedPreferences(
@@ -139,6 +147,9 @@ public class AppearanceSettingsFragment extends Fragment {
         navigationModeValue.setText(getString(
                 isBottomNav ? R.string.navigation_style_bottom : R.string.navigation_style_drawer));
         
+        String startSectionTag = prefs.getString(KEY_START_SECTION, DEFAULT_START_SECTION);
+        navigationStartSectionValue.setText(getSectionNameForTag(startSectionTag));
+
         switchNavigationLabels.setChecked(prefs.getBoolean(MenuDashboardFragment.KEY_BOTTOM_NAV_LABELS, true));
         switchNavigationLabels.setEnabled(isBottomNav);
         
@@ -157,6 +168,53 @@ public class AppearanceSettingsFragment extends Fragment {
             settingsNavigationSections.setEnabled(false);
             settingsNavigationSections.setAlpha(0.6f);
         }
+    }
+
+    private String getSectionNameForTag(String tag) {
+        if ("drawer_menu_dashboard".equals(tag)) {
+            return getString(R.string.navigation_menu_title);
+        }
+        for (NavSectionMeta meta : ALL_SECTIONS) {
+            if (meta.tag.equals(tag)) {
+                return getString(meta.nameResId);
+            }
+        }
+        return getString(R.string.nav_news);
+    }
+
+    private void showStartSectionDialog() {
+        SharedPreferences prefs = requireContext().getSharedPreferences(
+                MenuDashboardFragment.PREFS_NAME, Context.MODE_PRIVATE);
+        String currentStartSection = prefs.getString(KEY_START_SECTION, DEFAULT_START_SECTION);
+
+        List<NavSectionMeta> startSections = new ArrayList<>(ALL_SECTIONS);
+        startSections.add(new NavSectionMeta("drawer_menu_dashboard", R.string.navigation_menu_title, R.drawable.ic_menu));
+
+        String[] names = new String[startSections.size()];
+        int selectedIndex = 0;
+        for (int i = 0; i < startSections.size(); i++) {
+            names[i] = getString(startSections.get(i).nameResId);
+            if (startSections.get(i).tag.equals(currentStartSection)) {
+                selectedIndex = i;
+            }
+        }
+
+        final int[] checkedItem = {selectedIndex};
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(getString(R.string.navigation_start_section_title))
+                .setSingleChoiceItems(names, selectedIndex, (dialog, which) -> {
+                    checkedItem[0] = which;
+                })
+                .setPositiveButton(getString(R.string.apply), (dialog, which) -> {
+                    if (checkedItem[0] >= 0 && checkedItem[0] < startSections.size()) {
+                        String selectedTag = startSections.get(checkedItem[0]).tag;
+                        prefs.edit().putString(KEY_START_SECTION, selectedTag).apply();
+                        updateThemeValues();
+                    }
+                })
+                .setNegativeButton(getString(R.string.cancel), null)
+                .show();
     }
     
     private void showThemeModeDialog() {

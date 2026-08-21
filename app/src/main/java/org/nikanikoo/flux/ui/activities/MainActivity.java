@@ -153,12 +153,30 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
                             getSupportFragmentManager().getBackStackEntryAt(backStackCount - 1);
                     if (topEntry != null && topEntry.getName() != null) {
                         String name = topEntry.getName();
-                        if ("settings".equals(name)) {
+                        if ("settings".equals(name) || "appearance_settings".equals(name)) {
                             setToolbarTitle(getString(R.string.nav_settings));
                         } else if ("profile".equals(name)) {
                             setToolbarTitle(getString(R.string.nav_profile));
                         } else if ("notifications".equals(name)) {
                             setToolbarTitle(getString(R.string.nav_notifications));
+                        } else if ("news".equals(name)) {
+                            setToolbarTitle(getString(R.string.nav_news));
+                        } else if ("messages".equals(name)) {
+                            setToolbarTitle(getString(R.string.nav_messages));
+                        } else if ("friends".equals(name)) {
+                            setToolbarTitle(getString(R.string.nav_friends));
+                        } else if ("groups".equals(name)) {
+                            setToolbarTitle(getString(R.string.nav_groups));
+                        } else if ("photos".equals(name)) {
+                            setToolbarTitle(getString(R.string.nav_photos));
+                        } else if ("videos".equals(name)) {
+                            setToolbarTitle(getString(R.string.nav_videos));
+                        } else if ("music".equals(name)) {
+                            setToolbarTitle(getString(R.string.nav_music));
+                        } else if ("notes".equals(name)) {
+                            setToolbarTitle(getString(R.string.nav_notes));
+                        } else if ("menu_dashboard".equals(name)) {
+                            setToolbarTitle(getString(R.string.navigation_menu_title));
                         }
                     }
                 }
@@ -331,8 +349,11 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
                     "settings");
             navigationController.setCurrentFragmentId(R.id.drawer_settings);
         } else {
-            navigationController.navigateToFragment(new NewsFragment(), "news");
-            navigationController.setCurrentFragmentId(R.id.drawer_news);
+            String startSectionTag = getSharedPreferences(MenuDashboardFragment.PREFS_NAME, Context.MODE_PRIVATE)
+                    .getString(org.nikanikoo.flux.ui.fragments.settings.AppearanceSettingsFragment.KEY_START_SECTION,
+                            org.nikanikoo.flux.ui.fragments.settings.AppearanceSettingsFragment.DEFAULT_START_SECTION);
+            int drawerId = MenuDashboardFragment.getDrawerIdForTag(startSectionTag);
+            navigationController.navigateToDrawerItem(drawerId);
         }
     }
     

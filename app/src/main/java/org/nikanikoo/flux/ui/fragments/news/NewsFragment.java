@@ -168,6 +168,12 @@ public class NewsFragment extends BaseFragment implements PostAdapter.OnPostClic
         super.onSaveInstanceState(outState);
         outState.putBoolean("has_loaded_posts", hasLoadedPosts);
     }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        setupToolbarTitle();
+    }
     
     private void setupToolbarTitle() {
         if (getActivity() instanceof MainActivity) {

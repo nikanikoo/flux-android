@@ -657,5 +657,7 @@
     <string name="navigation_bottom_nav_disabled_hint">Available only when bottom menu is enabled</string>
     <string name="navigation_go_to_profile">Go to profile</string>
     <string name="drag_handle_description">Drag to reorder</string>
+    <string name="navigation_start_section_title">Start section</string>
+    <string name="navigation_start_section_desc">Section to open when starting the application</string>
 
 </resources>

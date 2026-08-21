@@ -162,17 +162,19 @@ public class MenuDashboardFragment extends Fragment {
             }
         }
 
-        Bitmap screenshot = ThemeTransitionHelper.takeScreenshot(getActivity());
-        ThemeTransitionHelper.setTransitionData(screenshot, x, y);
-        themeManager.setThemeMode(newMode);
-        getActivity().recreate();
-        getActivity().overridePendingTransition(0, 0);
+        ThemeTransitionHelper.captureAndSwitchTheme(getActivity(), x, y, false, () -> {
+            themeManager.setThemeMode(newMode);
+        });
     }
 
     @Override
     public void onResume() {
         super.onResume();
         updateCardsVisibility();
+        MainActivity mainActivity = (MainActivity) getActivity();
+        if (mainActivity != null && mainActivity.getSupportFragmentManager().getBackStackEntryCount() == 0) {
+            mainActivity.setToolbarTitle(getString(R.string.navigation_menu_title));
+        }
     }
 
     private void initViews(View view) {
@@ -199,14 +201,96 @@ public class MenuDashboardFragment extends Fragment {
 
     private void setupRecyclerView() {
         sectionsRecycler.setLayoutManager(new GridLayoutManager(requireContext(), 2));
-        adapter = new MenuDashboardAdapter(displayedNavItems, item -> navigateToDrawerItem(item.tag));
+        adapter = new MenuDashboardAdapter(displayedNavItems, item -> navigateToSection(item.tag));
         sectionsRecycler.setAdapter(adapter);
     }
 
-    private void navigateToDrawerItem(String tag) {
+    private void navigateToSection(String tag) {
         MainActivity mainActivity = (MainActivity) getActivity();
-        if (mainActivity != null && mainActivity.getNavigationController() != null) {
-            mainActivity.getNavigationController().navigateToDrawerItem(getDrawerIdForTag(tag));
+        if (mainActivity == null || mainActivity.getNavigationController() == null) return;
+
+        Fragment fragment = createFragmentForTag(tag);
+        if (fragment != null) {
+            String backStackTag = getBackStackTagForNavTag(tag);
+            mainActivity.getNavigationController().navigateToFragmentWithBackStack(fragment, backStackTag);
+            mainActivity.setToolbarTitle(getString(getNameResForTag(tag)));
+        }
+    }
+
+    public static Fragment createFragmentForTag(String tag) {
+        switch (tag) {
+            case "drawer_news":
+                return new org.nikanikoo.flux.ui.fragments.news.NewsFragment();
+            case "drawer_messages":
+                return new org.nikanikoo.flux.ui.fragments.messages.MessagesListFragment();
+            case "drawer_friends":
+                return new org.nikanikoo.flux.ui.fragments.friends.FriendsListFragment();
+            case "drawer_groups":
+                return new org.nikanikoo.flux.ui.fragments.groups.GroupsListFragment();
+            case "drawer_photos":
+                return new org.nikanikoo.flux.ui.fragments.media.PhotosFragment();
+            case "drawer_videos":
+                return new org.nikanikoo.flux.ui.fragments.media.VideoListFragment();
+            case "drawer_audio":
+                return new org.nikanikoo.flux.ui.fragments.media.MusicListFragment();
+            case "drawer_notes":
+                return new org.nikanikoo.flux.ui.fragments.notes.NotesFragment();
+            case "drawer_settings":
+                return new org.nikanikoo.flux.ui.fragments.settings.SettingsFragment();
+            default:
+                return null;
+        }
+    }
+
+    public static String getBackStackTagForNavTag(String tag) {
+        switch (tag) {
+            case "drawer_news":
+                return "news";
+            case "drawer_messages":
+                return "messages";
+            case "drawer_friends":
+                return "friends";
+            case "drawer_groups":
+                return "groups";
+            case "drawer_photos":
+                return "photos";
+            case "drawer_videos":
+                return "videos";
+            case "drawer_audio":
+                return "music";
+            case "drawer_notes":
+                return "notes";
+            case "drawer_settings":
+                return "settings";
+            default:
+                return tag;
+        }
+    }
+
+    public static int getNameResForTag(String tag) {
+        switch (tag) {
+            case "drawer_news":
+                return R.string.nav_news;
+            case "drawer_messages":
+                return R.string.nav_messages;
+            case "drawer_friends":
+                return R.string.nav_friends;
+            case "drawer_groups":
+                return R.string.nav_groups;
+            case "drawer_photos":
+                return R.string.nav_photos;
+            case "drawer_videos":
+                return R.string.nav_videos;
+            case "drawer_audio":
+                return R.string.nav_music;
+            case "drawer_notes":
+                return R.string.nav_notes;
+            case "drawer_settings":
+                return R.string.nav_settings;
+            case "drawer_menu_dashboard":
+                return R.string.navigation_menu_title;
+            default:
+                return R.string.nav_news;
         }
     }
 
@@ -302,6 +386,7 @@ public class MenuDashboardFragment extends Fragment {
                     .load(profile.getPhoto200())
                     .placeholder(R.drawable.camera_200)
                     .error(R.drawable.camera_200)
+                    .transform(new org.nikanikoo.flux.ui.custom.CircularImageTransformation())
                     .into(profileAvatar);
         }
     }
