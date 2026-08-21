@@ -197,6 +197,7 @@
     <string name="comments_cannot_load">Невозможно загрузить комментарии</string>
     <string name="comments_updated">Комментарии обновлены</string>
     <string name="comments_added">Комментарий отправлен</string>
+    <string name="comments_empty">Комментариев пока нет</string>
     <string name="comments_image_selected">Изображение выбрано</string>
     <string name="comments_post_not_found">Ошибка: пост не найден</string>
 
@@ -294,6 +295,24 @@
     <string name="album_fill_title_error">Введите название альбома</string>
     <string name="album_created_success">Альбом создан</string>
     <string name="album_updated_success">Альбом обновлён</string>
+    <string name="album_delete_title">Удалить альбом</string>
+    <string name="album_delete_confirm">Вы уверены, что хотите удалить альбом «%s»? Все фотографии в нём будут удалены.</string>
+    <string name="album_deleted_success">Альбом удалён</string>
+    <string name="photo_upload_title">Загрузить фотографию</string>
+    <string name="photo_upload_btn">Загрузить</string>
+    <string name="photo_caption_hint">Описание (необязательно)</string>
+    <string name="photo_uploading">Загрузка фотографии...</string>
+    <string name="photo_uploaded_success">Фотография загружена</string>
+    <string name="photo_upload_error">Ошибка загрузки фотографии</string>
+    <string name="photo_delete_title">Удалить фотографию</string>
+    <string name="photo_delete_confirm">Вы уверены, что хотите удалить эту фотографию?</string>
+    <string name="photo_deleted_success">Фотография удалена</string>
+    <string name="photo_edit_caption_title">Редактировать описание</string>
+    <string name="photo_caption_updated">Описание обновлено</string>
+    <string name="photo_action_edit">Редактировать</string>
+    <string name="photo_action_delete">Удалить</string>
+    <string name="photo_comments_title">Комментарии к фото</string>
+    <string name="all_photos_title">Все фотографии</string>
 
 
     <!-- Videos -->

@@ -30,6 +30,8 @@ import org.nikanikoo.flux.ui.fragments.friends.UserFriendsFragment;
 import org.nikanikoo.flux.ui.fragments.messages.ChatFragment;
 import org.nikanikoo.flux.utils.Logger;
 
+import org.nikanikoo.flux.ui.fragments.media.PhotosFragment;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -56,6 +58,7 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
     private MaterialButton btnEditProfile;
     private LinearLayout editProfileContainer;
     private CardView friendsCard;
+    private CardView photosCard;
     
     // State
     private boolean isDetailsExpanded = false;
@@ -127,6 +130,7 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
         btnEditProfile = view.findViewById(R.id.btn_edit_profile);
         editProfileContainer = view.findViewById(R.id.edit_profile_container);
         friendsCard = view.findViewById(R.id.friends_card);
+        photosCard = view.findViewById(R.id.photos_card);
         
         // Настройка обработчиков кликов
         setupClickListeners();
@@ -164,6 +168,11 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
         // Клик по карточке друзей
         if (friendsCard != null) {
             friendsCard.setOnClickListener(v -> presenter.onFriendsClick());
+        }
+
+        // Клик по карточке фотографий
+        if (photosCard != null) {
+            photosCard.setOnClickListener(v -> presenter.onPhotosClick());
         }
     }
 
@@ -321,6 +330,19 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
         getActivity().getSupportFragmentManager().beginTransaction()
                 .replace(R.id.fragment_container, friendsFragment)
                 .addToBackStack("friends_" + userId)
+                .commit();
+    }
+
+    @Override
+    public void navigateToPhotos(int userId, String userName) {
+        if (getActivity() == null) {
+            return;
+        }
+
+        PhotosFragment photosFragment = PhotosFragment.newInstance(userId, userName);
+        getActivity().getSupportFragmentManager().beginTransaction()
+                .replace(R.id.fragment_container, photosFragment)
+                .addToBackStack("photos_" + userId)
                 .commit();
     }
 

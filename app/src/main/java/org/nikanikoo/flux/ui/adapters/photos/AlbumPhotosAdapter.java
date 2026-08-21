@@ -22,12 +22,21 @@ public class AlbumPhotosAdapter extends RecyclerView.Adapter<AlbumPhotosAdapter.
         void onPhotoClick(Photo photo, int position);
     }
 
+    public interface OnPhotoLongClickListener {
+        void onPhotoLongClick(Photo photo, int position);
+    }
+
     private final List<Photo> photos;
     private final OnPhotoClickListener listener;
+    private OnPhotoLongClickListener longClickListener;
 
     public AlbumPhotosAdapter(List<Photo> photos, OnPhotoClickListener listener) {
         this.photos = photos;
         this.listener = listener;
+    }
+
+    public void setOnPhotoLongClickListener(OnPhotoLongClickListener longClickListener) {
+        this.longClickListener = longClickListener;
     }
 
     @NonNull
@@ -87,6 +96,14 @@ public class AlbumPhotosAdapter extends RecyclerView.Adapter<AlbumPhotosAdapter.
 
             itemView.setOnClickListener(v -> {
                 if (listener != null) listener.onPhotoClick(photo, position);
+            });
+
+            itemView.setOnLongClickListener(v -> {
+                if (longClickListener != null) {
+                    longClickListener.onPhotoLongClick(photo, position);
+                    return true;
+                }
+                return false;
             });
         }
     }

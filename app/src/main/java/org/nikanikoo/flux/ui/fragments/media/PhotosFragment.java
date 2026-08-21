@@ -51,6 +51,29 @@ public class PhotosFragment extends BaseFragment implements AlbumsAdapter.OnAlbu
     private ProfileManager profileManager;
     private final List<Album> albums = new ArrayList<>();
     private int currentUserId = 0;
+    private int targetOwnerId = 0;
+    private String ownerTitle = null;
+
+    private static final String ARG_OWNER_ID = "owner_id";
+    private static final String ARG_OWNER_TITLE = "owner_title";
+
+    public static PhotosFragment newInstance(int ownerId, String ownerTitle) {
+        PhotosFragment fragment = new PhotosFragment();
+        Bundle args = new Bundle();
+        args.putInt(ARG_OWNER_ID, ownerId);
+        args.putString(ARG_OWNER_TITLE, ownerTitle);
+        fragment.setArguments(args);
+        return fragment;
+    }
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        if (getArguments() != null) {
+            targetOwnerId = getArguments().getInt(ARG_OWNER_ID, 0);
+            ownerTitle = getArguments().getString(ARG_OWNER_TITLE, null);
+        }
+    }
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
@@ -69,7 +92,12 @@ public class PhotosFragment extends BaseFragment implements AlbumsAdapter.OnAlbu
 
         setupFab(view);
 
-        loadUserProfile();
+        if (targetOwnerId != 0) {
+            currentUserId = targetOwnerId;
+            loadAlbums(true);
+        } else {
+            loadUserProfile();
+        }
 
         return view;
     }
@@ -78,7 +106,11 @@ public class PhotosFragment extends BaseFragment implements AlbumsAdapter.OnAlbu
     public void onResume() {
         super.onResume();
         if (getActivity() instanceof MainActivity) {
-            ((MainActivity) getActivity()).setToolbarTitle(getString(R.string.nav_photos));
+            if (ownerTitle != null && !ownerTitle.isEmpty()) {
+                ((MainActivity) getActivity()).setToolbarTitle(ownerTitle);
+            } else {
+                ((MainActivity) getActivity()).setToolbarTitle(getString(R.string.nav_photos));
+            }
         }
     }
 
@@ -196,7 +228,8 @@ public class PhotosFragment extends BaseFragment implements AlbumsAdapter.OnAlbu
 
     private void createAlbum(String title, String description) {
         progressBar.setVisibility(View.VISIBLE);
-        photosManager.createAlbum(title, description, 0, new PhotosManager.CreateAlbumCallback() {
+        int groupId = currentUserId < 0 ? -currentUserId : 0;
+        photosManager.createAlbum(title, description, groupId, new PhotosManager.CreateAlbumCallback() {
             @Override
             public void onSuccess(Album album) {
                 if (!isAdded()) return;
@@ -246,7 +279,55 @@ public class PhotosFragment extends BaseFragment implements AlbumsAdapter.OnAlbu
 
     @Override
     public void onAlbumLongClick(Album album) {
-        showEditAlbumDialog(album);
+        String[] options = new String[]{
+                getString(R.string.photo_action_edit),
+                getString(R.string.photo_action_delete)
+        };
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(album.getTitle())
+                .setItems(options, (dialog, which) -> {
+                    if (which == 0) {
+                        showEditAlbumDialog(album);
+                    } else if (which == 1) {
+                        showDeleteAlbumDialog(album);
+                    }
+                })
+                .show();
+    }
+
+    private void showDeleteAlbumDialog(Album album) {
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.album_delete_title)
+                .setMessage(getString(R.string.album_delete_confirm, album.getTitle()))
+                .setPositiveButton(R.string.remove, (dialog, which) -> deleteAlbum(album))
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    private void deleteAlbum(Album album) {
+        progressBar.setVisibility(View.VISIBLE);
+        int groupId = album.getOwnerId() < 0 ? -album.getOwnerId() : 0;
+        photosManager.deleteAlbum(album.getId(), groupId, new PhotosManager.ActionCallback() {
+            @Override
+            public void onSuccess() {
+                if (!isAdded()) return;
+                requireActivity().runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    Toast.makeText(requireContext(), R.string.album_deleted_success, Toast.LENGTH_SHORT).show();
+                    loadAlbums(true);
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                if (!isAdded()) return;
+                requireActivity().runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    Toast.makeText(requireContext(), getString(R.string.error) + ": " + error, Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
     }
 
     private void loadUserProfile() {
@@ -326,7 +407,8 @@ public class PhotosFragment extends BaseFragment implements AlbumsAdapter.OnAlbu
             AlbumPhotosFragment fragment = AlbumPhotosFragment.newInstance(
                     album.getId(),
                     album.getOwnerId(),
-                    album.getTitle()
+                    album.getTitle(),
+                    album.canUpload()
             );
             activity.getSupportFragmentManager()
                     .beginTransaction()

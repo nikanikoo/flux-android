@@ -14,6 +14,7 @@ public class Album implements Serializable {
 
     private String thumbSrc;
     private int thumbId;
+    private boolean canUpload = true;
 
     public Album() {}
 
@@ -43,4 +44,7 @@ public class Album implements Serializable {
 
     public int getThumbId() { return thumbId; }
     public void setThumbId(int thumbId) { this.thumbId = thumbId; }
+
+    public boolean canUpload() { return canUpload; }
+    public void setCanUpload(boolean canUpload) { this.canUpload = canUpload; }
 }

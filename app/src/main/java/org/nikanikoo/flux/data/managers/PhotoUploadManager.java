@@ -166,6 +166,60 @@ public class PhotoUploadManager extends BaseManager<PhotoUploadManager> {
         });
     }
 
+    public void uploadAlbumPhoto(Uri imageUri, int albumId, String caption, PhotoUploadCallback callback) {
+        Logger.d(TAG, "Starting album photo upload for URI: " + imageUri + ", albumId=" + albumId);
+
+        Map<String, String> serverParams = new HashMap<>();
+        if (albumId != 0) {
+            serverParams.put("album_id", String.valueOf(albumId));
+        }
+
+        api.callMethod("photos.getUploadServer", serverParams, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                try {
+                    JSONObject responseObj = response.getJSONObject("response");
+                    String uploadUrl = responseObj.getString("upload_url");
+                    Logger.d(TAG, "Got album upload URL: " + uploadUrl);
+
+                    uploadPhotoFile(imageUri, uploadUrl, new FileUploadCallback() {
+                        @Override
+                        public void onSuccess(String server, String photoOrList, String hash) {
+                            Map<String, String> params = new HashMap<>();
+                            params.put("server", server);
+                            params.put("photos_list", photoOrList);
+                            params.put("hash", hash);
+                            if (albumId != 0) {
+                                params.put("album_id", String.valueOf(albumId));
+                            }
+                            if (caption != null && !caption.isEmpty()) {
+                                params.put("caption", caption);
+                            }
+
+                            savePhoto("photos.save", params, callback);
+                        }
+
+                        @Override
+                        public void onError(String error) {
+                            Logger.e(TAG, "Album file upload error: " + error);
+                            callback.onError("Ошибка загрузки файла: " + error);
+                        }
+                    });
+
+                } catch (Exception e) {
+                    Logger.e(TAG, "Error parsing album upload URL", e);
+                    callback.onError("Не удалось получить адрес для загрузки");
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                Logger.e(TAG, "Error getting album upload server: " + error);
+                callback.onError("Не удалось получить адрес для загрузки");
+            }
+        });
+    }
+
     /**
      * Get upload server URL from API.
      *
@@ -209,6 +263,7 @@ public class PhotoUploadManager extends BaseManager<PhotoUploadManager> {
                 RequestBody requestBody = new MultipartBody.Builder()
                         .setType(MultipartBody.FORM)
                         .addFormDataPart("photo", tempFile.getName(), fileBody)
+                        .addFormDataPart("photo1", tempFile.getName(), fileBody)
                         .build();
 
                 Request request = new Request.Builder()
@@ -232,11 +287,14 @@ public class PhotoUploadManager extends BaseManager<PhotoUploadManager> {
                     JSONObject json = new JSONObject(responseBody);
                     String server = json.optString("server", "");
                     String photo = json.optString("photo", "");
+                    String photosList = json.optString("photos_list", "");
                     String hash = json.optString("hash", "");
 
-                    if (!server.isEmpty() && !photo.isEmpty() && !hash.isEmpty()) {
+                    String photoOrList = !photosList.isEmpty() ? photosList : photo;
+
+                    if (!server.isEmpty() && !photoOrList.isEmpty() && !hash.isEmpty()) {
                         Logger.d(TAG, "Photo file uploaded successfully");
-                        callback.onSuccess(server, photo, hash);
+                        callback.onSuccess(server, photoOrList, hash);
                     } else {
                         Logger.e(TAG, "Incomplete server response: " + responseBody);
                         callback.onError("Неполный ответ сервера: " + responseBody);
@@ -285,8 +343,8 @@ public class PhotoUploadManager extends BaseManager<PhotoUploadManager> {
                             JSONArray photoArray = (JSONArray) responseData;
                             if (photoArray.length() > 0) {
                                 JSONObject photoObj = photoArray.getJSONObject(0);
-                                int ownerId = photoObj.getInt("owner_id");
-                                int photoId = photoObj.getInt("id");
+                                int ownerId = photoObj.optInt("owner_id", 0);
+                                int photoId = photoObj.optInt("id", 0);
                                 String attachment = "photo" + ownerId + "_" + photoId;
 
                                 Logger.d(TAG, "Photo saved successfully: " + attachment);
@@ -303,12 +361,26 @@ public class PhotoUploadManager extends BaseManager<PhotoUploadManager> {
                                 return;
                             }
                             
+                            if (responseObj.has("items")) {
+                                JSONArray photoArray = responseObj.getJSONArray("items");
+                                if (photoArray.length() > 0) {
+                                    JSONObject photoObj = photoArray.getJSONObject(0);
+                                    int ownerId = photoObj.optInt("owner_id", 0);
+                                    int photoId = photoObj.optInt("id", 0);
+                                    String attachment = "photo" + ownerId + "_" + photoId;
+
+                                    Logger.d(TAG, "Photo saved successfully: " + attachment);
+                                    callback.onSuccess(attachment);
+                                    return;
+                                }
+                            }
+                            
                             if (responseObj.has("response")) {
                                 JSONArray photoArray = responseObj.getJSONArray("response");
                                 if (photoArray.length() > 0) {
                                     JSONObject photoObj = photoArray.getJSONObject(0);
-                                    int ownerId = photoObj.getInt("owner_id");
-                                    int photoId = photoObj.getInt("id");
+                                    int ownerId = photoObj.optInt("owner_id", 0);
+                                    int photoId = photoObj.optInt("id", 0);
                                     String attachment = "photo" + ownerId + "_" + photoId;
 
                                     Logger.d(TAG, "Photo saved successfully: " + attachment);

@@ -378,6 +378,26 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
                 commentsIntent.putExtra(CommentsActivity.EXTRA_POST, post);
                 startActivity(commentsIntent);
             }
+        } else if (intent.getBooleanExtra("open_profile", false)) {
+            int userId = intent.getIntExtra("user_id", 0);
+            String userName = intent.getStringExtra("user_name");
+            boolean isGroup = intent.getBooleanExtra("is_group", false);
+            if (isGroup) {
+                int groupId = userId < 0 ? -userId : userId;
+                if (navigationController != null) {
+                    navigationController.navigateToFragmentWithBackStack(
+                            org.nikanikoo.flux.ui.fragments.profile.GroupProfileFragment.newInstance(groupId, userName != null ? userName : ""),
+                            "group_" + groupId
+                    );
+                }
+            } else {
+                if (navigationController != null) {
+                    navigationController.navigateToFragmentWithBackStack(
+                            org.nikanikoo.flux.ui.fragments.profile.ProfileFragment.newInstanceWithId(userId, userName != null ? userName : ""),
+                            "profile_" + userId
+                    );
+                }
+            }
         }
     }
     
