@@ -1,7 +1,7 @@
 {
-  "versionCode": 60,
-  "versionName": "Build 93eb1aa (60)",
-  "changelog": "- fix(notifications): make the notifications fragment display unread notifications first (#95) (93eb1aa)\n- chore(gitignore): add appInsightsSettings.xml (19bcde7)\n- feat(albums): replace last.fm api to itunes api (902b1c4)\n- feat(themes): replace color themes with custom HSV color picker (fbb797f)\n- fix(posts): fix opening group profile via post comments fragment (51e687a)\n- fix(profile): fix city displaying on user profiles (#92) (2e55bc7)\n- fix(api): fix notifications with like_post type not having any user (#94) (de98c3d)\n",
-  "releaseApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-60/flux.apk",
-  "debugApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-60/flux-debug.apk"
+  "versionCode": 61,
+  "versionName": "Build 9ef207b (61)",
+  "changelog": "- feat: implement PhotoCommentsBottomSheetFragment and add PhotosManager support for managing photo comments (9ef207b)\n- feat(photos): add albums and users photos (#96) (79a52cf)\n- fix(ui): make clickable links out of mentions (#93) (8feb2c5)\n- feat(comments): add an ability to edit and delete comments (#101) (16298f9)\n- feat(navbar): new bottom navbar (#102) (0095181)\n",
+  "releaseApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-61/flux.apk",
+  "debugApkUrl": "https://github.com/nikanikoo/flux-android/releases/download/build-alpha-61/flux-debug.apk"
 }
