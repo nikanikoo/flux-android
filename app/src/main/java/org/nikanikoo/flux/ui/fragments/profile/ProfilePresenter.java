@@ -161,6 +161,16 @@ public class ProfilePresenter implements ProfileContract.Presenter {
         int targetUserId = view.isForeignProfile() ? view.getCurrentUserId() : currentProfile.getId();
         view.navigateToFriends(targetUserId, currentProfile.getFullName());
     }
+
+    @Override
+    public void onPhotosClick() {
+        if (currentProfile == null || view == null) {
+            return;
+        }
+
+        int targetUserId = view.isForeignProfile() ? view.getCurrentUserId() : currentProfile.getId();
+        view.navigateToPhotos(targetUserId, currentProfile.getFullName());
+    }
     
     @Override
     public void onCreatePostClick() {

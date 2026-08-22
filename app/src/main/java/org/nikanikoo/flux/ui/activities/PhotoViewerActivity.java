@@ -45,6 +45,7 @@ import org.nikanikoo.flux.ui.custom.SwipeToCloseHelper;
 import org.nikanikoo.flux.utils.LocaleManager;
 import org.nikanikoo.flux.utils.Logger;
 import org.nikanikoo.flux.utils.SSLHelper;
+import org.nikanikoo.flux.utils.ThemeManager;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -57,6 +58,11 @@ import java.util.concurrent.TimeUnit;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import android.widget.EditText;
+import android.widget.LinearLayout;
+import org.nikanikoo.flux.data.managers.PhotosManager;
+import org.nikanikoo.flux.data.models.Photo;
+import org.nikanikoo.flux.ui.fragments.comments.PhotoCommentsBottomSheetFragment;
 
 public class PhotoViewerActivity extends AppCompatActivity {
 
@@ -65,6 +71,7 @@ public class PhotoViewerActivity extends AppCompatActivity {
     private static final String EXTRA_CURRENT_POSITION = "current_position";
     private static final String EXTRA_POST = "post";
     private static final String EXTRA_AUTHOR_NAME = "author_name";
+    private static final String EXTRA_PHOTOS = "photos";
 
     private static final int UI_HIDE_DELAY = 3000;
 
@@ -73,6 +80,7 @@ public class PhotoViewerActivity extends AppCompatActivity {
     private View topPanel;
     private View bottomPanel;
     private TextView titleText;
+    private TextView photoDescriptionText;
     private ImageView btnBack;
     private ImageView btnLike;
     private ImageView btnComments;
@@ -80,9 +88,11 @@ public class PhotoViewerActivity extends AppCompatActivity {
     private ImageView btnMore;
     
     private List<String> imageUrls;
+    private List<Photo> photosList;
     private int currentPosition;
     private Post post;
     private String authorName;
+    private PhotosManager photosManager;
 
     private boolean isUIVisible = true;
     private Handler uiHandler;
@@ -121,6 +131,23 @@ public class PhotoViewerActivity extends AppCompatActivity {
         start(context, imageUrls, position, null, title);
     }
 
+    public static void startWithPhotos(Context context, List<Photo> photos, int position, String title) {
+        Intent intent = new Intent(context, PhotoViewerActivity.class);
+        List<String> urls = new ArrayList<>();
+        if (photos != null) {
+            for (Photo p : photos) {
+                urls.add(p.getBestUrl());
+            }
+        }
+        intent.putStringArrayListExtra(EXTRA_IMAGE_URLS, new ArrayList<>(urls));
+        intent.putExtra(EXTRA_CURRENT_POSITION, position);
+        intent.putExtra(EXTRA_AUTHOR_NAME, title);
+        if (photos != null) {
+            intent.putExtra(EXTRA_PHOTOS, new ArrayList<>(photos));
+        }
+        context.startActivity(intent);
+    }
+
     @Override
     protected void attachBaseContext(Context newBase) {
         LocaleManager localeManager = LocaleManager.getInstance(newBase);
@@ -130,6 +157,7 @@ public class PhotoViewerActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        ThemeManager.getInstance(this).applyThemeToActivity(this);
         super.onCreate(savedInstanceState);
 
         setupTransparentWindow();
@@ -168,7 +196,11 @@ public class PhotoViewerActivity extends AppCompatActivity {
             currentPosition = intent.getIntExtra(EXTRA_CURRENT_POSITION, 0);
             post = (Post) intent.getSerializableExtra(EXTRA_POST);
             authorName = intent.getStringExtra(EXTRA_AUTHOR_NAME);
+            try {
+                photosList = (List<Photo>) intent.getSerializableExtra(EXTRA_PHOTOS);
+            } catch (Exception ignored) { }
         }
+        photosManager = PhotosManager.getInstance(this);
     }
     
     private void initViews() {
@@ -177,6 +209,7 @@ public class PhotoViewerActivity extends AppCompatActivity {
         topPanel = findViewById(R.id.topPanel);
         bottomPanel = findViewById(R.id.bottomPanel);
         titleText = findViewById(R.id.titleText);
+        photoDescriptionText = findViewById(R.id.photoDescriptionText);
         btnBack = findViewById(R.id.btnBack);
         btnLike = findViewById(R.id.btnLike);
         btnComments = findViewById(R.id.btnComments);
@@ -290,11 +323,29 @@ public class PhotoViewerActivity extends AppCompatActivity {
             public void onPageSelected(int position) {
                 currentPosition = position;
                 updateTitle();
+                updatePhotoDescription(position);
                 showUI();
             }
         });
         
         updateTitle();
+        updatePhotoDescription(currentPosition);
+    }
+
+    private void updatePhotoDescription(int position) {
+        if (photoDescriptionText == null) return;
+        if (photosList != null && position >= 0 && position < photosList.size()) {
+            Photo photo = photosList.get(position);
+            String text = photo.getText();
+            if (text != null && !text.trim().isEmpty()) {
+                photoDescriptionText.setText(text);
+                photoDescriptionText.setVisibility(View.VISIBLE);
+            } else {
+                photoDescriptionText.setVisibility(View.GONE);
+            }
+        } else {
+            photoDescriptionText.setVisibility(View.GONE);
+        }
     }
     
     private void setupUI() {
@@ -317,6 +368,12 @@ public class PhotoViewerActivity extends AppCompatActivity {
                 intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                 startActivity(intent);
                 finish();
+            } else if (photosList != null && currentPosition >= 0 && currentPosition < photosList.size()) {
+                Photo photo = photosList.get(currentPosition);
+                PhotoCommentsBottomSheetFragment dialog = PhotoCommentsBottomSheetFragment.newInstance(
+                        photo.getOwnerId(), photo.getId()
+                );
+                dialog.show(getSupportFragmentManager(), "photo_comments");
             }
         });
         
@@ -476,10 +533,21 @@ public class PhotoViewerActivity extends AppCompatActivity {
         
         PopupMenu popupMenu = new PopupMenu(this, btnMore);
         popupMenu.getMenuInflater().inflate(R.menu.menu_photo_viewer, popupMenu.getMenu());
+
+        if (photosList != null && currentPosition >= 0 && currentPosition < photosList.size()) {
+            popupMenu.getMenu().add(0, 101, 1, R.string.photo_edit_caption_title);
+            popupMenu.getMenu().add(0, 102, 2, R.string.photo_delete_title);
+        }
         
         popupMenu.setOnMenuItemClickListener(item -> {
             if (item.getItemId() == R.id.action_download) {
                 showDownloadChoiceDialog();
+                return true;
+            } else if (item.getItemId() == 101 && photosList != null && currentPosition < photosList.size()) {
+                showEditCaptionDialog(photosList.get(currentPosition));
+                return true;
+            } else if (item.getItemId() == 102 && photosList != null && currentPosition < photosList.size()) {
+                showDeletePhotoDialog(photosList.get(currentPosition));
                 return true;
             }
             return false;
@@ -487,6 +555,77 @@ public class PhotoViewerActivity extends AppCompatActivity {
         
         popupMenu.setOnDismissListener(menu -> scheduleUIHide());
         popupMenu.show();
+    }
+
+    private void showEditCaptionDialog(Photo photo) {
+        cancelUIHide();
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(this);
+        builder.setTitle(R.string.photo_edit_caption_title);
+
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
+        layout.setPadding(48, 24, 48, 24);
+
+        EditText captionInput = new EditText(this);
+        captionInput.setHint(R.string.photo_caption_hint);
+        if (photo.getText() != null) {
+            captionInput.setText(photo.getText());
+        }
+        layout.addView(captionInput);
+
+        builder.setView(layout);
+        builder.setPositiveButton(R.string.album_btn_save, (dialog, which) -> {
+            String caption = captionInput.getText().toString().trim();
+            photosManager.editPhoto(photo.getOwnerId(), photo.getId(), caption, new PhotosManager.ActionCallback() {
+                @Override
+                public void onSuccess() {
+                    runOnUiThread(() -> {
+                        photo.setText(caption);
+                        updatePhotoDescription(currentPosition);
+                        Toast.makeText(PhotoViewerActivity.this, R.string.photo_caption_updated, Toast.LENGTH_SHORT).show();
+                        scheduleUIHide();
+                    });
+                }
+
+                @Override
+                public void onError(String error) {
+                    runOnUiThread(() -> {
+                        Toast.makeText(PhotoViewerActivity.this, getString(R.string.error) + ": " + error, Toast.LENGTH_SHORT).show();
+                        scheduleUIHide();
+                    });
+                }
+            });
+        });
+        builder.setNegativeButton(R.string.cancel, (dialog, which) -> scheduleUIHide());
+        builder.show();
+    }
+
+    private void showDeletePhotoDialog(Photo photo) {
+        cancelUIHide();
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.photo_delete_title)
+                .setMessage(R.string.photo_delete_confirm)
+                .setPositiveButton(R.string.remove, (dialog, which) -> {
+                    photosManager.deletePhoto(photo.getOwnerId(), photo.getId(), new PhotosManager.ActionCallback() {
+                        @Override
+                        public void onSuccess() {
+                            runOnUiThread(() -> {
+                                Toast.makeText(PhotoViewerActivity.this, R.string.photo_deleted_success, Toast.LENGTH_SHORT).show();
+                                animateExit();
+                            });
+                        }
+
+                        @Override
+                        public void onError(String error) {
+                            runOnUiThread(() -> {
+                                Toast.makeText(PhotoViewerActivity.this, getString(R.string.error) + ": " + error, Toast.LENGTH_SHORT).show();
+                                scheduleUIHide();
+                            });
+                        }
+                    });
+                })
+                .setNegativeButton(R.string.cancel, (dialog, which) -> scheduleUIHide())
+                .show();
     }
 
     private void showDownloadChoiceDialog() {

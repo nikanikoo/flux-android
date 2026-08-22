@@ -198,6 +198,7 @@
     <string name="comments_cannot_load">Невозможно загрузить комментарии</string>
     <string name="comments_updated">Комментарии обновлены</string>
     <string name="comments_added">Комментарий отправлен</string>
+    <string name="comments_empty">Комментариев пока нет</string>
     <string name="comments_edited">Комментарий изменен</string>
     <string name="comments_deleted">Комментарий удален</string>
     <string name="comments_delete_confirm">Удалить комментарий?</string>
@@ -288,6 +289,38 @@
     <string name="download_select_quality">Выберите качество</string>
     <string name="download_quality_max">Оригинал (максимальное)</string>
     <string name="download_folder_name">OpenVK Flux</string>
+    <string name="albums_empty_title">Нет альбомов</string>
+    <string name="albums_empty_message">У вас пока нет фотоальбомов</string>
+    <string name="photos_empty_title">Нет фотографий</string>
+    <string name="photos_empty_message">В этом альбоме пока нет фотографий</string>
+    <string name="album_create_title">Новый альбом</string>
+    <string name="album_edit_title">Редактировать альбом</string>
+    <string name="album_title_hint">Название альбома</string>
+    <string name="album_description_hint">Описание (необязательно)</string>
+    <string name="album_btn_create">Создать</string>
+    <string name="album_btn_save">Сохранить</string>
+    <string name="album_fill_title_error">Введите название альбома</string>
+    <string name="album_created_success">Альбом создан</string>
+    <string name="album_updated_success">Альбом обновлён</string>
+    <string name="album_delete_title">Удалить альбом</string>
+    <string name="album_delete_confirm">Вы уверены, что хотите удалить альбом «%s»? Все фотографии в нём будут удалены.</string>
+    <string name="album_deleted_success">Альбом удалён</string>
+    <string name="photo_upload_title">Загрузить фотографию</string>
+    <string name="photo_upload_btn">Загрузить</string>
+    <string name="photo_caption_hint">Описание (необязательно)</string>
+    <string name="photo_uploading">Загрузка фотографии...</string>
+    <string name="photo_uploaded_success">Фотография загружена</string>
+    <string name="photo_upload_error">Ошибка загрузки фотографии</string>
+    <string name="photo_delete_title">Удалить фотографию</string>
+    <string name="photo_delete_confirm">Вы уверены, что хотите удалить эту фотографию?</string>
+    <string name="photo_deleted_success">Фотография удалена</string>
+    <string name="photo_edit_caption_title">Редактировать описание</string>
+    <string name="photo_caption_updated">Описание обновлено</string>
+    <string name="photo_action_edit">Редактировать</string>
+    <string name="photo_action_delete">Удалить</string>
+    <string name="photo_comments_title">Комментарии к фото</string>
+    <string name="all_photos_title">Все фотографии</string>
+
 
     <!-- Videos -->
     <string name="videos_title">Видео</string>

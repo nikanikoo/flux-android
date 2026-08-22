@@ -5,8 +5,10 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.TextView;
 
+import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.StringRes;
 
@@ -24,6 +26,7 @@ public class ErrorViewHandler {
 
     private View errorView;
     private View mainContent;
+    private ImageView errorImage;
     private TextView errorTitle;
     private TextView errorMessage;
     private View retryButton;
@@ -50,6 +53,7 @@ public class ErrorViewHandler {
     }
 
     private void initViews() {
+        errorImage = errorView.findViewById(R.id.error_image);
         errorTitle = errorView.findViewById(R.id.error_title);
         errorMessage = errorView.findViewById(R.id.error_message);
         retryButton = errorView.findViewById(R.id.error_retry_button);
@@ -133,6 +137,12 @@ public class ErrorViewHandler {
 
     public void setRetryCallback(RetryCallback callback) {
         this.retryCallback = callback;
+    }
+
+    public void setErrorImage(@DrawableRes int drawableRes) {
+        if (errorImage != null) {
+            errorImage.setImageResource(drawableRes);
+        }
     }
 
     public boolean isErrorVisible() {

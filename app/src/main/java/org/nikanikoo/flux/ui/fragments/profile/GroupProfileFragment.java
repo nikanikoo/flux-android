@@ -25,6 +25,7 @@ import org.nikanikoo.flux.ui.activities.PhotoViewerActivity;
 import org.nikanikoo.flux.ui.dialogs.RepostDialog;
 import org.nikanikoo.flux.ui.fragments.comments.CommentsFragment;
 import org.nikanikoo.flux.ui.fragments.groups.GroupMembersFragment;
+import org.nikanikoo.flux.ui.fragments.media.PhotosFragment;
 import org.nikanikoo.flux.utils.Logger;
 
 import java.util.ArrayList;
@@ -178,6 +179,15 @@ public class GroupProfileFragment extends BaseProfileFragment {
             membersCard.setOnClickListener(v -> {
                 if (currentGroup != null) {
                     openGroupMembers();
+                }
+            });
+        }
+
+        CardView photosCard = view.findViewById(R.id.photos_card);
+        if (photosCard != null) {
+            photosCard.setOnClickListener(v -> {
+                if (currentGroup != null) {
+                    openGroupPhotos();
                 }
             });
         }
@@ -464,6 +474,17 @@ public class GroupProfileFragment extends BaseProfileFragment {
                     .beginTransaction()
                     .replace(R.id.fragment_container, membersFragment)
                     .addToBackStack(null)
+                    .commit();
+        }
+    }
+
+    private void openGroupPhotos() {
+        if (currentGroup != null && getActivity() instanceof MainActivity) {
+            PhotosFragment photosFragment = PhotosFragment.newInstance(-currentGroup.getId(), currentGroup.getName());
+            getActivity().getSupportFragmentManager()
+                    .beginTransaction()
+                    .replace(R.id.fragment_container, photosFragment)
+                    .addToBackStack("photos_group_" + currentGroup.getId())
                     .commit();
         }
     }

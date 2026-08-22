@@ -25,6 +25,7 @@ import org.nikanikoo.flux.ui.custom.CustomDrawerLayout;
 import org.nikanikoo.flux.ui.fragments.friends.FriendsListFragment;
 import org.nikanikoo.flux.ui.fragments.groups.GroupsListFragment;
 import org.nikanikoo.flux.ui.fragments.media.MusicListFragment;
+import org.nikanikoo.flux.ui.fragments.media.PhotosFragment;
 import org.nikanikoo.flux.ui.fragments.media.VideoListFragment;
 import org.nikanikoo.flux.ui.fragments.menu.MenuDashboardFragment;
 import org.nikanikoo.flux.ui.fragments.messages.MessagesListFragment;

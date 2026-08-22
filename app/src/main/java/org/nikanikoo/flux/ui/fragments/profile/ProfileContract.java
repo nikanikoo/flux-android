@@ -43,6 +43,11 @@ public interface ProfileContract {
         void navigateToFriends(int userId, String userName);
         
         /**
+         * Открыть фотографии пользователя
+         */
+        void navigateToPhotos(int userId, String userName);
+        
+        /**
          * Открыть фото профиля
          */
         void openProfilePhoto(String photoUrl, String userName);
@@ -111,6 +116,11 @@ public interface ProfileContract {
          * Обработать клик по кнопке друзей
          */
         void onFriendsClick();
+        
+        /**
+         * Обработать клик по кнопке фотографий
+         */
+        void onPhotosClick();
         
         /**
          * Обработать клик по кнопке создания поста
