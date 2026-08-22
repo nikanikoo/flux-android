@@ -5,6 +5,10 @@ import android.animation.AnimatorListenerAdapter;
 import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
+import android.view.PixelCopy;
 import android.view.View;
 import android.view.ViewAnimationUtils;
 import android.view.ViewGroup;
@@ -15,8 +19,13 @@ public class ThemeTransitionHelper {
     private static int sClickX;
     private static int sClickY;
     private static boolean sIsTransitioning = false;
+    private static boolean sDrawerOpen = false;
 
     public static void setTransitionData(Bitmap screenshot, int x, int y) {
+        setTransitionData(screenshot, x, y, false);
+    }
+
+    public static void setTransitionData(Bitmap screenshot, int x, int y, boolean drawerOpen) {
         if (sScreenshot != null && !sScreenshot.isRecycled()) {
             sScreenshot.recycle();
         }
@@ -24,10 +33,15 @@ public class ThemeTransitionHelper {
         sClickX = x;
         sClickY = y;
         sIsTransitioning = true;
+        sDrawerOpen = drawerOpen;
     }
 
     public static boolean isTransitioning() {
         return sIsTransitioning;
+    }
+
+    public static boolean wasDrawerOpen() {
+        return sDrawerOpen;
     }
 
     public static Bitmap getScreenshot() {
@@ -40,12 +54,75 @@ public class ThemeTransitionHelper {
         }
         sScreenshot = null;
         sIsTransitioning = false;
+        sDrawerOpen = false;
+    }
+
+    public static void captureAndSwitchTheme(Activity activity, int x, int y, boolean drawerOpen, Runnable applyThemeAction) {
+        if (activity == null || activity.isFinishing()) {
+            if (applyThemeAction != null) {
+                applyThemeAction.run();
+            }
+            return;
+        }
+
+        View decorView = activity.getWindow().getDecorView();
+        int width = decorView.getWidth();
+        int height = decorView.getHeight();
+
+        if (width <= 0 || height <= 0) {
+            performFallbackCapture(activity, x, y, drawerOpen, applyThemeAction);
+            return;
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+                PixelCopy.request(activity.getWindow(), bitmap, copyResult -> {
+                    if (copyResult == PixelCopy.SUCCESS) {
+                        setTransitionData(bitmap, x, y, drawerOpen);
+                        if (applyThemeAction != null) {
+                            applyThemeAction.run();
+                        }
+                        activity.recreate();
+                        activity.overridePendingTransition(0, 0);
+                    } else {
+                        bitmap.recycle();
+                        performFallbackCapture(activity, x, y, drawerOpen, applyThemeAction);
+                    }
+                }, new Handler(Looper.getMainLooper()));
+                return;
+            } catch (Exception e) {
+                Logger.e("ThemeTransition", "PixelCopy request failed, falling back to software capture", e);
+            }
+        }
+
+        performFallbackCapture(activity, x, y, drawerOpen, applyThemeAction);
+    }
+
+    private static void performFallbackCapture(Activity activity, int x, int y, boolean drawerOpen, Runnable applyThemeAction) {
+        Bitmap screenshot = takeScreenshot(activity);
+        setTransitionData(screenshot, x, y, drawerOpen);
+        if (applyThemeAction != null) {
+            applyThemeAction.run();
+        }
+        activity.recreate();
+        activity.overridePendingTransition(0, 0);
     }
 
     public static Bitmap takeScreenshot(Activity activity) {
         View decorView = activity.getWindow().getDecorView();
-        Bitmap bitmap = Bitmap.createBitmap(decorView.getWidth(), decorView.getHeight(), Bitmap.Config.ARGB_8888);
+        int width = decorView.getWidth();
+        int height = decorView.getHeight();
+        if (width <= 0 || height <= 0) {
+            return null;
+        }
+        Bitmap bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
+        if (decorView.getBackground() != null) {
+            decorView.getBackground().draw(canvas);
+        } else {
+            canvas.drawColor(0xFF000000);
+        }
         decorView.draw(canvas);
         return bitmap;
     }
@@ -95,17 +172,18 @@ public class ThemeTransitionHelper {
 
             try {
                 Animator anim = ViewAnimationUtils.createCircularReveal(root, cx, cy, 0f, maxRadius);
-                anim.setDuration(500);
+                anim.setDuration(450);
                 anim.addListener(new AnimatorListenerAdapter() {
                     @Override
                     public void onAnimationEnd(Animator animation) {
+                        super.onAnimationEnd(animation);
                         decor.removeView(imageView);
                         clear();
                     }
                 });
                 anim.start();
             } catch (Exception e) {
-                root.setVisibility(View.VISIBLE);
+                Logger.e("ThemeTransition", "Error during reveal animation", e);
                 decor.removeView(imageView);
                 clear();
             }

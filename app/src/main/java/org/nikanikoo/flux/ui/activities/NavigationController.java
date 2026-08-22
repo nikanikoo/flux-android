@@ -26,15 +26,20 @@ import org.nikanikoo.flux.ui.fragments.friends.FriendsListFragment;
 import org.nikanikoo.flux.ui.fragments.groups.GroupsListFragment;
 import org.nikanikoo.flux.ui.fragments.media.MusicListFragment;
 import org.nikanikoo.flux.ui.fragments.media.VideoListFragment;
+import org.nikanikoo.flux.ui.fragments.menu.MenuDashboardFragment;
 import org.nikanikoo.flux.ui.fragments.messages.MessagesListFragment;
 import org.nikanikoo.flux.ui.fragments.news.NewsFragment;
-import org.nikanikoo.flux.ui.fragments.notifications.NotificationsFragment;
 import org.nikanikoo.flux.ui.fragments.profile.ProfileFragment;
+import org.nikanikoo.flux.ui.fragments.settings.AppearanceSettingsFragment;
 import org.nikanikoo.flux.ui.fragments.settings.SettingsFragment;
 import org.nikanikoo.flux.utils.Logger;
 import org.nikanikoo.flux.utils.ThemeManager;
 import org.nikanikoo.flux.utils.ThemeTransitionHelper;
 
+import android.content.Context;
+import android.content.SharedPreferences;
+
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -83,13 +88,94 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
         
         initDrawer(toolbar);
         initHeaderViews();
-        initNavigationRail();
+        setupDrawerMenu();
 
         org.nikanikoo.flux.data.managers.ProfileManager profileManager =
                 org.nikanikoo.flux.data.managers.ProfileManager.getInstance(activity);
         UserProfile cachedProfile = profileManager.getCachedProfileSync();
         if (cachedProfile != null) {
             updateUserInfo(cachedProfile);
+        }
+    }
+    
+    public void setupDrawerMenu() {
+        if (navigationView == null) return;
+        
+        SharedPreferences prefs = activity.getSharedPreferences(MenuDashboardFragment.PREFS_NAME, Context.MODE_PRIVATE);
+        String savedItems = prefs.getString(AppearanceSettingsFragment.KEY_DRAWER_NAV_ITEMS,
+                AppearanceSettingsFragment.DEFAULT_DRAWER_NAV_ITEMS);
+        
+        List<String> activeTags = new ArrayList<>();
+        if (savedItems != null && !savedItems.isEmpty()) {
+            for (String tag : savedItems.split(",")) {
+                String clean = tag.trim();
+                if (!clean.isEmpty() && !activeTags.contains(clean)) {
+                    activeTags.add(clean);
+                }
+            }
+        }
+        if (activeTags.isEmpty()) {
+            for (String tag : AppearanceSettingsFragment.DEFAULT_DRAWER_NAV_ITEMS.split(",")) {
+                activeTags.add(tag.trim());
+            }
+        }
+        if (!activeTags.contains("drawer_settings")) {
+            activeTags.add("drawer_settings");
+        }
+        
+        android.view.Menu menu = navigationView.getMenu();
+        menu.clear();
+        
+        int order = 0;
+        for (String tag : activeTags) {
+            int itemId = MenuDashboardFragment.getDrawerIdForTag(tag);
+            int nameRes = MenuDashboardFragment.getNameResForTag(tag);
+            int iconRes = getDrawerIconForTag(tag);
+            
+            MenuItem item = menu.add(1, itemId, order++, nameRes);
+            item.setIcon(iconRes);
+            item.setCheckable(true);
+        }
+        
+        menu.setGroupCheckable(1, true, true);
+        
+        navigationView.setItemIconTintList(navigationView.getItemIconTintList());
+        navigationView.setItemTextColor(navigationView.getItemTextColor());
+        
+        if (currentFragmentId != -1) {
+            navigationView.setCheckedItem(currentFragmentId);
+        }
+        
+        navigationView.requestLayout();
+        navigationView.invalidate();
+        
+        initNavigationRail();
+    }
+
+    public static int getDrawerIconForTag(String tag) {
+        switch (tag) {
+            case "drawer_news":
+                return R.drawable.ic_newspaper;
+            case "drawer_messages":
+                return R.drawable.ic_chat_bubble;
+            case "drawer_friends":
+                return R.drawable.ic_contacts;
+            case "drawer_groups":
+                return R.drawable.ic_group;
+            case "drawer_photos":
+                return R.drawable.ic_photo;
+            case "drawer_videos":
+                return R.drawable.ic_video_library;
+            case "drawer_audio":
+                return R.drawable.ic_library_music;
+            case "drawer_notes":
+                return R.drawable.ic_note_stack;
+            case "drawer_settings":
+                return R.drawable.ic_settings;
+            case "drawer_menu_dashboard":
+                return R.drawable.ic_menu;
+            default:
+                return R.drawable.ic_newspaper;
         }
     }
     
@@ -102,6 +188,11 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
 
             LinearLayout itemsContainer = navigationRailView.findViewById(R.id.navigation_rail_items);
             if (itemsContainer != null) {
+                int childCount = itemsContainer.getChildCount();
+                if (childCount > 1) {
+                    itemsContainer.removeViews(1, childCount - 1);
+                }
+
                 android.view.LayoutInflater inflater = android.view.LayoutInflater.from(activity);
                 android.view.Menu menu = navigationView.getMenu();
                 for (int i = 0; i < menu.size(); i++) {
@@ -118,6 +209,9 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
                         });
                         
                         itemView.setTag(item.getItemId());
+                        if (item.getItemId() == currentFragmentId) {
+                            itemView.setSelected(true);
+                        }
                         
                         itemsContainer.addView(itemView);
                     }
@@ -138,6 +232,15 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
                 R.string.close_drawer);
         
         drawerLayout.addDrawerListener(drawerToggle);
+        drawerLayout.addDrawerListener(new androidx.drawerlayout.widget.DrawerLayout.SimpleDrawerListener() {
+            @Override
+            public void onDrawerStateChanged(int newState) {
+                if (newState == androidx.drawerlayout.widget.DrawerLayout.STATE_DRAGGING ||
+                    newState == androidx.drawerlayout.widget.DrawerLayout.STATE_SETTLING) {
+                    setupDrawerMenu();
+                }
+            }
+        });
         
         boolean isTablet = navigationRailView != null && navigationRailView.getVisibility() == View.VISIBLE;
         drawerToggle.setDrawerIndicatorEnabled(!isTablet);
@@ -232,11 +335,9 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
                 int x = location[0] + v.getWidth() / 2;
                 int y = location[1] + v.getHeight() / 2;
 
-                Bitmap screenshot = ThemeTransitionHelper.takeScreenshot(activity);
-                ThemeTransitionHelper.setTransitionData(screenshot, x, y);
-                themeManager.setThemeMode(newMode);
-                activity.recreate();
-                activity.overridePendingTransition(0, 0);
+                ThemeTransitionHelper.captureAndSwitchTheme(activity, x, y, isDrawerOpen(), () -> {
+                    themeManager.setThemeMode(newMode);
+                });
             });
         }
     }
@@ -287,6 +388,7 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
                     .load(profile.getPhoto200())
                     .placeholder(R.drawable.camera_200)
                     .error(R.drawable.camera_200)
+                    .transform(new org.nikanikoo.flux.ui.custom.CircularImageTransformation())
                     .into(drawerAvatar);
         }
     }
@@ -441,6 +543,7 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
      */
     public void openDrawer() {
         if (drawerLayout != null) {
+            setupDrawerMenu();
             drawerLayout.openDrawer(GravityCompat.START);
         }
     }
@@ -454,12 +557,17 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
     
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-        int id = item.getItemId();
-        
-        // Предотвращаем повторное открытие текущего фрагмента
+        navigateToDrawerItem(item.getItemId());
+        return true;
+    }
+
+    public void navigateToDrawerItem(int id) {
         if (id == currentFragmentId) {
+            if (activity.getSupportFragmentManager().getBackStackEntryCount() > 0) {
+                activity.getSupportFragmentManager().popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE);
+            }
             closeDrawer();
-            return true;
+            return;
         }
         
         Fragment fragment = null;
@@ -481,6 +589,10 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
             fragment = new GroupsListFragment();
             tag = "groups";
             activity.setToolbarTitle(activity.getString(R.string.nav_groups));
+        } else if (id == R.id.drawer_photos) {
+            fragment = new org.nikanikoo.flux.ui.fragments.media.PhotosFragment();
+            tag = "photos";
+            activity.setToolbarTitle(activity.getString(R.string.nav_photos));
         } else if (id == R.id.drawer_audio) {
             fragment = new MusicListFragment();
             tag = "music";
@@ -489,10 +601,6 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
             fragment = new VideoListFragment();
             tag = "videos";
             activity.setToolbarTitle(activity.getString(R.string.nav_videos));
-        } else if (id == R.id.drawer_notification) {
-            fragment = new NotificationsFragment();
-            tag = "notifications";
-            activity.setToolbarTitle(activity.getString(R.string.nav_notifications));
         } else if (id == R.id.drawer_notes) {
             fragment = new org.nikanikoo.flux.ui.fragments.notes.NotesFragment();
             tag = "notes";
@@ -501,6 +609,10 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
             fragment = new SettingsFragment();
             tag = "settings";
             activity.setToolbarTitle(activity.getString(R.string.nav_settings));
+        } else if (id == R.id.drawer_menu_dashboard) {
+            fragment = new MenuDashboardFragment();
+            tag = "menu_dashboard";
+            activity.setToolbarTitle(activity.getString(R.string.navigation_menu_title));
         }
         
         if (fragment != null) {
@@ -509,7 +621,34 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
         }
         
         closeDrawer();
-        return true;
+    }
+
+    public void updateToolbarForCurrentItem(int id) {
+        String title = null;
+        if (id == R.id.drawer_news) {
+            title = activity.getString(R.string.nav_news);
+        } else if (id == R.id.drawer_messages) {
+            title = activity.getString(R.string.nav_messages);
+        } else if (id == R.id.drawer_friends) {
+            title = activity.getString(R.string.nav_friends);
+        } else if (id == R.id.drawer_groups) {
+            title = activity.getString(R.string.nav_groups);
+        } else if (id == R.id.drawer_photos) {
+            title = activity.getString(R.string.nav_photos);
+        } else if (id == R.id.drawer_audio) {
+            title = activity.getString(R.string.nav_music);
+        } else if (id == R.id.drawer_videos) {
+            title = activity.getString(R.string.nav_videos);
+        } else if (id == R.id.drawer_notes) {
+            title = activity.getString(R.string.nav_notes);
+        } else if (id == R.id.drawer_settings) {
+            title = activity.getString(R.string.nav_settings);
+        } else if (id == R.id.drawer_menu_dashboard) {
+            title = activity.getString(R.string.navigation_menu_title);
+        }
+        if (title != null) {
+            activity.setToolbarTitle(title);
+        }
     }
     
     /**
@@ -560,6 +699,7 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
                 }
             }
         }
+        activity.syncBottomNavigationSelection(id);
     }
     
     /**
@@ -621,16 +761,23 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
             });
             Logger.d(TAG, "Set drawerIndicatorEnabled=false, displayHomeAsUpEnabled=true");
         } else {
+            boolean bottomNavEnabled = activity.isBottomNavigationEnabled();
             boolean isTablet = navigationRailView != null && navigationRailView.getVisibility() == View.VISIBLE;
-            drawerToggle.setDrawerIndicatorEnabled(!isTablet);
+            
+            boolean showDrawerButton = !isTablet && !bottomNavEnabled;
+            
+            drawerToggle.setDrawerIndicatorEnabled(showDrawerButton);
             if (activity.getSupportActionBar() != null) {
-                activity.getSupportActionBar().setDisplayHomeAsUpEnabled(!isTablet);
+                activity.getSupportActionBar().setDisplayHomeAsUpEnabled(showDrawerButton);
             }
             drawerToggle.setToolbarNavigationClickListener(null);
             
             drawerToggle.syncState();
             
             if (toolbar != null) {
+                if (!showDrawerButton) {
+                    toolbar.setNavigationIcon(null);
+                }
                 toolbar.setNavigationOnClickListener(v -> {
                     Logger.d(TAG, "Toolbar navigation clicked");
                     int bc = activity.getSupportFragmentManager().getBackStackEntryCount();
@@ -641,7 +788,7 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
                     }
                 });
             }
-            Logger.d(TAG, "Set drawerIndicatorEnabled=" + !isTablet + ", displayHomeAsUpEnabled=" + (!isTablet));
+            Logger.d(TAG, "Set drawerIndicatorEnabled=" + showDrawerButton + ", displayHomeAsUpEnabled=" + showDrawerButton);
         }
         drawerToggle.syncState();
     }
