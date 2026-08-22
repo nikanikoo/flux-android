@@ -16,6 +16,7 @@
     <string name="save">Сохранить</string>
     <string name="delete">Удалить</string>
     <string name="edit">Редактировать</string>
+    <string name="reply">Ответить</string>
     <string name="edit_post_title">Редактирование поста</string>
     <string name="edit_post_hint">Что нового?</string>
     <string name="profile_edit_success">Изменения сохранены</string>
@@ -197,6 +198,12 @@
     <string name="comments_cannot_load">Невозможно загрузить комментарии</string>
     <string name="comments_updated">Комментарии обновлены</string>
     <string name="comments_added">Комментарий отправлен</string>
+    <string name="comments_edited">Комментарий изменен</string>
+    <string name="comments_deleted">Комментарий удален</string>
+    <string name="comments_delete_confirm">Удалить комментарий?</string>
+    <string name="comments_delete_message">Вы действительно хотите удалить этот комментарий? Это действие нельзя будет отменить.</string>
+    <string name="comments_edit_hint">Редактировать комментарий...</string>
+    <string name="comments_reply_to">Ответ пользователю %s</string>
     <string name="comments_image_selected">Изображение выбрано</string>
     <string name="comments_post_not_found">Ошибка: пост не найден</string>
 

@@ -15,6 +15,7 @@ import com.squareup.picasso.Picasso;
 
 import org.nikanikoo.flux.data.models.Comment;
 import org.nikanikoo.flux.R;
+import org.nikanikoo.flux.security.AccountManager;
 import org.nikanikoo.flux.ui.views.AudioAttachmentView;
 import org.nikanikoo.flux.utils.SafeLinkMovementMethod;
 import org.nikanikoo.flux.utils.ValidationUtils;
@@ -26,21 +27,58 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
     private List<Comment> comments;
     private Context context;
     private OnCommentClickListener clickListener;
+    private int currentUserId;
+    private int postOwnerId;
+    private int postAuthorId;
+    private boolean isAdmin;
 
     public interface OnCommentClickListener {
         void onAuthorClick(int authorId, String authorName, boolean isGroup);
         void onLikeClick(Comment comment);
         void onReplyClick(Comment comment);
         void onImageClick(String imageUrl);
+        void onDeleteClick(Comment comment);
+        void onEditClick(Comment comment);
     }
 
     public CommentsAdapter(Context context, List<Comment> comments) {
+        this(context, comments, 0);
+    }
+
+    public CommentsAdapter(Context context, List<Comment> comments, int postOwnerId) {
+        this(context, comments, postOwnerId, 0);
+    }
+
+    public CommentsAdapter(Context context, List<Comment> comments, int postOwnerId, int postAuthorId) {
         this.context = context;
         this.comments = comments;
+        this.postOwnerId = postOwnerId;
+        this.postAuthorId = postAuthorId;
+        
+        AccountManager accountManager = AccountManager.getInstance(context);
+        AccountManager.Account currentAccount = accountManager.getCurrentAccount();
+        if (currentAccount != null && currentAccount.userId != null) {
+            try {
+                this.currentUserId = Integer.parseInt(currentAccount.userId);
+            } catch (NumberFormatException e) {
+                this.currentUserId = 0;
+            }
+        }
     }
 
     public void setOnCommentClickListener(OnCommentClickListener listener) {
         this.clickListener = listener;
+    }
+
+    public void updatePostDetails(int ownerId, int authorId) {
+        this.postOwnerId = ownerId;
+        this.postAuthorId = authorId;
+        notifyDataSetChanged();
+    }
+
+    public void setIsAdmin(boolean isAdmin) {
+        this.isAdmin = isAdmin;
+        notifyDataSetChanged();
     }
 
     @NonNull
@@ -162,6 +200,27 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
         holder.avatar.setOnClickListener(authorClickListener);
         holder.authorName.setOnClickListener(authorClickListener);
 
+        // Кнопки редактирования и удаления
+        boolean isCommentAuthor = comment.getFromId() == currentUserId && currentUserId != 0;
+        boolean isPostAuthor = postAuthorId == currentUserId && currentUserId != 0;
+        boolean isAdminDelete = (postOwnerId < 0) && isAdmin;
+        
+        if (holder.editButton != null) {
+            // Редактировать может только автор
+            holder.editButton.setVisibility(isCommentAuthor ? View.VISIBLE : View.GONE);
+            holder.editButton.setOnClickListener(v -> {
+                if (clickListener != null) clickListener.onEditClick(comment);
+            });
+        }
+        
+        if (holder.deleteButton != null) {
+            // Удалить может автор комментария, автор поста ИЛИ администратор группы
+            holder.deleteButton.setVisibility((isCommentAuthor || isPostAuthor || isAdminDelete) ? View.VISIBLE : View.GONE);
+            holder.deleteButton.setOnClickListener(v -> {
+                if (clickListener != null) clickListener.onDeleteClick(comment);
+            });
+        }
+
         holder.likeButton.setOnClickListener(v -> {
             System.out.println("Like button clicked for comment " + comment.getId());
             if (clickListener != null) {
@@ -209,6 +268,8 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
         ImageView likeIcon;
         TextView likeCount;
         TextView replyButton;
+        TextView editButton;
+        TextView deleteButton;
         ImageView authorVerified;
 
         public CommentViewHolder(@NonNull View itemView) {
@@ -225,6 +286,8 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
             likeIcon = itemView.findViewById(R.id.comment_like_icon);
             likeCount = itemView.findViewById(R.id.comment_like_count);
             replyButton = itemView.findViewById(R.id.comment_reply_button);
+            editButton = itemView.findViewById(R.id.comment_edit_button);
+            deleteButton = itemView.findViewById(R.id.comment_delete_button);
             authorVerified = itemView.findViewById(R.id.comment_author_verified);
         }
     }

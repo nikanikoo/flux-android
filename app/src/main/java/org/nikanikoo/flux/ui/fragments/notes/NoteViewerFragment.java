@@ -57,6 +57,13 @@ public class NoteViewerFragment extends Fragment implements CommentsAdapter.OnCo
     private ImageView btnAttachImage;
     private ImageView btnSendComment;
     
+    private View editCommentHeader;
+    private ImageView headerIcon;
+    private TextView headerText;
+    private ImageView btnCancelEdit;
+    private Comment editingComment;
+    private String replyPrefix;
+    
     private CommentsAdapter commentsAdapter;
     private List<Comment> commentsList = new ArrayList<>();
     private NotesManager notesManager;
@@ -103,10 +110,15 @@ public class NoteViewerFragment extends Fragment implements CommentsAdapter.OnCo
         btnAttachImage = view.findViewById(R.id.btn_attach_image);
         btnAttachImage.setVisibility(View.GONE);
         btnSendComment = view.findViewById(R.id.btn_send_comment);
+        editCommentHeader = view.findViewById(R.id.edit_comment_header);
+        headerIcon = view.findViewById(R.id.header_icon);
+        headerText = view.findViewById(R.id.header_text);
+        btnCancelEdit = view.findViewById(R.id.btn_cancel_edit);
         FloatingActionButton fabEditNote = view.findViewById(R.id.fab_edit_note);
 
         recyclerComments.setLayoutManager(new LinearLayoutManager(requireContext()));
-        commentsAdapter = new CommentsAdapter(requireContext(), commentsList);
+        int ownerId = note != null ? note.getOwnerId() : 0;
+        commentsAdapter = new CommentsAdapter(requireContext(), commentsList, ownerId, ownerId);
         commentsAdapter.setOnCommentClickListener(this);
         recyclerComments.setAdapter(commentsAdapter);
 
@@ -125,8 +137,14 @@ public class NoteViewerFragment extends Fragment implements CommentsAdapter.OnCo
                 Toast.makeText(requireContext(), R.string.comments_add_error, Toast.LENGTH_SHORT).show();
                 return;
             }
-            sendComment(text);
+            if (editingComment != null) {
+                updateComment(editingComment, text);
+            } else {
+                sendComment(text);
+            }
         });
+
+        btnCancelEdit.setOnClickListener(v -> cancelEditing());
     }
 
     @Override
@@ -175,12 +193,15 @@ public class NoteViewerFragment extends Fragment implements CommentsAdapter.OnCo
 
     private void sendComment(String text) {
         btnSendComment.setEnabled(false);
-        notesManager.createComment(note.getOwnerId(), note.getId(), text, null, new CommentsManager.CreateCommentCallback() {
+        String finalMessage = (replyPrefix != null ? replyPrefix : "") + text;
+        
+        notesManager.createComment(note.getOwnerId(), note.getId(), finalMessage, null, new CommentsManager.CreateCommentCallback() {
             @Override
             public void onSuccess(Comment comment) {
                 if (!isAdded()) return;
                 btnSendComment.setEnabled(true);
                 editComment.setText("");
+                editCommentHeader.setVisibility(View.GONE);
                 loadComments();
             }
 
@@ -191,6 +212,40 @@ public class NoteViewerFragment extends Fragment implements CommentsAdapter.OnCo
                 Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show();
             }
         });
+    }
+
+    private void updateComment(Comment comment, String newText) {
+        btnSendComment.setEnabled(false);
+        notesManager.editComment(comment.getId(), newText, new NotesManager.ActionCallback() {
+            @Override
+            public void onSuccess() {
+                if (!isAdded()) return;
+                btnSendComment.setEnabled(true);
+                comment.setText(newText);
+                int index = commentsList.indexOf(comment);
+                if (index >= 0) {
+                    commentsAdapter.notifyItemChanged(index);
+                }
+                cancelEditing();
+                Toast.makeText(requireContext(), R.string.comments_edited, Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onError(String error) {
+                if (!isAdded()) return;
+                btnSendComment.setEnabled(true);
+                Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void cancelEditing() {
+        editingComment = null;
+        replyPrefix = null;
+        editComment.setText("");
+        if (editCommentHeader != null) {
+            editCommentHeader.setVisibility(View.GONE);
+        }
     }
 
     private void showEditNoteDialog() {
@@ -356,13 +411,74 @@ public class NoteViewerFragment extends Fragment implements CommentsAdapter.OnCo
 
     @Override
     public void onReplyClick(Comment comment) {
-        String replyText = "[id" + comment.getFromId() + "|" + comment.getAuthorName() + "] ";
-        editComment.setText(replyText);
-        editComment.setSelection(replyText.length());
+        // Формируем скрытый префикс ответа
+        replyPrefix = "[id" + comment.getFromId() + "|" + comment.getAuthorName() + "] ";
+        
+        // Очищаем поле ввода
+        editComment.setText("");
+        
+        // Показываем плашку ответа
+        headerIcon.setImageResource(R.drawable.ic_comment);
+        headerText.setText(getString(R.string.comments_reply_to, comment.getAuthorName()));
+        editCommentHeader.setVisibility(View.VISIBLE);
+        
         editComment.requestFocus();
     }
 
     @Override
     public void onImageClick(String imageUrl) {
+        if (imageUrl != null && !imageUrl.isEmpty()) {
+            ArrayList<String> images = new ArrayList<>();
+            images.add(imageUrl);
+            org.nikanikoo.flux.ui.activities.PhotoViewerActivity.start(requireContext(), images, 0, null, "");
+        }
+    }
+
+    @Override
+    public void onDeleteClick(Comment comment) {
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.comments_delete_confirm)
+                .setMessage(R.string.comments_delete_message)
+                .setPositiveButton(R.string.delete, (dialog, which) -> deleteComment(comment))
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    @Override
+    public void onEditClick(Comment comment) {
+        editingComment = comment;
+        replyPrefix = null;
+        editComment.setText(comment.getText());
+        if (comment.getText() != null) {
+            editComment.setSelection(comment.getText().length());
+        }
+        
+        // Настраиваем плашку редактирования
+        headerIcon.setImageResource(R.drawable.ic_edit);
+        headerText.setText(R.string.comments_edit_hint);
+        editCommentHeader.setVisibility(View.VISIBLE);
+
+        editComment.requestFocus();
+    }
+
+    private void deleteComment(Comment comment) {
+        notesManager.deleteComment(comment.getId(), new NotesManager.ActionCallback() {
+            @Override
+            public void onSuccess() {
+                if (!isAdded()) return;
+                int index = commentsList.indexOf(comment);
+                if (index >= 0) {
+                    commentsList.remove(index);
+                    commentsAdapter.notifyItemRemoved(index);
+                    Toast.makeText(requireContext(), R.string.comments_deleted, Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                if (!isAdded()) return;
+                Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 }
