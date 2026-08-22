@@ -1,7 +1,10 @@
 package org.nikanikoo.flux.ui.adapters.messages;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
+import android.graphics.Color;
 import android.text.util.Linkify;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,8 +14,10 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.squareup.picasso.Picasso;
 
+import org.nikanikoo.flux.FluxApplication;
 import org.nikanikoo.flux.data.models.Message;
 import org.nikanikoo.flux.R;
+import org.nikanikoo.flux.utils.MentionUtils;
 import org.nikanikoo.flux.utils.SafeLinkMovementMethod;
 import org.nikanikoo.flux.utils.ValidationUtils;
 
@@ -90,10 +95,16 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
     private void bindOutgoingMessage(OutgoingMessageViewHolder holder, Message message) {
         String sanitizedText = ValidationUtils.SanitizeText(message.getText());
-        holder.messageText.setText(sanitizedText);
+        holder.messageText.setText(MentionUtils.formatMentions(sanitizedText, (id, name, isGroup) -> {
+            if (listener != null) {
+                listener.onAvatarClick(isGroup ? -id : id, name);
+            }
+        },true));
         Linkify.addLinks(holder.messageText, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES);
         holder.messageText.setMovementMethod(SafeLinkMovementMethod.getInstance());
-        holder.messageText.setLinkTextColor(android.graphics.Color.WHITE);
+        
+        // Устанавливаем цвет ссылок таким же, как у обычного текста
+        holder.messageText.setLinkTextColor(holder.messageText.getCurrentTextColor());
         
         // Форматирование времени
         Date date = new Date(message.getDate() * 1000);
@@ -110,9 +121,16 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
     private void bindIncomingMessage(IncomingMessageViewHolder holder, Message message) {
         String sanitizedText = ValidationUtils.SanitizeText(message.getText());
-        holder.messageText.setText(sanitizedText);
+        holder.messageText.setText(MentionUtils.formatMentions(sanitizedText, (id, name, isGroup) -> {
+            if (listener != null) {
+                listener.onAvatarClick(isGroup ? -id : id, name);
+            }
+        }, true));
         Linkify.addLinks(holder.messageText, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES);
         holder.messageText.setMovementMethod(SafeLinkMovementMethod.getInstance());
+        
+        // Устанавливаем цвет ссылок таким же, как у обычного текста
+        holder.messageText.setLinkTextColor(holder.messageText.getCurrentTextColor());
         
         // Форматирование времени
         Date date = new Date(message.getDate() * 1000);
