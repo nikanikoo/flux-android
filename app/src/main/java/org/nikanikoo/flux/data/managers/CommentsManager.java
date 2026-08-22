@@ -200,6 +200,45 @@ public class CommentsManager extends BaseManager<CommentsManager> {
         });
     }
 
+    public void deleteComment(int commentId, OpenVKApi.ApiCallback callback) {
+        deleteComment(0, commentId, callback);
+    }
+
+    public void editComment(int commentId, String message, String attachments, OpenVKApi.ApiCallback callback) {
+        editComment(0, commentId, message, attachments, callback);
+    }
+
+    public void editComment(int commentId, String message, OpenVKApi.ApiCallback callback) {
+        editComment(0, commentId, message, null, callback);
+    }
+
+    public void deleteComment(int ownerId, int commentId, OpenVKApi.ApiCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        if (ownerId != 0) {
+            params.put("owner_id", String.valueOf(ownerId));
+        }
+        params.put("comment_id", String.valueOf(commentId));
+
+        Logger.d("CommentsManager", "Удаление комментария: " + commentId + " (owner: " + ownerId + ")");
+        api.callMethod("wall.deleteComment", params, callback);
+    }
+
+    public void editComment(int ownerId, int commentId, String message, String attachments, OpenVKApi.ApiCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        if (ownerId != 0) {
+            params.put("owner_id", String.valueOf(ownerId));
+        }
+        params.put("comment_id", String.valueOf(commentId));
+        params.put("message", message);
+        
+        if (attachments != null) {
+            params.put("attachments", attachments);
+        }
+
+        Logger.d("CommentsManager", "Редактирование комментария: " + commentId + " (owner: " + ownerId + ") с вложениями: " + attachments);
+        api.callMethod("wall.editComment", params, callback);
+    }
+
     private List<Comment> parseComments(JSONArray items, JSONArray profiles, JSONArray groups) {
         List<Comment> comments = new ArrayList<>();
         Map<Integer, String> profileNames = new HashMap<>();

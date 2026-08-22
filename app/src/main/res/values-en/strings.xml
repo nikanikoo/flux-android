@@ -15,6 +15,7 @@
     <string name="save">Save</string>
     <string name="delete">Delete</string>
     <string name="edit">Edit</string>
+    <string name="reply">Reply</string>
     <string name="edit_post_title">Edit post</string>
     <string name="edit_post_hint">What\'s new?</string>
     <string name="profile_edit_success">Changes saved</string>
@@ -164,6 +165,12 @@
     <string name="comments_cannot_load">Cannot load comments</string>
     <string name="comments_updated">Comments updated</string>
     <string name="comments_added">Comment added</string>
+    <string name="comments_edited">Comment edited</string>
+    <string name="comments_deleted">Comment deleted</string>
+    <string name="comments_delete_confirm">Delete comment?</string>
+    <string name="comments_delete_message">Are you sure you want to delete this comment? This action cannot be undone.</string>
+    <string name="comments_edit_hint">Edit comment...</string>
+    <string name="comments_reply_to">Replying to %s</string>
     <string name="comments_image_selected">Image selected</string>
     <string name="comments_post_not_found">Error: post not found</string>
 
@@ -636,5 +643,30 @@
     <string name="poll_closed">Poll closed</string>
     <string name="poll_error_vote">Voting error</string>
     <string name="poll_error_unvote">Error retracting vote</string>
+
+    <!-- Navigation Settings -->
+    <string name="navigation_settings_group_theme">Theme &amp; Style</string>
+    <string name="navigation_settings_group_nav">Navigation</string>
+    <string name="navigation_style_title">Navigation menu style</string>
+    <string name="navigation_style_drawer">Side menu (Drawer)</string>
+    <string name="navigation_style_bottom">Bottom menu</string>
+    <string name="navigation_menu_title">Menu</string>
+    <string name="navigation_menu_sections">Sections</string>
+    <string name="navigation_menu_empty">All sections are already on the bottom panel</string>
+    <string name="navigation_show_labels_title">Section labels</string>
+    <string name="navigation_show_labels_desc">Show labels under icons</string>
+    <string name="navigation_checklist_title">Panel sections</string>
+    <string name="navigation_sections_summary">%1$d of %2$d</string>
+    <string name="navigation_dialog_description">Select up to 4 sections for the bottom bar. Drag to change the display order. Remaining sections will appear in the \"Menu\" tab.</string>
+    <string name="navigation_dialog_selected_count">Selected: %1$d of %2$d</string>
+    <string name="navigation_max_items">No more than 4 sections can be added to the bar (+ Menu)</string>
+    <string name="navigation_min_items">Select at least one section for the bottom bar</string>
+    <string name="navigation_bottom_nav_disabled_hint">Available only when bottom menu is enabled</string>
+    <string name="navigation_go_to_profile">Go to profile</string>
+    <string name="drag_handle_description">Drag to reorder</string>
+    <string name="navigation_start_section_title">Start section</string>
+    <string name="navigation_start_section_desc">Section to open when starting the application</string>
+    <string name="navigation_drawer_checklist_title">Drawer sections</string>
+    <string name="navigation_drawer_dialog_description">Select sections for the side menu and drag to reorder them. The \"Settings\" section is mandatory.</string>
 
 </resources>

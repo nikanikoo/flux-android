@@ -11,10 +11,6 @@
             android:icon="@drawable/ic_newspaper"
             android:title="@string/nav_news"/>
         <item
-            android:id="@+id/drawer_notification"
-            android:icon="@drawable/ic_notifications"
-            android:title="@string/nav_notifications"/>
-        <item
             android:id="@+id/drawer_friends"
             android:icon="@drawable/ic_contacts"
             android:title="@string/nav_friends"/>

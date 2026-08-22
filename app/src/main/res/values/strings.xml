@@ -16,6 +16,7 @@
     <string name="save">Сохранить</string>
     <string name="delete">Удалить</string>
     <string name="edit">Редактировать</string>
+    <string name="reply">Ответить</string>
     <string name="edit_post_title">Редактирование поста</string>
     <string name="edit_post_hint">Что нового?</string>
     <string name="profile_edit_success">Изменения сохранены</string>
@@ -197,6 +198,12 @@
     <string name="comments_cannot_load">Невозможно загрузить комментарии</string>
     <string name="comments_updated">Комментарии обновлены</string>
     <string name="comments_added">Комментарий отправлен</string>
+    <string name="comments_edited">Комментарий изменен</string>
+    <string name="comments_deleted">Комментарий удален</string>
+    <string name="comments_delete_confirm">Удалить комментарий?</string>
+    <string name="comments_delete_message">Вы действительно хотите удалить этот комментарий? Это действие нельзя будет отменить.</string>
+    <string name="comments_edit_hint">Редактировать комментарий...</string>
+    <string name="comments_reply_to">Ответ пользователю %s</string>
     <string name="comments_image_selected">Изображение выбрано</string>
     <string name="comments_post_not_found">Ошибка: пост не найден</string>
 
@@ -720,5 +727,30 @@
     <string name="poll_closed">Опрос завершен</string>
     <string name="poll_error_vote">Ошибка при голосовании</string>
     <string name="poll_error_unvote">Ошибка при отмене голоса</string>
+
+    <!-- Navigation Settings -->
+    <string name="navigation_settings_group_theme">Тема оформления</string>
+    <string name="navigation_settings_group_nav">Навигация</string>
+    <string name="navigation_style_title">Стиль меню</string>
+    <string name="navigation_style_drawer">Боковое меню (Drawer)</string>
+    <string name="navigation_style_bottom">Нижнее меню</string>
+    <string name="navigation_menu_title">Меню</string>
+    <string name="navigation_menu_sections">Разделы</string>
+    <string name="navigation_menu_empty">Все разделы добавлены на нижнюю панель</string>
+    <string name="navigation_show_labels_title">Названия разделов</string>
+    <string name="navigation_show_labels_desc">Показывать подписи под иконками</string>
+    <string name="navigation_checklist_title">Разделы панели</string>
+    <string name="navigation_sections_summary">%1$d из %2$d</string>
+    <string name="navigation_dialog_description">Выберите до 4 разделов для нижней панели. Перетаскивайте их, чтобы настроить порядок. Остальные разделы будут доступны во вкладке «Меню».</string>
+    <string name="navigation_dialog_selected_count">Выбрано: %1$d из %2$d</string>
+    <string name="navigation_max_items">На панели может быть не более 4 разделов (+ Меню)</string>
+    <string name="navigation_min_items">Выберите хотя бы один раздел для нижней панели</string>
+    <string name="navigation_bottom_nav_disabled_hint">Доступно только при включенном нижнем меню</string>
+    <string name="navigation_go_to_profile">Перейти в профиль</string>
+    <string name="drag_handle_description">Перетащить</string>
+    <string name="navigation_start_section_title">Главный раздел</string>
+    <string name="navigation_start_section_desc">Раздел, открывающийся при запуске приложения</string>
+    <string name="navigation_drawer_checklist_title">Разделы бокового меню</string>
+    <string name="navigation_drawer_dialog_description">Выберите разделы для бокового меню. Перетаскивайте их, чтобы настроить порядок. Раздел «Настройки» обязателен.</string>
 
 </resources>

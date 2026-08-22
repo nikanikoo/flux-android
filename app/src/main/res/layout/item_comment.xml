@@ -161,13 +161,39 @@
                 android:id="@+id/comment_reply_button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Ответить"
+                android:text="@string/reply"
                 android:textSize="12sp"
                 android:clickable="true"
                 android:focusable="true"
                 android:padding="4dp"
                 android:layout_marginStart="16dp"
                 android:background="?attr/selectableItemBackground" />
+
+            <TextView
+                android:id="@+id/comment_edit_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/edit"
+                android:textSize="12sp"
+                android:clickable="true"
+                android:focusable="true"
+                android:padding="4dp"
+                android:layout_marginStart="16dp"
+                android:visibility="gone"
+                android:background="?attr/selectableItemBackground" />
+
+            <TextView
+                android:id="@+id/comment_delete_button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:padding="4dp"
+                android:text="@string/delete"
+                android:textSize="12sp"
+                android:visibility="gone" />
 
         </LinearLayout>
 
