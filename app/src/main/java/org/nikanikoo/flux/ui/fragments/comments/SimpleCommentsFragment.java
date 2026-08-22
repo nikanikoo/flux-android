@@ -6,8 +6,10 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import org.nikanikoo.flux.data.managers.api.OpenVKApi;
 import org.nikanikoo.flux.data.models.Comment;
 import org.nikanikoo.flux.ui.adapters.comments.CommentsAdapter;
 import org.nikanikoo.flux.data.managers.CommentsManager;
@@ -33,6 +35,13 @@ public class SimpleCommentsFragment extends Fragment implements CommentsAdapter.
     private List<Comment> comments;
     private EditText editComment;
     private ImageView btnSendComment;
+    
+    private View editCommentHeader;
+    private ImageView headerIcon;
+    private TextView headerText;
+    private ImageView btnCancelEdit;
+    private Comment editingComment;
+    private String replyPrefix;
     
     public static SimpleCommentsFragment newInstance(Post post) {
         SimpleCommentsFragment fragment = new SimpleCommentsFragment();
@@ -67,19 +76,52 @@ public class SimpleCommentsFragment extends Fragment implements CommentsAdapter.
         setupRecyclerView();
         setupCommentInput();
         loadComments();
+        checkAdminStatus();
+    }
+    
+    private void checkAdminStatus() {
+        if (post != null && post.getOwnerId() < 0) {
+            int groupId = -post.getOwnerId();
+            org.nikanikoo.flux.data.managers.GroupsManager.getInstance(requireContext())
+                    .getGroupById(groupId, new org.nikanikoo.flux.data.managers.GroupsManager.GroupCallback() {
+                @Override
+                public void onSuccess(org.nikanikoo.flux.data.models.Group group) {
+                    if (getActivity() != null) {
+                        getActivity().runOnUiThread(() -> {
+                            if (commentsAdapter != null) {
+                                commentsAdapter.setIsAdmin(group.isAdmin());
+                            }
+                        });
+                    }
+                }
+                @Override
+                public void onError(String error) {}
+            });
+        }
     }
     
     private void initViews(View view) {
         recyclerComments = view.findViewById(R.id.recycler_comments);
         editComment = view.findViewById(R.id.edit_comment);
         btnSendComment = view.findViewById(R.id.btn_send_comment);
+        editCommentHeader = view.findViewById(R.id.edit_comment_header);
+        headerIcon = view.findViewById(R.id.header_icon);
+        headerText = view.findViewById(R.id.header_text);
+        btnCancelEdit = view.findViewById(R.id.btn_cancel_edit);
     }
     
     private void setupRecyclerView() {
         recyclerComments.setLayoutManager(new LinearLayoutManager(getContext()));
-        commentsAdapter = new CommentsAdapter(getContext(), comments);
+        commentsAdapter = new CommentsAdapter(getContext(), comments, 
+                post != null ? post.getOwnerId() : 0, 
+                post != null ? post.getAuthorId() : 0);
         commentsAdapter.setOnCommentClickListener(this);
         recyclerComments.setAdapter(commentsAdapter);
+        
+        // Всегда проверяем админство для групп
+        if (post != null && post.getOwnerId() < 0) {
+            checkAdminStatus();
+        }
     }
     
     private void setupCommentInput() {
@@ -90,8 +132,14 @@ public class SimpleCommentsFragment extends Fragment implements CommentsAdapter.
                 return;
             }
             
-            sendComment(commentText);
+            if (editingComment != null) {
+                updateComment(editingComment, commentText);
+            } else {
+                sendComment(commentText);
+            }
         });
+        
+        btnCancelEdit.setOnClickListener(v -> cancelEditing());
     }
     
     private void loadComments() {
@@ -123,7 +171,9 @@ public class SimpleCommentsFragment extends Fragment implements CommentsAdapter.
     private void sendComment(String text) {
         if (post == null) return;
         
-        commentsManager.createComment(post.getOwnerId(), post.getPostId(), text, new CommentsManager.CreateCommentCallback() {
+        String finalMessage = (replyPrefix != null ? replyPrefix : "") + text;
+        
+        commentsManager.createComment(post.getOwnerId(), post.getPostId(), finalMessage, new CommentsManager.CreateCommentCallback() {
             @Override
             public void onSuccess(Comment comment) {
                 if (getActivity() != null) {
@@ -131,6 +181,7 @@ public class SimpleCommentsFragment extends Fragment implements CommentsAdapter.
                         comments.add(comment);
                         commentsAdapter.notifyItemInserted(comments.size() - 1);
                         editComment.setText("");
+                        editCommentHeader.setVisibility(View.GONE);
                         recyclerComments.scrollToPosition(comments.size() - 1);
                     });
                 }
@@ -218,14 +269,113 @@ public class SimpleCommentsFragment extends Fragment implements CommentsAdapter.
     
     @Override
     public void onReplyClick(Comment comment) {
-        String replyText = "[id" + comment.getFromId() + "|" + comment.getAuthorName() + "] ";
-        editComment.setText(replyText);
-        editComment.setSelection(replyText.length());
+        // Формируем текст ответа в формате [id|Имя] (скрыто)
+        replyPrefix = "[id" + comment.getFromId() + "|" + comment.getAuthorName() + "] ";
+        
+        // Очищаем поле ввода
+        editComment.setText("");
+        
+        // Показываем плашку ответа
+        headerIcon.setImageResource(R.drawable.ic_comment);
+        headerText.setText(getString(R.string.comments_reply_to, comment.getAuthorName()));
+        editCommentHeader.setVisibility(View.VISIBLE);
+        
         editComment.requestFocus();
     }
     
     @Override
     public void onImageClick(String imageUrl) {
         // Можно добавить открытие изображения
+    }
+
+    @Override
+    public void onDeleteClick(Comment comment) {
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.comments_delete_confirm)
+                .setMessage(R.string.comments_delete_message)
+                .setPositiveButton(R.string.delete, (dialog, which) -> {
+                    deleteComment(comment);
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    @Override
+    public void onEditClick(Comment comment) {
+        editingComment = comment;
+        replyPrefix = null;
+        editComment.setText(comment.getText());
+        if (comment.getText() != null) {
+            editComment.setSelection(comment.getText().length());
+        }
+        
+        // Настраиваем плашку редактирования
+        headerIcon.setImageResource(R.drawable.ic_edit);
+        headerText.setText(R.string.comments_edit_hint);
+        editCommentHeader.setVisibility(View.VISIBLE);
+
+        editComment.requestFocus();
+    }
+
+    private void cancelEditing() {
+        editingComment = null;
+        replyPrefix = null;
+        editComment.setText("");
+        editCommentHeader.setVisibility(View.GONE);
+    }
+
+    private void deleteComment(Comment comment) {
+        commentsManager.deleteComment(comment.getId(), new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(org.json.JSONObject response) {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        int index = comments.indexOf(comment);
+                        if (index >= 0) {
+                            comments.remove(index);
+                            commentsAdapter.notifyItemRemoved(index);
+                            Toast.makeText(getContext(), R.string.comments_deleted, Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        Toast.makeText(getContext(), getString(R.string.error_loading) + error, Toast.LENGTH_SHORT).show();
+                    });
+                }
+            }
+        });
+    }
+
+    private void updateComment(Comment comment, String newText) {
+        commentsManager.editComment(comment.getId(), newText, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(org.json.JSONObject response) {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        comment.setText(newText);
+                        int index = comments.indexOf(comment);
+                        if (index >= 0) {
+                            commentsAdapter.notifyItemChanged(index);
+                        }
+                        cancelEditing();
+                        Toast.makeText(getContext(), R.string.comments_edited, Toast.LENGTH_SHORT).show();
+                    });
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        Toast.makeText(getContext(), getString(R.string.error_loading) + error, Toast.LENGTH_SHORT).show();
+                    });
+                }
+            }
+        });
     }
 }

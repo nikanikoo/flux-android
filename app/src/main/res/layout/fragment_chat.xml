@@ -94,7 +94,7 @@
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:padding="8dp"
             android:layout_marginStart="8dp"
-            app:tint="@color/light_primary" />
+            app:tint="?attr/colorPrimary" />
 
     </LinearLayout>
 

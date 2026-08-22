@@ -46,8 +46,8 @@
         <item name="colorSurfaceContainerHighest">@color/md_theme_dark_surfaceContainerHighest</item>
 
         <!-- Статус и навигация -->
-        <item name="android:statusBarColor">@color/md_theme_dark_surface</item>
-        <item name="android:navigationBarColor">@color/md_theme_dark_surface</item>
+        <item name="android:statusBarColor">@color/md_theme_dark_surfaceContainer</item>
+        <item name="android:navigationBarColor">@color/md_theme_dark_surfaceContainer</item>
         <item name="android:windowLightStatusBar" tools:targetApi="23">false</item>
         <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">false</item>
         <item name="cardViewStyle">@style/Widget.App.CardView</item>

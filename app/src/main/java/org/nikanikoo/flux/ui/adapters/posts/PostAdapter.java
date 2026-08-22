@@ -26,6 +26,7 @@ import org.nikanikoo.flux.ui.activities.PhotoViewerActivity;
 import org.nikanikoo.flux.ui.views.AudioAttachmentView;
 import org.nikanikoo.flux.utils.ImageUtils;
 import org.nikanikoo.flux.utils.Logger;
+import org.nikanikoo.flux.utils.MentionUtils;
 import org.nikanikoo.flux.utils.SafeLinkMovementMethod;
 import org.nikanikoo.flux.utils.ValidationUtils;
 
@@ -336,7 +337,11 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         String repostText = post.getRepostText();
         if (ValidationUtils.isValidPostText(repostText)) {
             String sanitizedText = ValidationUtils.SanitizeText(repostText);
-            holder.content.setText(sanitizedText);
+            holder.content.setText(MentionUtils.formatMentions(sanitizedText, (id, name, isGroup) -> {
+                if (clickListener != null) {
+                    clickListener.onAuthorClick(id, name, isGroup);
+                }
+            }));
             Linkify.addLinks(holder.content, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES);
             holder.content.setMovementMethod(SafeLinkMovementMethod.getInstance());
             holder.content.setVisibility(View.VISIBLE);
@@ -390,7 +395,11 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         String originalContent = originalPost.getContent();
         if (ValidationUtils.isValidPostText(originalContent)) {
             String sanitizedText = ValidationUtils.SanitizeText(originalContent);
-            holder.originalPostContent.setText(sanitizedText);
+            holder.originalPostContent.setText(MentionUtils.formatMentions(sanitizedText, (id, name, isGroup) -> {
+                if (clickListener != null) {
+                    clickListener.onAuthorClick(id, name, isGroup);
+                }
+            }));
             Linkify.addLinks(holder.originalPostContent, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES);
             holder.originalPostContent.setMovementMethod(SafeLinkMovementMethod.getInstance());
             holder.originalPostContent.setVisibility(View.VISIBLE);
@@ -479,7 +488,11 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         String postContent = post.getContent();
         if (ValidationUtils.isValidPostText(postContent)) {
             String sanitizedText = ValidationUtils.SanitizeText(postContent);
-            holder.content.setText(sanitizedText);
+            holder.content.setText(MentionUtils.formatMentions(sanitizedText, (id, name, isGroup) -> {
+                if (clickListener != null) {
+                    clickListener.onAuthorClick(id, name, isGroup);
+                }
+            }));
             Linkify.addLinks(holder.content, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES);
             holder.content.setMovementMethod(SafeLinkMovementMethod.getInstance());
             holder.content.setVisibility(View.VISIBLE);
@@ -592,7 +605,11 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         String unsupportedText = originalPost.getUnsupportedElementsText();
         if (ValidationUtils.isValidPostText(unsupportedText)) {
             String sanitizedText = ValidationUtils.SanitizeText(unsupportedText);
-            holder.originalPostUnsupportedElements.setText(sanitizedText);
+            holder.originalPostUnsupportedElements.setText(MentionUtils.formatMentions(sanitizedText, (id, name, isGroup) -> {
+                if (clickListener != null) {
+                    clickListener.onAuthorClick(id, name, isGroup);
+                }
+            }));
             Linkify.addLinks(holder.originalPostUnsupportedElements, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES);
             holder.originalPostUnsupportedElements.setMovementMethod(SafeLinkMovementMethod.getInstance());
             holder.originalPostUnsupportedElements.setVisibility(View.VISIBLE);
@@ -640,7 +657,11 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         String unsupportedText = post.getUnsupportedElementsText();
         if (ValidationUtils.isValidPostText(unsupportedText)) {
             String sanitizedText = ValidationUtils.SanitizeText(unsupportedText);
-            holder.unsupportedElements.setText(sanitizedText);
+            holder.unsupportedElements.setText(MentionUtils.formatMentions(sanitizedText, (id, name, isGroup) -> {
+                if (clickListener != null) {
+                    clickListener.onAuthorClick(id, name, isGroup);
+                }
+            }));
             Linkify.addLinks(holder.unsupportedElements, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES);
             holder.unsupportedElements.setMovementMethod(SafeLinkMovementMethod.getInstance());
             holder.unsupportedElements.setVisibility(View.VISIBLE);

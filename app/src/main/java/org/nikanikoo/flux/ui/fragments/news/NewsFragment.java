@@ -132,9 +132,47 @@ public class NewsFragment extends BaseFragment implements PostAdapter.OnPostClic
     }
 
     @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setHasOptionsMenu(true);
+    }
+
+    @Override
+    public void onCreateOptionsMenu(@NonNull android.view.Menu menu, @NonNull android.view.MenuInflater inflater) {
+        menu.clear();
+        android.view.MenuItem notifItem = menu.add(android.view.Menu.NONE, R.id.action_notifications, 0, R.string.nav_notifications);
+        notifItem.setIcon(R.drawable.ic_notifications);
+        notifItem.setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS);
+        super.onCreateOptionsMenu(menu, inflater);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(@NonNull android.view.MenuItem item) {
+        if (item.getItemId() == R.id.action_notifications) {
+            if (getActivity() instanceof MainActivity) {
+                MainActivity mainActivity = (MainActivity) getActivity();
+                if (mainActivity.getNavigationController() != null) {
+                    mainActivity.getNavigationController().navigateToFragmentWithBackStack(
+                            new org.nikanikoo.flux.ui.fragments.notifications.NotificationsFragment(), "notifications"
+                    );
+                    mainActivity.setToolbarTitle(getString(R.string.nav_notifications));
+                }
+            }
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
     public void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putBoolean("has_loaded_posts", hasLoadedPosts);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        setupToolbarTitle();
     }
     
     private void setupToolbarTitle() {
