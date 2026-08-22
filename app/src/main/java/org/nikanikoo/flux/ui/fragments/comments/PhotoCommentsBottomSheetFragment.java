@@ -49,6 +49,7 @@ public class PhotoCommentsBottomSheetFragment extends BottomSheetDialogFragment
     private CommentsAdapter commentsAdapter;
     private final List<Comment> comments = new ArrayList<>();
     private PhotosManager photosManager;
+    private Comment editingComment;
 
     public static PhotoCommentsBottomSheetFragment newInstance(int ownerId, int photoId) {
         PhotoCommentsBottomSheetFragment fragment = new PhotoCommentsBottomSheetFragment();
@@ -101,7 +102,7 @@ public class PhotoCommentsBottomSheetFragment extends BottomSheetDialogFragment
 
     private void setupRecyclerView() {
         recyclerComments.setLayoutManager(new LinearLayoutManager(getContext()));
-        commentsAdapter = new CommentsAdapter(getContext(), comments);
+        commentsAdapter = new CommentsAdapter(getContext(), comments, ownerId, 0);
         commentsAdapter.setOnCommentClickListener(this);
         recyclerComments.setAdapter(commentsAdapter);
     }
@@ -112,7 +113,11 @@ public class PhotoCommentsBottomSheetFragment extends BottomSheetDialogFragment
             if (text.isEmpty()) {
                 return;
             }
-            sendComment(text);
+            if (editingComment != null) {
+                updateComment(editingComment, text);
+            } else {
+                sendComment(text);
+            }
         });
     }
 
@@ -177,6 +182,68 @@ public class PhotoCommentsBottomSheetFragment extends BottomSheetDialogFragment
         });
     }
 
+    private void updateComment(Comment comment, String newText) {
+        btnSendComment.setEnabled(false);
+        photosManager.editComment(ownerId, comment.getId(), newText, new PhotosManager.ActionCallback() {
+            @Override
+            public void onSuccess() {
+                if (!isAdded()) return;
+                requireActivity().runOnUiThread(() -> {
+                    btnSendComment.setEnabled(true);
+                    comment.setText(newText);
+                    int index = comments.indexOf(comment);
+                    if (index >= 0) {
+                        commentsAdapter.notifyItemChanged(index);
+                    }
+                    cancelEditing();
+                    Toast.makeText(requireContext(), R.string.comments_edited, Toast.LENGTH_SHORT).show();
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                if (!isAdded()) return;
+                requireActivity().runOnUiThread(() -> {
+                    btnSendComment.setEnabled(true);
+                    Toast.makeText(requireContext(), getString(R.string.error) + ": " + error, Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
+    }
+
+    private void cancelEditing() {
+        editingComment = null;
+        editComment.setText("");
+    }
+
+    private void deleteComment(Comment comment) {
+        photosManager.deleteComment(ownerId, comment.getId(), new PhotosManager.ActionCallback() {
+            @Override
+            public void onSuccess() {
+                if (!isAdded()) return;
+                requireActivity().runOnUiThread(() -> {
+                    int index = comments.indexOf(comment);
+                    if (index >= 0) {
+                        comments.remove(index);
+                        commentsAdapter.notifyItemRemoved(index);
+                        Toast.makeText(requireContext(), R.string.comments_deleted, Toast.LENGTH_SHORT).show();
+                    }
+                    if (emptyContainer != null) {
+                        emptyContainer.setVisibility(comments.isEmpty() ? View.VISIBLE : View.GONE);
+                    }
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                if (!isAdded()) return;
+                requireActivity().runOnUiThread(() -> {
+                    Toast.makeText(requireContext(), getString(R.string.error) + ": " + error, Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
+    }
+
     @Override
     public void onAuthorClick(int authorId, String authorName, boolean isGroup) {
         dismiss();
@@ -227,5 +294,32 @@ public class PhotoCommentsBottomSheetFragment extends BottomSheetDialogFragment
     }
 
     @Override
-    public void onImageClick(String imageUrl) {}
+    public void onImageClick(String imageUrl) {
+        if (imageUrl != null && !imageUrl.isEmpty()) {
+            ArrayList<String> images = new ArrayList<>();
+            images.add(imageUrl);
+            org.nikanikoo.flux.ui.activities.PhotoViewerActivity.start(requireContext(), images, 0, null, "");
+        }
+    }
+
+    @Override
+    public void onDeleteClick(Comment comment) {
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.comments_delete_confirm)
+                .setMessage(R.string.comments_delete_message)
+                .setPositiveButton(R.string.delete, (dialog, which) -> deleteComment(comment))
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    @Override
+    public void onEditClick(Comment comment) {
+        editingComment = comment;
+        editComment.setText(comment.getText());
+        if (comment.getText() != null) {
+            editComment.setSelection(comment.getText().length());
+        }
+        editComment.requestFocus();
+    }
 }
+

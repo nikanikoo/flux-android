@@ -350,6 +350,47 @@ public class PhotosManager extends BaseManager<PhotosManager> {
         });
     }
 
+    public void deleteComment(int ownerId, int commentId, ActionCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("owner_id", String.valueOf(ownerId));
+        params.put("comment_id", String.valueOf(commentId));
+
+        api.callMethod("photos.deleteComment", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                Logger.d(TAG, "Photo comment deleted successfully");
+                callback.onSuccess();
+            }
+
+            @Override
+            public void onError(String error) {
+                Logger.e(TAG, "Error deleting photo comment: " + error);
+                callback.onError(error);
+            }
+        });
+    }
+
+    public void editComment(int ownerId, int commentId, String message, ActionCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("owner_id", String.valueOf(ownerId));
+        params.put("comment_id", String.valueOf(commentId));
+        params.put("message", message);
+
+        api.callMethod("photos.editComment", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                Logger.d(TAG, "Photo comment edited successfully");
+                callback.onSuccess();
+            }
+
+            @Override
+            public void onError(String error) {
+                Logger.e(TAG, "Error editing photo comment: " + error);
+                callback.onError(error);
+            }
+        });
+    }
+
     private void parsePhotoCommentsAsync(JSONArray items, JSONArray profiles, JSONArray groups, int totalCount, PhotoCommentsCallback callback) {
         Map<Integer, String> namesMap = new HashMap<>();
         Map<Integer, String> avatarsMap = new HashMap<>();
