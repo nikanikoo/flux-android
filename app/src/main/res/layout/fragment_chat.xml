@@ -52,6 +52,7 @@
 
     <!-- Поле ввода сообщения -->
     <LinearLayout
+        android:id="@+id/chat_composer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
@@ -60,6 +61,44 @@
         android:padding="12dp"
         android:background="?attr/colorSurface"
         android:elevation="4dp">
+
+        <ImageView
+            android:id="@+id/attach_button"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_photo"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:padding="8dp"
+            app:tint="?attr/colorPrimary" />
+
+        <FrameLayout
+            android:id="@+id/pending_attachment_preview"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:layout_marginEnd="8dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/pending_attachment_image"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_gravity="center"
+                android:contentDescription="@string/pending_photo"
+                android:scaleType="centerCrop" />
+
+            <ImageView
+                android:id="@+id/remove_pending_attachment"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="top|end"
+                android:background="@drawable/avatar_circle"
+                android:contentDescription="@string/remove_attachment"
+                android:padding="3dp"
+                android:src="@drawable/ic_close"
+                app:tint="?attr/colorOnSurface" />
+        </FrameLayout>
 
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="0dp"

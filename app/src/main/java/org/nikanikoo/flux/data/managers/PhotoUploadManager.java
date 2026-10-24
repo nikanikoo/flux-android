@@ -128,6 +128,73 @@ public class PhotoUploadManager extends BaseManager<PhotoUploadManager> {
         });
     }
 
+    public void uploadMessagePhoto(Uri imageUri, int peerId, PhotoUploadCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_id", String.valueOf(peerId));
+        api.callMethod("photos.getMessagesUploadServer", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                try {
+                    String uploadUrl = response.getJSONObject("response").getString("upload_url");
+                    uploadPhotoFile(imageUri, uploadUrl, new FileUploadCallback() {
+                        @Override
+                        public void onSuccess(String server, String photo, String hash) {
+                            Map<String, String> saveParams = new HashMap<>();
+                            saveParams.put("server", server);
+                            saveParams.put("photo", photo);
+                            saveParams.put("hash", hash);
+                            savePhoto("photos.saveMessagesPhoto", saveParams, callback);
+                        }
+
+                        @Override
+                        public void onError(String error) {
+                            callback.onError(error);
+                        }
+                    });
+                } catch (Exception e) {
+                    Logger.e(TAG, "Could not read message photo upload URL", e);
+                    callback.onError("Не удалось прочитать адрес загрузки фото: " + e.getMessage());
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    public void uploadChatPhoto(Uri imageUri, int chatId, OpenVKApi.ApiCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("chat_id", String.valueOf(chatId));
+        api.callMethod("photos.getChatUploadServer", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                try {
+                    String uploadUrl = response.getJSONObject("response").getString("upload_url");
+                    uploadPhotoFile(imageUri, uploadUrl, new FileUploadCallback() {
+                        @Override
+                        public void onSuccess(String server, String photo, String hash) {
+                            MessagesManager.getInstance(context).setChatPhoto(chatId, photo, hash, callback);
+                        }
+
+                        @Override
+                        public void onError(String error) {
+                            callback.onError(error);
+                        }
+                    });
+                } catch (Exception e) {
+                    callback.onError("Could not read chat photo upload URL");
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
     public void uploadOwnerPhoto(Uri imageUri, PhotoUploadCallback callback) {
         Logger.d(TAG, "Starting owner photo upload for URI: " + imageUri);
 
@@ -284,6 +351,11 @@ public class PhotoUploadManager extends BaseManager<PhotoUploadManager> {
                         return;
                     }
 
+                    if (!response.isSuccessful()) {
+                        callback.onError("Ошибка сервера загрузки (HTTP " + response.code() + "): " + responseBody);
+                        return;
+                    }
+
                     JSONObject json = new JSONObject(responseBody);
                     String server = json.optString("server", "");
                     String photo = json.optString("photo", "");
@@ -302,7 +374,7 @@ public class PhotoUploadManager extends BaseManager<PhotoUploadManager> {
                 }
             } catch (Exception e) {
                 Logger.e(TAG, "Error uploading photo file", e);
-                callback.onError(e.getMessage());
+                callback.onError("Ошибка загрузки фото: " + e.getMessage());
             } finally {
                 // Ensure temp file is deleted even on errors
                 if (tempFile != null && tempFile.exists()) {
@@ -343,9 +415,7 @@ public class PhotoUploadManager extends BaseManager<PhotoUploadManager> {
                             JSONArray photoArray = (JSONArray) responseData;
                             if (photoArray.length() > 0) {
                                 JSONObject photoObj = photoArray.getJSONObject(0);
-                                int ownerId = photoObj.optInt("owner_id", 0);
-                                int photoId = photoObj.optInt("id", 0);
-                                String attachment = "photo" + ownerId + "_" + photoId;
+                                String attachment = buildPhotoAttachment(photoObj);
 
                                 Logger.d(TAG, "Photo saved successfully: " + attachment);
                                 callback.onSuccess(attachment);
@@ -365,9 +435,7 @@ public class PhotoUploadManager extends BaseManager<PhotoUploadManager> {
                                 JSONArray photoArray = responseObj.getJSONArray("items");
                                 if (photoArray.length() > 0) {
                                     JSONObject photoObj = photoArray.getJSONObject(0);
-                                    int ownerId = photoObj.optInt("owner_id", 0);
-                                    int photoId = photoObj.optInt("id", 0);
-                                    String attachment = "photo" + ownerId + "_" + photoId;
+                                    String attachment = buildPhotoAttachment(photoObj);
 
                                     Logger.d(TAG, "Photo saved successfully: " + attachment);
                                     callback.onSuccess(attachment);
@@ -379,9 +447,7 @@ public class PhotoUploadManager extends BaseManager<PhotoUploadManager> {
                                 JSONArray photoArray = responseObj.getJSONArray("response");
                                 if (photoArray.length() > 0) {
                                     JSONObject photoObj = photoArray.getJSONObject(0);
-                                    int ownerId = photoObj.optInt("owner_id", 0);
-                                    int photoId = photoObj.optInt("id", 0);
-                                    String attachment = "photo" + ownerId + "_" + photoId;
+                                    String attachment = buildPhotoAttachment(photoObj);
 
                                     Logger.d(TAG, "Photo saved successfully: " + attachment);
                                     callback.onSuccess(attachment);
@@ -392,19 +458,30 @@ public class PhotoUploadManager extends BaseManager<PhotoUploadManager> {
                     }
 
                     Logger.e(TAG, "Unexpected response format: " + response.toString());
-                    callback.onError("Неожиданный формат ответа saveWallPhoto: " + response.toString());
+                    callback.onError("Неожиданный формат ответа сохранения фото: " + response);
                 } catch (Exception e) {
                     Logger.e(TAG, "Error parsing save photo response", e);
-                    callback.onError("Не удалось сохранить фото");
+                    callback.onError("Не удалось обработать ответ сохранения фото: " + e.getMessage());
                 }
             }
 
             @Override
             public void onError(String error) {
                 Logger.e(TAG, "Error saving photo: " + error);
-                callback.onError("Не удалось сохранить фото");
+                callback.onError("Не удалось сохранить фото: " + error);
             }
         });
+    }
+
+    private String buildPhotoAttachment(JSONObject photo) {
+        int ownerId = photo.optInt("owner_id", 0);
+        int photoId = photo.optInt("id", photo.optInt("pid", 0));
+        String accessKey = photo.optString("access_key", "");
+        String attachment = "photo" + ownerId + "_" + photoId;
+        if (!accessKey.isEmpty()) {
+            attachment += "_" + accessKey;
+        }
+        return attachment;
     }
 
     /**

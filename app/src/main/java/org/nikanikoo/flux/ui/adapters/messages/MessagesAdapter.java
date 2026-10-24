@@ -2,6 +2,9 @@ package org.nikanikoo.flux.ui.adapters.messages;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
+import android.graphics.drawable.GradientDrawable;
 import android.graphics.Color;
 import android.text.util.Linkify;
 import android.util.TypedValue;
@@ -10,12 +13,16 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.LinearLayout;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.squareup.picasso.Picasso;
 
 import org.nikanikoo.flux.FluxApplication;
 import org.nikanikoo.flux.data.models.Message;
+import org.nikanikoo.flux.data.models.MessageAttachment;
+import org.nikanikoo.flux.data.models.MessageReference;
+import org.nikanikoo.flux.data.managers.api.OpenVKApi;
 import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.utils.MentionUtils;
 import org.nikanikoo.flux.utils.SafeLinkMovementMethod;
@@ -105,6 +112,8 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         
         // Устанавливаем цвет ссылок таким же, как у обычного текста
         holder.messageText.setLinkTextColor(holder.messageText.getCurrentTextColor());
+        bindReferences(holder.replyPreview, message);
+        bindAttachments(holder.attachments, message.getAttachments());
         
         // Форматирование времени
         Date date = new Date(message.getDate() * 1000);
@@ -131,6 +140,8 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         
         // Устанавливаем цвет ссылок таким же, как у обычного текста
         holder.messageText.setLinkTextColor(holder.messageText.getCurrentTextColor());
+        bindReferences(holder.replyPreview, message);
+        bindAttachments(holder.attachments, message.getAttachments());
         
         // Форматирование времени
         Date date = new Date(message.getDate() * 1000);
@@ -154,6 +165,196 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 listener.onAvatarClick(message.getFromId(), message.getUserName());
             }
         });
+    }
+
+    private void bindAttachments(LinearLayout container, List<MessageAttachment> attachments) {
+        container.removeAllViews();
+        if (attachments == null) return;
+        for (MessageAttachment attachment : attachments) {
+            if ("wall".equals(attachment.getType())) {
+                addWallCard(container, attachment);
+            } else if ("doc".equals(attachment.getType())) {
+                addDocumentCard(container, attachment);
+            } else if (attachment.getImageUrl() != null && !attachment.getImageUrl().isEmpty()) {
+                ImageView image = new ImageView(context);
+                LinearLayout.LayoutParams imageParams = new LinearLayout.LayoutParams(dp(220), dp(160));
+                imageParams.topMargin = dp(8);
+                image.setLayoutParams(imageParams);
+                image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                image.setContentDescription(attachment.getTitle());
+                Picasso.get().load(attachment.getImageUrl())
+                        .placeholder(android.R.drawable.ic_menu_gallery)
+                        .error(android.R.drawable.ic_menu_gallery)
+                        .fit().centerInside().into(image);
+                image.setOnClickListener(v -> {
+                    if ("photo".equals(attachment.getType())) {
+                        org.nikanikoo.flux.ui.activities.PhotoViewerActivity.start(
+                                context, java.util.Collections.singletonList(attachment.getImageUrl()), 0, "");
+                    } else if ("video".equals(attachment.getType()) && attachment.getVideo() != null
+                            && attachment.getVideo().getPlayer() != null
+                            && !attachment.getVideo().getPlayer().isEmpty()) {
+                        org.nikanikoo.flux.ui.activities.VideoPlayerActivity.start(context, attachment.getVideo());
+                    }
+                });
+                container.addView(image);
+            } else {
+                TextView label = new TextView(context);
+                String text = attachment.getTitle();
+                if (attachment.getSubtitle() != null && !attachment.getSubtitle().isEmpty()) {
+                    text += "\n" + attachment.getSubtitle();
+                }
+                label.setText(text);
+                label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+                label.setPadding(dp(10), dp(8), dp(10), dp(8));
+                LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                labelParams.topMargin = dp(8);
+                label.setLayoutParams(labelParams);
+                label.setBackgroundResource(android.R.drawable.dialog_holo_light_frame);
+                container.addView(label);
+            }
+        }
+    }
+
+    private void addDocumentCard(LinearLayout container, MessageAttachment attachment) {
+        LinearLayout card = new LinearLayout(context);
+        card.setOrientation(LinearLayout.VERTICAL);
+        int padding = dp(10);
+        card.setPadding(padding, padding, padding, padding);
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(0x1F000000);
+        background.setCornerRadius(dp(10));
+        card.setBackground(background);
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        cardParams.topMargin = dp(8);
+        card.setLayoutParams(cardParams);
+
+        TextView name = new TextView(context);
+        name.setText(attachment.getTitle().isEmpty() ? "Документ" : attachment.getTitle());
+        name.setTypeface(null, android.graphics.Typeface.BOLD);
+        name.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        card.addView(name);
+
+        if (attachment.getImageUrl() != null && !attachment.getImageUrl().isEmpty()) {
+            ImageView preview = new ImageView(context);
+            preview.setLayoutParams(new LinearLayout.LayoutParams(dp(220), dp(130)));
+            preview.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            Picasso.get().load(attachment.getImageUrl()).fit().centerCrop()
+                    .placeholder(android.R.drawable.ic_menu_gallery)
+                    .error(android.R.drawable.ic_menu_gallery).into(preview);
+            LinearLayout.LayoutParams previewParams = (LinearLayout.LayoutParams) preview.getLayoutParams();
+            previewParams.topMargin = dp(6);
+            card.addView(preview, previewParams);
+        }
+
+        TextView details = new TextView(context);
+        details.setText(attachment.getSubtitle().isEmpty() ? "Открыть документ" : attachment.getSubtitle().toUpperCase(Locale.getDefault()) + " · Открыть документ");
+        details.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        LinearLayout.LayoutParams detailsParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        detailsParams.topMargin = dp(4);
+        card.addView(details, detailsParams);
+        card.setOnClickListener(v -> {
+            if (attachment.isGifDocument()) {
+                org.nikanikoo.flux.ui.activities.PhotoViewerActivity.startGif(
+                        context, attachment.getUrl(), attachment.getTitle());
+            } else {
+                openUrl(attachment.getUrl());
+            }
+        });
+        container.addView(card);
+    }
+
+    private void bindReferences(TextView view, Message message) {
+        StringBuilder text = new StringBuilder();
+        MessageReference reply = message.getReply();
+        if (reply != null) {
+            appendReference(text, "Ответ", reply);
+        }
+        for (MessageReference forwarded : message.getForwardedMessages()) {
+            appendReference(text, "Переслано", forwarded);
+        }
+        if (text.length() == 0) {
+            view.setVisibility(View.GONE);
+        } else {
+            view.setText(text.toString().trim());
+            view.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void appendReference(StringBuilder text, String kind, MessageReference reference) {
+        text.append(kind);
+        if (reference.getSender() != null && !reference.getSender().isEmpty()) {
+            text.append(" · ").append(reference.getSender());
+        }
+        text.append('\n');
+        String snippet = reference.getText();
+        text.append(snippet == null || snippet.isEmpty() ? "Сообщение" : snippet).append('\n');
+    }
+
+    private void addWallCard(LinearLayout container, MessageAttachment attachment) {
+        LinearLayout card = new LinearLayout(context);
+        card.setOrientation(LinearLayout.VERTICAL);
+        int padding = dp(10);
+        card.setPadding(padding, padding, padding, padding);
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(0x1F000000);
+        background.setCornerRadius(dp(10));
+        card.setBackground(background);
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        cardParams.topMargin = dp(8);
+        card.setLayoutParams(cardParams);
+
+        TextView author = new TextView(context);
+        author.setText(attachment.getTitle().isEmpty() ? "Запись" : attachment.getTitle());
+        author.setTypeface(null, android.graphics.Typeface.BOLD);
+        author.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        card.addView(author);
+
+        if (attachment.getSubtitle() != null && !attachment.getSubtitle().isEmpty()) {
+            TextView body = new TextView(context);
+            body.setText(attachment.getSubtitle());
+            body.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+            body.setMaxLines(5);
+            body.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            LinearLayout.LayoutParams bodyParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            bodyParams.topMargin = dp(4);
+            card.addView(body, bodyParams);
+        }
+
+        if (attachment.getImageUrl() != null && !attachment.getImageUrl().isEmpty()) {
+            ImageView preview = new ImageView(context);
+            preview.setLayoutParams(new LinearLayout.LayoutParams(dp(220), dp(130)));
+            preview.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            Picasso.get().load(attachment.getImageUrl()).fit().centerCrop()
+                    .placeholder(android.R.drawable.ic_menu_gallery)
+                    .error(android.R.drawable.ic_menu_gallery).into(preview);
+            LinearLayout.LayoutParams previewParams = (LinearLayout.LayoutParams) preview.getLayoutParams();
+            previewParams.topMargin = dp(6);
+            card.addView(preview, previewParams);
+        }
+        card.setOnClickListener(v -> openUrl(attachment.getTargetUrl()));
+        container.addView(card);
+    }
+
+    private void openUrl(String pathOrUrl) {
+        if (pathOrUrl == null || pathOrUrl.isEmpty()) return;
+        String url = pathOrUrl;
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+            String baseUrl = OpenVKApi.getInstance(context).getBaseUrl();
+            url = baseUrl + (url.startsWith("/") ? url : "/" + url);
+        }
+        try {
+            context.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+        } catch (Exception ignored) {
+        }
+    }
+
+    private int dp(int value) {
+        return (int) (value * context.getResources().getDisplayMetrics().density + 0.5f);
     }
 
     private void bindDateHeader(DateHeaderViewHolder holder, DateHeader dateHeader) {
@@ -313,12 +514,16 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
     static class OutgoingMessageViewHolder extends RecyclerView.ViewHolder {
         TextView messageText;
+        TextView replyPreview;
+        LinearLayout attachments;
         TextView timeText;
         ImageView readStatus;
 
         OutgoingMessageViewHolder(@NonNull View itemView) {
             super(itemView);
             messageText = itemView.findViewById(R.id.message_text);
+            replyPreview = itemView.findViewById(R.id.reply_preview);
+            attachments = itemView.findViewById(R.id.message_attachments);
             timeText = itemView.findViewById(R.id.time_text);
             readStatus = itemView.findViewById(R.id.read_status);
         }
@@ -327,12 +532,16 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     static class IncomingMessageViewHolder extends RecyclerView.ViewHolder {
         ImageView avatarImage;
         TextView messageText;
+        TextView replyPreview;
+        LinearLayout attachments;
         TextView timeText;
 
         IncomingMessageViewHolder(@NonNull View itemView) {
             super(itemView);
             avatarImage = itemView.findViewById(R.id.avatar_image);
             messageText = itemView.findViewById(R.id.message_text);
+            replyPreview = itemView.findViewById(R.id.reply_preview);
+            attachments = itemView.findViewById(R.id.message_attachments);
             timeText = itemView.findViewById(R.id.time_text);
         }
     }

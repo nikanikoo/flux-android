@@ -72,6 +72,7 @@ public class PhotoViewerActivity extends AppCompatActivity {
     private static final String EXTRA_POST = "post";
     private static final String EXTRA_AUTHOR_NAME = "author_name";
     private static final String EXTRA_PHOTOS = "photos";
+    private static final String EXTRA_IS_GIF = "is_gif";
 
     private static final int UI_HIDE_DELAY = 3000;
 
@@ -92,6 +93,7 @@ public class PhotoViewerActivity extends AppCompatActivity {
     private int currentPosition;
     private Post post;
     private String authorName;
+    private boolean isGif;
     private PhotosManager photosManager;
 
     private boolean isUIVisible = true;
@@ -129,6 +131,15 @@ public class PhotoViewerActivity extends AppCompatActivity {
     
     public static void start(Context context, List<String> imageUrls, int position, String title) {
         start(context, imageUrls, position, null, title);
+    }
+
+    public static void startGif(Context context, String gifUrl, String title) {
+        Intent intent = new Intent(context, PhotoViewerActivity.class);
+        intent.putStringArrayListExtra(EXTRA_IMAGE_URLS, new ArrayList<>(java.util.Collections.singletonList(gifUrl)));
+        intent.putExtra(EXTRA_CURRENT_POSITION, 0);
+        intent.putExtra(EXTRA_AUTHOR_NAME, title);
+        intent.putExtra(EXTRA_IS_GIF, true);
+        context.startActivity(intent);
     }
 
     public static void startWithPhotos(Context context, List<Photo> photos, int position, String title) {
@@ -196,6 +207,7 @@ public class PhotoViewerActivity extends AppCompatActivity {
             currentPosition = intent.getIntExtra(EXTRA_CURRENT_POSITION, 0);
             post = (Post) intent.getSerializableExtra(EXTRA_POST);
             authorName = intent.getStringExtra(EXTRA_AUTHOR_NAME);
+            isGif = intent.getBooleanExtra(EXTRA_IS_GIF, false);
             try {
                 photosList = (List<Photo>) intent.getSerializableExtra(EXTRA_PHOTOS);
             } catch (Exception ignored) { }
@@ -350,6 +362,11 @@ public class PhotoViewerActivity extends AppCompatActivity {
     
     private void setupUI() {
         titleText.setText(authorName != null ? authorName : getString(R.string.photo_viewer));
+
+        if (isGif) {
+            bottomPanel.setVisibility(View.GONE);
+            btnMore.setVisibility(View.GONE);
+        }
 
         btnBack.setOnClickListener(v -> animateExit());
 

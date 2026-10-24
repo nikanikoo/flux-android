@@ -189,7 +189,9 @@
     <string name="chat_message_hint">Enter message...</string>
     <string name="chat_send">Send</string>
     <string name="chat_loading_error">"Error loading messages: "</string>
-    <string name="chat_send_error">Error sending: %s</string>
+    <string name="chat_send_error">Error sending: %1$s</string>
+    <string name="pending_photo">Attached photo</string>
+    <string name="remove_attachment">Remove photo</string>
     <string name="message_incoming">Incoming message</string>
     <string name="message_outgoing">Outgoing message</string>
     <string name="message_time">%s</string>
@@ -701,4 +703,15 @@
     <string name="navigation_drawer_checklist_title">Drawer sections</string>
     <string name="navigation_drawer_dialog_description">Select sections for the side menu and drag to reorder them. The \"Settings\" section is mandatory.</string>
 
+    <string name="chat_group_options">Chat settings</string>
+    <string name="chat_members_action">Members</string>
+    <string name="chat_add_member_action">Add member</string>
+    <string name="chat_rename_action">Rename chat</string>
+    <string name="chat_change_photo_action">Change photo</string>
+    <string name="chat_enter_user_id">Enter user ID</string>
+    <string name="chat_member_remove_confirm">Remove %1$s from the chat?</string>
+    <string name="chat_group_options_error">Action failed</string>
+    <string name="chat_rename_hint">Chat name</string>
+    <string name="chat_remove_member_action">Remove</string>
+    <string name="chat_action_success">Done</string>
 </resources>

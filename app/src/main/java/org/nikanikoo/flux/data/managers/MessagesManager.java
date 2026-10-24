@@ -6,6 +6,9 @@ import org.json.JSONObject;
 import org.nikanikoo.flux.data.managers.api.OpenVKApi;
 import org.nikanikoo.flux.data.models.Conversation;
 import org.nikanikoo.flux.data.models.Message;
+import org.nikanikoo.flux.data.models.MessageAttachment;
+import org.nikanikoo.flux.data.models.MessageReference;
+import org.nikanikoo.flux.utils.ImageUtils;
 import org.nikanikoo.flux.utils.AsyncTaskHelper;
 import org.nikanikoo.flux.utils.Logger;
 
@@ -139,16 +142,21 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                 
                 Logger.d(TAG, "Обрабатываем сообщение " + i + ": " + item.toString());
             
-                int id = item.getInt("id");
+                int id = item.optInt("id", item.optInt("mid", item.optInt("conversation_message_id", 0)));
                 // Используем peerId из параметров, так как не все сообщения содержат peer_id
                 int messagePeerId = item.optInt("peer_id", peerId);
-                int fromId = item.getInt("from_id");
+                int fromId = item.optInt("from_id", item.optInt("user_id", item.optInt("uid", 0)));
                 String text = item.optString("text", "");
-                long date = item.getLong("date");
+                if (text.isEmpty()) text = item.optString("body", "");
+                long date = item.optLong("date", 0);
                 boolean out = item.optInt("out", 0) == 1;
                 boolean readState = item.optInt("read_state", 0) == 1;
 
                 Message message = new Message(id, messagePeerId, fromId, text, date, out, readState);
+                message.setAttachments(parseAttachments(item.optJSONArray("attachments")));
+                message.setReply(parseReference(item.optJSONObject("reply_message"), profiles,
+                        item.optInt("reply_to", 0)));
+                message.setForwardedMessages(parseReferences(item.optJSONArray("fwd_messages"), profiles));
 
                 // Найдем информацию о пользователе
                 if (profiles != null) {
@@ -176,12 +184,131 @@ public class MessagesManager extends BaseManager<MessagesManager> {
         return messages;
     }
 
+    private List<MessageAttachment> parseAttachments(JSONArray attachments) {
+        List<MessageAttachment> parsed = new ArrayList<>();
+        if (attachments == null) return parsed;
+
+        for (int i = 0; i < attachments.length(); i++) {
+            JSONObject attachment = attachments.optJSONObject(i);
+            if (attachment == null) continue;
+
+            String type = attachment.optString("type", "");
+            if (type.isEmpty()) {
+                for (String candidate : new String[]{"photo", "video", "audio", "doc", "wall", "sticker", "poll"}) {
+                    if (attachment.optJSONObject(candidate) != null) {
+                        type = candidate;
+                        break;
+                    }
+                }
+            }
+            if (type.isEmpty()) type = "attachment";
+            JSONObject data = attachment.optJSONObject(type);
+            if (data == null) data = attachment;
+
+            String imageUrl = "";
+            String title = "";
+            String subtitle = "";
+            org.nikanikoo.flux.data.models.Video parsedVideo = null;
+            if ("photo".equals(type)) {
+                imageUrl = ImageUtils.extractOptimalImageUrl(data);
+            } else if ("video".equals(type)) {
+                parsedVideo = org.nikanikoo.flux.data.managers.VideoManager.parseVideo(data);
+                if (parsedVideo != null) {
+                    imageUrl = parsedVideo.getImage();
+                    title = parsedVideo.getTitle();
+                    subtitle = parsedVideo.getFormattedDuration();
+                }
+            } else if ("audio".equals(type)) {
+                title = data.optString("title", "Audio");
+                subtitle = data.optString("artist", "");
+            } else if ("doc".equals(type)) {
+                title = data.optString("title", "Document");
+                subtitle = data.optString("ext", "");
+                JSONObject preview = data.optJSONObject("preview");
+                if (preview != null) {
+                    imageUrl = ImageUtils.extractOptimalImageUrl(preview.optJSONObject("photo"));
+                }
+            } else if ("wall".equals(type)) {
+                title = data.optString("author_name", "Post");
+                subtitle = data.optString("text", "");
+                JSONArray postAttachments = data.optJSONArray("attachments");
+                imageUrl = firstPhotoUrl(postAttachments);
+                if (imageUrl.isEmpty()) {
+                    JSONObject layout = data.optJSONObject("layout");
+                    JSONObject firstTile = layout != null && layout.optJSONArray("tiles") != null
+                            ? layout.optJSONArray("tiles").optJSONObject(0) : null;
+                    JSONObject tilePhoto = firstTile == null ? null : firstTile.optJSONObject("photo");
+                    imageUrl = ImageUtils.extractOptimalImageUrl(tilePhoto);
+                }
+            } else {
+                title = type;
+            }
+            String url = "doc".equals(type) ? data.optString("url", data.optString("private_url", "")) : "";
+            String targetUrl = "";
+            if ("wall".equals(type)) {
+                int ownerId = data.optInt("owner_id", data.optInt("to_id", 0));
+                int postId = data.optInt("id", 0);
+                if (ownerId != 0 && postId != 0) targetUrl = "wall" + ownerId + "_" + postId;
+            }
+            parsed.add(new MessageAttachment(type, imageUrl, title, subtitle, parsedVideo, url, targetUrl));
+        }
+        return parsed;
+    }
+
+    private String firstPhotoUrl(JSONArray attachments) {
+        if (attachments == null) return "";
+        for (int i = 0; i < attachments.length(); i++) {
+            JSONObject item = attachments.optJSONObject(i);
+            if (item != null && "photo".equals(item.optString("type"))) {
+                String url = ImageUtils.extractOptimalImageUrl(item.optJSONObject("photo"));
+                if (!url.isEmpty()) return url;
+            }
+        }
+        return "";
+    }
+
+    private List<MessageReference> parseReferences(JSONArray refs, JSONArray profiles) {
+        List<MessageReference> result = new ArrayList<>();
+        if (refs == null) return result;
+        for (int i = 0; i < refs.length(); i++) {
+            JSONObject ref = refs.optJSONObject(i);
+            if (ref != null) result.add(parseReference(ref, profiles, 0));
+        }
+        return result;
+    }
+
+    private MessageReference parseReference(JSONObject ref, JSONArray profiles, int fallbackId) {
+        if (ref == null) return fallbackId == 0 ? null : new MessageReference(fallbackId, "", "");
+        int id = ref.optInt("id", ref.optInt("mid", ref.optInt("conversation_message_id", fallbackId)));
+        int senderId = ref.optInt("from_id", ref.optInt("user_id", ref.optInt("uid", 0)));
+        String sender = ref.optString("sender_name", ref.optString("author_name", ""));
+        if (sender.isEmpty() && profiles != null) {
+            for (int i = 0; i < profiles.length(); i++) {
+                JSONObject profile = profiles.optJSONObject(i);
+                if (profile != null && profile.optInt("id", 0) == Math.abs(senderId)) {
+                    sender = (profile.optString("first_name", "") + " " + profile.optString("last_name", "")).trim();
+                    break;
+                }
+            }
+        }
+        String text = ref.optString("text", "");
+        if (text.isEmpty()) text = ref.optString("body", "");
+        return new MessageReference(id, sender, text);
+    }
+
     // Отправка сообщения
     public void sendMessage(int peerId, String message, SendMessageCallback callback) {
+        sendMessage(peerId, message, null, callback);
+    }
+
+    public void sendMessage(int peerId, String message, String attachment, SendMessageCallback callback) {
         Map<String, String> params = new HashMap<>();
         params.put("peer_id", String.valueOf(peerId));
         params.put("message", message);
         params.put("random_id", String.valueOf(System.currentTimeMillis()));
+        if (attachment != null && !attachment.isEmpty()) {
+            params.put("attachment", attachment);
+        }
 
         api.callMethod("messages.send", params, new OpenVKApi.ApiCallback() {
             @Override
@@ -191,14 +318,14 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                     callback.onSuccess(messageId);
                 } catch (Exception e) {
                     Logger.e(TAG, "Error parsing send message response", e);
-                    callback.onError("Не удалось отправить сообщение");
+                    callback.onError("Не удалось разобрать ответ при отправке: " + response);
                 }
             }
 
             @Override
             public void onError(String error) {
                 Logger.e(TAG, "Error sending message: " + error);
-                callback.onError("Не удалось отправить сообщение");
+                callback.onError(error);
             }
         });
     }
@@ -211,6 +338,42 @@ public class MessagesManager extends BaseManager<MessagesManager> {
         params.put("type", "typing");
 
         api.callMethod("messages.setActivity", params, callback);
+    }
+
+    public void getConversationMembers(int peerId, OpenVKApi.ApiCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_id", String.valueOf(peerId));
+        params.put("extended", "1");
+        api.callMethod("messages.getConversationMembers", params, callback);
+    }
+
+    public void addChatUser(int peerId, int userId, OpenVKApi.ApiCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_id", String.valueOf(peerId));
+        params.put("user_id", String.valueOf(userId));
+        api.callMethod("messages.addChatUser", params, callback);
+    }
+
+    public void removeChatUser(int peerId, int userId, OpenVKApi.ApiCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_id", String.valueOf(peerId));
+        params.put("user_id", String.valueOf(userId));
+        api.callMethod("messages.removeChatUser", params, callback);
+    }
+
+    public void editChat(int chatId, String title, OpenVKApi.ApiCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("chat_id", String.valueOf(chatId));
+        params.put("title", title);
+        api.callMethod("messages.editChat", params, callback);
+    }
+
+    public void setChatPhoto(int chatId, String file, String hash, OpenVKApi.ApiCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("chat_id", String.valueOf(chatId));
+        params.put("file", file);
+        params.put("hash", hash);
+        api.callMethod("messages.setChatPhoto", params, callback);
     }
 
     /**
@@ -237,7 +400,6 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                 JSONObject peer = conversationObj.getJSONObject("peer");
                 int peerId = peer.getInt("id");
                 String peerTypeStr = peer.getString("type");
-                int localId = peer.getInt("local_id");
                 
                 // Преобразуем строковый тип в числовой
                 int peerType = 0; // по умолчанию пользователь
@@ -298,13 +460,14 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                         }
                     }
                 } else if (peerType == 2) { // Групповой чат
-                    // Для групповых чатов title может быть в самом объекте conversation
-                    title = conversationObj.optString("chat_settings", "Групповой чат");
-                    if (conversationObj.has("chat_settings")) {
-                        JSONObject chatSettings = conversationObj.optJSONObject("chat_settings");
-                        if (chatSettings != null) {
-                            title = chatSettings.optString("title", "Групповой чат");
-                            photo = chatSettings.optString("photo", "");
+                    JSONObject chatSettings = conversationObj.optJSONObject("chat_settings");
+                    if (chatSettings != null) {
+                        title = chatSettings.optString("title", "Групповой чат");
+                        JSONObject chatPhoto = chatSettings.optJSONObject("photo");
+                        if (chatPhoto != null) {
+                            photo = chatPhoto.optString("photo_50", chatPhoto.optString("photo_200", ""));
+                        } else {
+                            photo = chatSettings.optString("photo_50", "");
                         }
                     }
                 }

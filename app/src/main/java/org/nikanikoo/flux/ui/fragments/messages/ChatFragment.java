@@ -1,6 +1,7 @@
 package org.nikanikoo.flux.ui.fragments.messages;
 
 import android.os.Bundle;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -11,6 +12,7 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+import com.squareup.picasso.Picasso;
 
 import com.google.android.material.card.MaterialCardView;
 
@@ -22,6 +24,7 @@ import org.nikanikoo.flux.services.LongPollManager;
 import org.nikanikoo.flux.services.MessageNotificationManager;
 import org.nikanikoo.flux.ui.adapters.messages.MessagesAdapter;
 import org.nikanikoo.flux.data.managers.MessagesManager;
+import org.nikanikoo.flux.data.managers.PhotoUploadManager;
 import org.nikanikoo.flux.data.models.Conversation;
 import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.ui.activities.ChatActivity;
@@ -30,6 +33,8 @@ import org.nikanikoo.flux.ui.fragments.profile.ProfileFragment;
 import org.nikanikoo.flux.ui.fragments.profile.GroupProfileFragment;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -51,6 +56,13 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     private SwipeRefreshLayout swipeRefreshLayout;
     private EditText messageInput;
     private ImageView sendButton;
+    private ImageView attachButton;
+    private View pendingAttachmentPreview;
+    private ImageView pendingAttachmentImage;
+    private ImageView removePendingAttachmentButton;
+    private ActivityResultLauncher<String> photoPicker;
+    private String pendingPhotoAttachment;
+    private Uri pendingPhotoUri;
     private MessagesManager messagesManager;
     private List<Message> messages;
 
@@ -94,10 +106,23 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        photoPicker = registerForActivityResult(new ActivityResultContracts.GetContent(), this::onPhotoPicked);
         if (getArguments() != null) {
             peerId = getArguments().getInt(ARG_PEER_ID);
             title = getArguments().getString(ARG_TITLE);
         }
+        if (savedInstanceState != null) {
+            pendingPhotoAttachment = savedInstanceState.getString("pending_photo_attachment");
+            String uri = savedInstanceState.getString("pending_photo_uri");
+            if (uri != null) pendingPhotoUri = Uri.parse(uri);
+        }
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        if (pendingPhotoAttachment != null) outState.putString("pending_photo_attachment", pendingPhotoAttachment);
+        if (pendingPhotoUri != null) outState.putString("pending_photo_uri", pendingPhotoUri.toString());
     }
 
     @Override
@@ -167,10 +192,15 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         swipeRefreshLayout = view.findViewById(R.id.swipe_refresh);
         messageInput = view.findViewById(R.id.message_input);
         sendButton = view.findViewById(R.id.send_button);
+        attachButton = view.findViewById(R.id.attach_button);
+        pendingAttachmentPreview = view.findViewById(R.id.pending_attachment_preview);
+        pendingAttachmentImage = view.findViewById(R.id.pending_attachment_image);
+        removePendingAttachmentButton = view.findViewById(R.id.remove_pending_attachment);
         dateHeaderCard = view.findViewById(R.id.date_header_card);
         dateHeaderText = view.findViewById(R.id.date_header_text);
         messagesManager = MessagesManager.getInstance(requireContext());
         messages = new ArrayList<>();
+        updatePendingAttachmentPreview();
 
         swipeRefreshLayout.setOnRefreshListener(() -> {
             scrollListener.resetState();
@@ -286,6 +316,10 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
 
     private void setupSendButton() {
         sendButton.setOnClickListener(v -> sendMessage());
+        attachButton.setOnClickListener(v -> {
+            if (pendingPhotoAttachment == null) photoPicker.launch("image/*");
+        });
+        removePendingAttachmentButton.setOnClickListener(v -> clearPendingAttachment());
         
         messageInput.setOnEditorActionListener((v, actionId, event) -> {
             sendMessage();
@@ -376,7 +410,42 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
 
     private void sendMessage() {
         String messageText = messageInput.getText().toString().trim();
-        if (messageText.isEmpty()) {
+        sendMessage(messageText, pendingPhotoAttachment);
+    }
+
+    private void onPhotoPicked(Uri uri) {
+        if (uri == null) return;
+        attachButton.setEnabled(false);
+        PhotoUploadManager.getInstance(requireContext()).uploadMessagePhoto(uri, peerId,
+                new PhotoUploadManager.PhotoUploadCallback() {
+                    @Override
+                    public void onSuccess(String attachment) {
+                        if (getActivity() != null) {
+                            getActivity().runOnUiThread(() -> {
+                                pendingPhotoAttachment = attachment;
+                                pendingPhotoUri = uri;
+                                updatePendingAttachmentPreview();
+                                attachButton.setEnabled(false);
+                                sendButton.setEnabled(true);
+                            });
+                        }
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        if (getActivity() != null) {
+                            getActivity().runOnUiThread(() -> {
+                                attachButton.setEnabled(true);
+                                sendButton.setEnabled(true);
+                                Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
+                            });
+                        }
+                    }
+                });
+    }
+
+    private void sendMessage(String messageText, String attachment) {
+        if (messageText.isEmpty() && (attachment == null || attachment.isEmpty())) {
             return;
         }
         
@@ -384,7 +453,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         sendButton.setEnabled(false);
         messageInput.setEnabled(false);
         
-        messagesManager.sendMessage(peerId, messageText, new MessagesManager.SendMessageCallback() {
+        messagesManager.sendMessage(peerId, messageText, attachment, new MessagesManager.SendMessageCallback() {
             @Override
             public void onSuccess(int messageId) {
                 if (getActivity() != null) {
@@ -392,6 +461,9 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                         messageInput.setText("");
                         sendButton.setEnabled(true);
                         messageInput.setEnabled(true);
+                        if (attachment != null && attachment.equals(pendingPhotoAttachment)) {
+                            clearPendingAttachment();
+                        }
                         
                         // Перезагружаем сообщения чтобы показать отправленное
                         loadMessages(true);
@@ -406,13 +478,33 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
             public void onError(String error) {
                 if (getActivity() != null) {
                     getActivity().runOnUiThread(() -> {
-                        Toast.makeText(requireContext(), getString(R.string.chat_send_error) + error, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(requireContext(), getString(R.string.chat_send_error, error), Toast.LENGTH_LONG).show();
                         sendButton.setEnabled(true);
                         messageInput.setEnabled(true);
                     });
                 }
             }
         });
+    }
+
+    private void updatePendingAttachmentPreview() {
+        if (pendingAttachmentPreview == null || pendingAttachmentImage == null) return;
+        if (pendingPhotoAttachment == null || pendingPhotoUri == null) {
+            pendingAttachmentPreview.setVisibility(View.GONE);
+            attachButton.setEnabled(true);
+            return;
+        }
+        Picasso.get().load(pendingPhotoUri).fit().centerCrop().into(pendingAttachmentImage);
+        pendingAttachmentPreview.setVisibility(View.VISIBLE);
+        attachButton.setEnabled(false);
+    }
+
+    private void clearPendingAttachment() {
+        pendingPhotoAttachment = null;
+        pendingPhotoUri = null;
+        if (pendingAttachmentImage != null) Picasso.get().cancelRequest(pendingAttachmentImage);
+        if (pendingAttachmentPreview != null) pendingAttachmentPreview.setVisibility(View.GONE);
+        if (attachButton != null) attachButton.setEnabled(true);
     }
     
     /**
@@ -600,7 +692,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
 
     @Override
     public void onNewMessage(int messageId, int peerId, long timestamp, String text, int fromId, boolean isOut) {
-        addNewMessageFromLongPoll(messageId, peerId, fromId, text, timestamp, isOut); // на твой телефон пришло новое сообщение, посмотри – вдруг там что-то важное.
+        refreshMessagesIfSamePeer(peerId);
     }
 
     @Override

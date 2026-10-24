@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_chat_options"
+        android:title="@string/chat_group_options"
+        android:icon="@drawable/ic_more_vert"
+        app:showAsAction="ifRoom" />
+</menu>

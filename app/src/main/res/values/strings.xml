@@ -223,7 +223,9 @@
     <string name="chat_message_hint">Введите сообщение</string>
     <string name="chat_send">Отправить</string>
     <string name="chat_loading_error">Ошибка загрузки сообщений:\u0020</string>
-    <string name="chat_send_error">Ошибка отправки:\u0020</string>
+    <string name="chat_send_error">Ошибка отправки: %1$s</string>
+    <string name="pending_photo">Прикреплённое фото</string>
+    <string name="remove_attachment">Убрать фото</string>
     <string name="message_incoming">Входящее сообщение</string>
     <string name="message_outgoing">Исходящее сообщение</string>
     <string name="message_time">%s</string>
@@ -786,4 +788,15 @@
     <string name="navigation_drawer_checklist_title">Разделы бокового меню</string>
     <string name="navigation_drawer_dialog_description">Выберите разделы для бокового меню. Перетаскивайте их, чтобы настроить порядок. Раздел «Настройки» обязателен.</string>
 
+    <string name="chat_group_options">Настройки беседы</string>
+    <string name="chat_members_action">Участники</string>
+    <string name="chat_add_member_action">Добавить участника</string>
+    <string name="chat_rename_action">Изменить название</string>
+    <string name="chat_change_photo_action">Изменить фото</string>
+    <string name="chat_enter_user_id">Введите ID пользователя</string>
+    <string name="chat_member_remove_confirm">Исключить %1$s из беседы?</string>
+    <string name="chat_group_options_error">Не удалось выполнить действие</string>
+    <string name="chat_rename_hint">Название беседы</string>
+    <string name="chat_remove_member_action">Исключить</string>
+    <string name="chat_action_success">Готово</string>
 </resources>

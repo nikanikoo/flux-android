@@ -29,6 +29,17 @@
         android:elevation="2dp">
 
         <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/reply_preview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="6dp"
+            android:padding="8dp"
+            android:background="@drawable/message_bubble_outgoing"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="13sp"
+            android:visibility="gone" />
+
+        <com.google.android.material.textview.MaterialTextView
             android:id="@+id/message_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -37,6 +48,12 @@
             android:lineSpacingExtra="2dp"
             android:textIsSelectable="true"
             android:textSize="16sp"/>
+
+        <LinearLayout
+            android:id="@+id/message_attachments"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/time_text"
