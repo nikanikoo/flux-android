@@ -497,7 +497,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                 ViewGroup.LayoutParams.MATCH_PARENT, dp(420)));
         android.widget.LinearLayout rows = new android.widget.LinearLayout(requireContext());
         rows.setOrientation(android.widget.LinearLayout.VERTICAL);
-        rows.setPadding(dp(2), dp(4), dp(2), dp(4));
+        rows.setPadding(dp(8), dp(4), dp(8), dp(4));
         scrollView.addView(rows);
         boolean[] checked = new boolean[media.size()];
 
@@ -507,7 +507,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
             MaterialCardView card = new MaterialCardView(requireContext());
             android.widget.LinearLayout.LayoutParams cardParams = new android.widget.LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, dp(76));
-            cardParams.setMargins(0, 0, 0, dp(7));
+            cardParams.setMargins(dp(3), 0, dp(3), dp(7));
             card.setLayoutParams(cardParams);
             card.setRadius(dp(12));
             card.setCardElevation(dp(1));
