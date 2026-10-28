@@ -59,8 +59,8 @@
         android:orientation="vertical"
         android:paddingStart="12dp"
         android:paddingEnd="12dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
         android:background="?attr/colorSurface"
         android:elevation="4dp">
 
@@ -99,14 +99,14 @@
 
         <ImageView
             android:id="@+id/attach_button"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_marginEnd="6dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginEnd="4dp"
             android:src="@drawable/ic_attach_file"
             android:clickable="true"
             android:focusable="true"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:padding="10dp"
+            android:padding="9dp"
             app:tint="?attr/colorPrimary" />
 
         <com.google.android.material.textfield.TextInputLayout
@@ -124,6 +124,9 @@
                 android:id="@+id/message_input"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:minHeight="40dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
                 android:hint="@string/chat_message_hint"
                 android:maxLines="3"
                 android:inputType="textMultiLine|textCapSentences"
@@ -134,14 +137,14 @@
 
         <ImageView
             android:id="@+id/send_button"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
             android:src="@drawable/ic_send"
             android:clickable="true"
             android:focusable="true"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:padding="8dp"
-            android:layout_marginStart="8dp"
+            android:layout_marginStart="4dp"
             app:tint="?attr/colorPrimary" />
 
         </LinearLayout>
