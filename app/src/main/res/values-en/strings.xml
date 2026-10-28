@@ -192,6 +192,12 @@
     <string name="chat_send_error">Error sending: %1$s</string>
     <string name="pending_photo">Attached photo</string>
     <string name="remove_attachment">Remove photo</string>
+    <string name="attach_photo_action">Photo</string>
+    <string name="attach_video_action">Video</string>
+    <string name="attach_audio_action">Audio</string>
+    <string name="attach_document_action">Document</string>
+    <string name="no_media_to_attach">No attachments available</string>
+    <string name="document">Document</string>
     <string name="message_incoming">Incoming message</string>
     <string name="message_outgoing">Outgoing message</string>
     <string name="message_time">%s</string>

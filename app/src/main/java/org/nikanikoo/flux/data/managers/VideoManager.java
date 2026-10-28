@@ -117,6 +117,7 @@ public class VideoManager extends BaseManager<VideoManager> {
             video.setId(json.optInt("id", 0));
             video.setOwnerId(json.optInt("owner_id", 0));
             video.setTitle(json.optString("title", ""));
+            video.setAccessKey(json.optString("access_key", null));
             video.setDescription(json.optString("description", ""));
             video.setDuration(json.optInt("duration", 0));
             if (json.has("image")) {

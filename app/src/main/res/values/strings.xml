@@ -226,6 +226,12 @@
     <string name="chat_send_error">Ошибка отправки: %1$s</string>
     <string name="pending_photo">Прикреплённое фото</string>
     <string name="remove_attachment">Убрать фото</string>
+    <string name="attach_photo_action">Фото</string>
+    <string name="attach_video_action">Видео</string>
+    <string name="attach_audio_action">Аудио</string>
+    <string name="attach_document_action">Документ</string>
+    <string name="no_media_to_attach">Нет доступных вложений</string>
+    <string name="document">Документ</string>
     <string name="message_incoming">Входящее сообщение</string>
     <string name="message_outgoing">Исходящее сообщение</string>
     <string name="message_time">%s</string>

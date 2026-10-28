@@ -12,6 +12,7 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.PopupMenu;
 import com.squareup.picasso.Picasso;
 
 import com.google.android.material.card.MaterialCardView;
@@ -25,6 +26,11 @@ import org.nikanikoo.flux.services.MessageNotificationManager;
 import org.nikanikoo.flux.ui.adapters.messages.MessagesAdapter;
 import org.nikanikoo.flux.data.managers.MessagesManager;
 import org.nikanikoo.flux.data.managers.PhotoUploadManager;
+import org.nikanikoo.flux.data.managers.AudioManager;
+import org.nikanikoo.flux.data.managers.VideoManager;
+import org.nikanikoo.flux.data.managers.api.OpenVKApi;
+import org.nikanikoo.flux.data.models.Audio;
+import org.nikanikoo.flux.data.models.Video;
 import org.nikanikoo.flux.data.models.Conversation;
 import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.ui.activities.ChatActivity;
@@ -62,6 +68,8 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     private ActivityResultLauncher<String> photoPicker;
     private final List<String> pendingPhotoAttachments = new ArrayList<>();
     private final List<Uri> pendingPhotoUris = new ArrayList<>();
+    private final List<String> pendingMediaAttachments = new ArrayList<>();
+    private final List<String> pendingMediaTitles = new ArrayList<>();
     private boolean photoUploadInProgress;
     private MessagesManager messagesManager;
     private List<Message> messages;
@@ -116,6 +124,10 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                     ? savedInstanceState.getStringArrayList("pending_photo_attachments") : new ArrayList<>());
             ArrayList<String> uris = savedInstanceState.getStringArrayList("pending_photo_uris");
             if (uris != null) for (String uri : uris) pendingPhotoUris.add(Uri.parse(uri));
+            ArrayList<String> mediaAttachments = savedInstanceState.getStringArrayList("pending_media_attachments");
+            if (mediaAttachments != null) pendingMediaAttachments.addAll(mediaAttachments);
+            ArrayList<String> mediaTitles = savedInstanceState.getStringArrayList("pending_media_titles");
+            if (mediaTitles != null) pendingMediaTitles.addAll(mediaTitles);
         }
     }
 
@@ -126,6 +138,8 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         ArrayList<String> uris = new ArrayList<>();
         for (Uri uri : pendingPhotoUris) uris.add(uri.toString());
         outState.putStringArrayList("pending_photo_uris", uris);
+        outState.putStringArrayList("pending_media_attachments", new ArrayList<>(pendingMediaAttachments));
+        outState.putStringArrayList("pending_media_titles", new ArrayList<>(pendingMediaTitles));
     }
 
     @Override
@@ -319,7 +333,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     private void setupSendButton() {
         sendButton.setOnClickListener(v -> sendMessage());
         attachButton.setOnClickListener(v -> {
-            photoPicker.launch("image/*");
+            showAttachmentMenu();
         });
         
         messageInput.setOnEditorActionListener((v, actionId, event) -> {
@@ -343,6 +357,141 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
             @Override
             public void afterTextChanged(android.text.Editable s) {}
         });
+    }
+
+    private void showAttachmentMenu() {
+        PopupMenu menu = new PopupMenu(requireContext(), attachButton);
+        menu.getMenu().add(0, 1, 0, R.string.attach_photo_action);
+        menu.getMenu().add(0, 2, 1, R.string.attach_video_action);
+        menu.getMenu().add(0, 3, 2, R.string.attach_audio_action);
+        menu.getMenu().add(0, 4, 3, R.string.attach_document_action);
+        menu.setOnMenuItemClickListener(item -> {
+            switch (item.getItemId()) {
+                case 1:
+                    photoPicker.launch("image/*");
+                    return true;
+                case 2:
+                    loadVideosForAttachment();
+                    return true;
+                case 3:
+                    loadAudiosForAttachment();
+                    return true;
+                case 4:
+                    loadDocumentsForAttachment();
+                    return true;
+                default:
+                    return false;
+            }
+        });
+        menu.show();
+    }
+
+    private void loadVideosForAttachment() {
+        VideoManager.getInstance(requireContext()).getVideos(0, 0, 100, new VideoManager.VideoCallback() {
+            @Override
+            public void onSuccess(List<Video> videos, int totalCount) {
+                List<String> ids = new ArrayList<>();
+                List<String> titles = new ArrayList<>();
+                for (Video video : videos) {
+                    String id = "video" + video.getOwnerId() + "_" + video.getId()
+                            + (video.getAccessKey() == null || video.getAccessKey().isEmpty()
+                            ? "" : "_" + video.getAccessKey());
+                    ids.add(id);
+                    titles.add(video.getTitle());
+                }
+                showMediaChoices(R.string.attach_video_action, ids, titles);
+            }
+
+            @Override
+            public void onError(String error) {
+                showAttachmentError(error);
+            }
+        });
+    }
+
+    private void loadAudiosForAttachment() {
+        AudioManager.getInstance(requireContext()).getAudio(0, 0, 100, new AudioManager.AudioCallback() {
+            @Override
+            public void onSuccess(List<Audio> audios, int totalCount) {
+                List<String> ids = new ArrayList<>();
+                List<String> titles = new ArrayList<>();
+                for (Audio audio : audios) {
+                    ids.add("audio" + audio.getOwnerId() + "_" + audio.getId());
+                    titles.add(audio.getFullTitle());
+                }
+                showMediaChoices(R.string.attach_audio_action, ids, titles);
+            }
+
+            @Override
+            public void onError(String error) {
+                showAttachmentError(error);
+            }
+        });
+    }
+
+    private void loadDocumentsForAttachment() {
+        java.util.Map<String, String> params = new java.util.HashMap<>();
+        params.put("count", "100");
+        OpenVKApi.getInstance(requireContext()).callMethod("docs.get", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(org.json.JSONObject response) {
+                try {
+                    org.json.JSONObject result = response.getJSONObject("response");
+                    org.json.JSONArray items = result.optJSONArray("items");
+                    List<String> ids = new ArrayList<>();
+                    List<String> titles = new ArrayList<>();
+                    if (items != null) {
+                        for (int i = 0; i < items.length(); i++) {
+                            org.json.JSONObject document = items.optJSONObject(i);
+                            if (document == null) continue;
+                            String id = "doc" + document.optInt("owner_id") + "_" + document.optInt("id");
+                            String accessKey = document.optString("access_key", "");
+                            if (!accessKey.isEmpty()) id += "_" + accessKey;
+                            ids.add(id);
+                            titles.add(document.optString("title", getString(R.string.document)));
+                        }
+                    }
+                    showMediaChoices(R.string.attach_document_action, ids, titles);
+                } catch (Exception e) {
+                    showAttachmentError(e.getMessage());
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                showAttachmentError(error);
+            }
+        });
+    }
+
+    private void showMediaChoices(int titleRes, List<String> attachmentIds, List<String> titles) {
+        if (!isAdded()) return;
+        if (attachmentIds.isEmpty()) {
+            Toast.makeText(requireContext(), R.string.no_media_to_attach, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String[] labels = titles.toArray(new String[0]);
+        boolean[] checked = new boolean[labels.length];
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setTitle(titleRes)
+                .setMultiChoiceItems(labels, checked, (dialog, which, isChecked) -> checked[which] = isChecked)
+                .setPositiveButton(R.string.repost_attach, (dialog, which) -> {
+                    for (int i = 0; i < checked.length; i++) {
+                        if (checked[i] && !pendingMediaAttachments.contains(attachmentIds.get(i))) {
+                            pendingMediaAttachments.add(attachmentIds.get(i));
+                            pendingMediaTitles.add(labels[i]);
+                        }
+                    }
+                    updatePendingAttachmentPreview();
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    private void showAttachmentError(String error) {
+        if (!isAdded()) return;
+        Toast.makeText(requireContext(), getString(R.string.error) + ": " + error,
+                Toast.LENGTH_LONG).show();
     }
 
     private void loadMessages(boolean isRefresh) {
@@ -412,7 +561,13 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     private void sendMessage() {
         String messageText = messageInput.getText().toString().trim();
         if (photoUploadInProgress) return;
-        sendMessage(messageText, android.text.TextUtils.join(",", pendingPhotoAttachments));
+        sendMessage(messageText, getPendingAttachmentString());
+    }
+
+    private String getPendingAttachmentString() {
+        List<String> all = new ArrayList<>(pendingPhotoAttachments);
+        all.addAll(pendingMediaAttachments);
+        return android.text.TextUtils.join(",", all);
     }
 
     private void onPhotosPicked(List<Uri> uris) {
@@ -474,7 +629,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                         messageInput.setText("");
                         sendButton.setEnabled(true);
                         messageInput.setEnabled(true);
-                        if (attachment != null && attachment.equals(android.text.TextUtils.join(",", pendingPhotoAttachments))) {
+                        if (attachment != null && attachment.equals(getPendingAttachmentString())) {
                             clearPendingAttachment();
                         }
                         
@@ -503,7 +658,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     private void updatePendingAttachmentPreview() {
         if (pendingAttachmentPreview == null || pendingAttachmentList == null) return;
         pendingAttachmentList.removeAllViews();
-        if (pendingPhotoAttachments.isEmpty()) {
+        if (pendingPhotoAttachments.isEmpty() && pendingMediaAttachments.isEmpty()) {
             pendingAttachmentPreview.setVisibility(View.GONE);
             attachButton.setEnabled(true);
             return;
@@ -534,12 +689,46 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
             item.addView(remove);
             pendingAttachmentList.addView(item, itemParams);
         }
+        for (int i = 0; i < pendingMediaAttachments.size(); i++) {
+            final int index = i;
+            android.widget.FrameLayout item = new android.widget.FrameLayout(requireContext());
+            android.widget.LinearLayout.LayoutParams itemParams = new android.widget.LinearLayout.LayoutParams(88, 56);
+            itemParams.setMargins(0, 0, 8, 0);
+            TextView title = new TextView(requireContext());
+            android.widget.FrameLayout.LayoutParams titleParams = new android.widget.FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+            title.setLayoutParams(titleParams);
+            title.setGravity(android.view.Gravity.CENTER);
+            title.setMaxLines(2);
+            title.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            title.setText(pendingMediaTitles.get(i));
+            title.setTextSize(11);
+            title.setPadding(5, 5, 5, 5);
+            title.setBackgroundResource(R.drawable.avatar_circle);
+            item.addView(title);
+            ImageView remove = new ImageView(requireContext());
+            android.widget.FrameLayout.LayoutParams removeParams = new android.widget.FrameLayout.LayoutParams(
+                    20, 20, android.view.Gravity.TOP | android.view.Gravity.END);
+            remove.setLayoutParams(removeParams);
+            remove.setPadding(3, 3, 3, 3);
+            remove.setBackgroundResource(R.drawable.avatar_circle);
+            remove.setImageResource(R.drawable.ic_close);
+            remove.setOnClickListener(v -> {
+                pendingMediaAttachments.remove(index);
+                pendingMediaTitles.remove(index);
+                updatePendingAttachmentPreview();
+            });
+            item.addView(remove);
+            pendingAttachmentList.addView(item, itemParams);
+        }
         pendingAttachmentPreview.setVisibility(View.VISIBLE);
     }
 
     private void clearPendingAttachment() {
         pendingPhotoAttachments.clear();
         pendingPhotoUris.clear();
+        pendingMediaAttachments.clear();
+        pendingMediaTitles.clear();
         if (pendingAttachmentPreview != null) pendingAttachmentPreview.setVisibility(View.GONE);
         if (pendingAttachmentList != null) pendingAttachmentList.removeAllViews();
         if (attachButton != null) attachButton.setEnabled(true);
