@@ -13,6 +13,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.PopupMenu;
+import android.widget.CheckBox;
 import com.squareup.picasso.Picasso;
 
 import com.google.android.material.card.MaterialCardView;
@@ -51,6 +52,20 @@ import java.util.List;
 
 public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageClickListener,
         LongPollManager.OnMessageEventListener, LongPollManager.OnTypingEventListener {
+
+    private static class SelectableMedia {
+        final String attachmentId;
+        final String title;
+        final String subtitle;
+        final String previewUrl;
+
+        SelectableMedia(String attachmentId, String title, String subtitle, String previewUrl) {
+            this.attachmentId = attachmentId;
+            this.title = title;
+            this.subtitle = subtitle;
+            this.previewUrl = previewUrl;
+        }
+    }
     
     private static final String ARG_PEER_ID = "peer_id";
     private static final String ARG_TITLE = "title";
@@ -390,16 +405,15 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         VideoManager.getInstance(requireContext()).getVideos(0, 0, 100, new VideoManager.VideoCallback() {
             @Override
             public void onSuccess(List<Video> videos, int totalCount) {
-                List<String> ids = new ArrayList<>();
-                List<String> titles = new ArrayList<>();
+                List<SelectableMedia> media = new ArrayList<>();
                 for (Video video : videos) {
                     String id = "video" + video.getOwnerId() + "_" + video.getId()
                             + (video.getAccessKey() == null || video.getAccessKey().isEmpty()
                             ? "" : "_" + video.getAccessKey());
-                    ids.add(id);
-                    titles.add(video.getTitle());
+                    media.add(new SelectableMedia(id, video.getTitle(), video.getFormattedDuration(),
+                            video.getImage() != null && !video.getImage().isEmpty() ? video.getImage() : video.getFirstFrame()));
                 }
-                showMediaChoices(R.string.attach_video_action, ids, titles);
+                showMediaChoices(R.string.attach_video_action, media);
             }
 
             @Override
@@ -413,13 +427,12 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         AudioManager.getInstance(requireContext()).getAudio(0, 0, 100, new AudioManager.AudioCallback() {
             @Override
             public void onSuccess(List<Audio> audios, int totalCount) {
-                List<String> ids = new ArrayList<>();
-                List<String> titles = new ArrayList<>();
+                List<SelectableMedia> media = new ArrayList<>();
                 for (Audio audio : audios) {
-                    ids.add("audio" + audio.getOwnerId() + "_" + audio.getId());
-                    titles.add(audio.getFullTitle());
+                    media.add(new SelectableMedia("audio" + audio.getOwnerId() + "_" + audio.getId(),
+                            audio.getFullTitle(), audio.getFormattedDuration(), audio.getCoverUrl()));
                 }
-                showMediaChoices(R.string.attach_audio_action, ids, titles);
+                showMediaChoices(R.string.attach_audio_action, media);
             }
 
             @Override
@@ -438,8 +451,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                 try {
                     org.json.JSONObject result = response.getJSONObject("response");
                     org.json.JSONArray items = result.optJSONArray("items");
-                    List<String> ids = new ArrayList<>();
-                    List<String> titles = new ArrayList<>();
+                    List<SelectableMedia> media = new ArrayList<>();
                     if (items != null) {
                         for (int i = 0; i < items.length(); i++) {
                             org.json.JSONObject document = items.optJSONObject(i);
@@ -447,11 +459,21 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                             String id = "doc" + document.optInt("owner_id") + "_" + document.optInt("id");
                             String accessKey = document.optString("access_key", "");
                             if (!accessKey.isEmpty()) id += "_" + accessKey;
-                            ids.add(id);
-                            titles.add(document.optString("title", getString(R.string.document)));
+                            String previewUrl = "";
+                            org.json.JSONObject preview = document.optJSONObject("preview");
+                            if (preview != null) {
+                                previewUrl = org.nikanikoo.flux.utils.ImageUtils.extractOptimalImageUrl(
+                                        preview.optJSONObject("photo"));
+                            }
+                            String extension = document.optString("ext", "").toUpperCase(java.util.Locale.ROOT);
+                            String size = android.text.format.Formatter.formatShortFileSize(
+                                    requireContext(), document.optLong("size", 0));
+                            String subtitle = extension.isEmpty() ? size : extension + " · " + size;
+                            media.add(new SelectableMedia(id,
+                                    document.optString("title", getString(R.string.document)), subtitle, previewUrl));
                         }
                     }
-                    showMediaChoices(R.string.attach_document_action, ids, titles);
+                    showMediaChoices(R.string.attach_document_action, media);
                 } catch (Exception e) {
                     showAttachmentError(e.getMessage());
                 }
@@ -464,28 +486,106 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         });
     }
 
-    private void showMediaChoices(int titleRes, List<String> attachmentIds, List<String> titles) {
+    private void showMediaChoices(int titleRes, List<SelectableMedia> media) {
         if (!isAdded()) return;
-        if (attachmentIds.isEmpty()) {
+        if (media.isEmpty()) {
             Toast.makeText(requireContext(), R.string.no_media_to_attach, Toast.LENGTH_SHORT).show();
             return;
         }
-        String[] labels = titles.toArray(new String[0]);
-        boolean[] checked = new boolean[labels.length];
+        android.widget.ScrollView scrollView = new android.widget.ScrollView(requireContext());
+        scrollView.setLayoutParams(new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(420)));
+        android.widget.LinearLayout rows = new android.widget.LinearLayout(requireContext());
+        rows.setOrientation(android.widget.LinearLayout.VERTICAL);
+        rows.setPadding(dp(2), dp(4), dp(2), dp(4));
+        scrollView.addView(rows);
+        boolean[] checked = new boolean[media.size()];
+
+        for (int i = 0; i < media.size(); i++) {
+            final int index = i;
+            SelectableMedia item = media.get(i);
+            MaterialCardView card = new MaterialCardView(requireContext());
+            android.widget.LinearLayout.LayoutParams cardParams = new android.widget.LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(76));
+            cardParams.setMargins(0, 0, 0, dp(7));
+            card.setLayoutParams(cardParams);
+            card.setRadius(dp(12));
+            card.setCardElevation(dp(1));
+            card.setClickable(true);
+            card.setFocusable(true);
+
+            android.widget.LinearLayout row = new android.widget.LinearLayout(requireContext());
+            row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            row.setPadding(dp(8), dp(6), dp(12), dp(6));
+            CheckBox checkBox = new CheckBox(requireContext());
+            row.addView(checkBox, new android.widget.LinearLayout.LayoutParams(dp(40), ViewGroup.LayoutParams.WRAP_CONTENT));
+
+            ImageView preview = new ImageView(requireContext());
+            preview.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            preview.setBackgroundResource(R.drawable.avatar_circle);
+            android.widget.LinearLayout.LayoutParams previewParams = new android.widget.LinearLayout.LayoutParams(dp(76), dp(60));
+            previewParams.setMargins(0, 0, dp(12), 0);
+            row.addView(preview, previewParams);
+            if (org.nikanikoo.flux.utils.ImageUtils.isValidImageUrl(item.previewUrl)) {
+                Picasso.get().load(item.previewUrl).fit().centerCrop()
+                        .placeholder(R.drawable.ic_image_placeholder)
+                        .error(R.drawable.ic_image_placeholder).into(preview);
+            } else {
+                preview.setImageResource(R.drawable.ic_image_placeholder);
+            }
+
+            android.widget.LinearLayout textColumn = new android.widget.LinearLayout(requireContext());
+            textColumn.setOrientation(android.widget.LinearLayout.VERTICAL);
+            textColumn.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            TextView title = new TextView(requireContext());
+            title.setText(item.title);
+            title.setTextSize(14);
+            title.setMaxLines(1);
+            title.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            title.setTypeface(null, android.graphics.Typeface.BOLD);
+            textColumn.addView(title);
+            TextView subtitle = new TextView(requireContext());
+            subtitle.setText(item.subtitle);
+            subtitle.setTextSize(12);
+            subtitle.setMaxLines(1);
+            subtitle.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            subtitle.setTextColor(com.google.android.material.color.MaterialColors.getColor(
+                    subtitle, com.google.android.material.R.attr.colorOnSurfaceVariant));
+            textColumn.addView(subtitle);
+            row.addView(textColumn, new android.widget.LinearLayout.LayoutParams(0,
+                    ViewGroup.LayoutParams.MATCH_PARENT, 1));
+            card.addView(row);
+
+            View.OnClickListener toggle = v -> {
+                checked[index] = !checked[index];
+                checkBox.setChecked(checked[index]);
+            };
+            checkBox.setOnCheckedChangeListener((button, isChecked) -> checked[index] = isChecked);
+            card.setOnClickListener(toggle);
+            title.setOnClickListener(toggle);
+            subtitle.setOnClickListener(toggle);
+            rows.addView(card);
+        }
+
         new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
                 .setTitle(titleRes)
-                .setMultiChoiceItems(labels, checked, (dialog, which, isChecked) -> checked[which] = isChecked)
+                .setView(scrollView)
                 .setPositiveButton(R.string.repost_attach, (dialog, which) -> {
                     for (int i = 0; i < checked.length; i++) {
-                        if (checked[i] && !pendingMediaAttachments.contains(attachmentIds.get(i))) {
-                            pendingMediaAttachments.add(attachmentIds.get(i));
-                            pendingMediaTitles.add(labels[i]);
+                        SelectableMedia item = media.get(i);
+                        if (checked[i] && !pendingMediaAttachments.contains(item.attachmentId)) {
+                            pendingMediaAttachments.add(item.attachmentId);
+                            pendingMediaTitles.add(item.title);
                         }
                     }
                     updatePendingAttachmentPreview();
                 })
                 .setNegativeButton(R.string.cancel, null)
                 .show();
+    }
+
+    private int dp(int value) {
+        return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
     }
 
     private void showAttachmentError(String error) {
