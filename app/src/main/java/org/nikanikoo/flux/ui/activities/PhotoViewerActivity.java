@@ -40,6 +40,7 @@ import org.nikanikoo.flux.Constants;
 import org.nikanikoo.flux.ui.fragments.media.PhotoViewerPageFragment;
 import org.nikanikoo.flux.data.models.Post;
 import org.nikanikoo.flux.data.managers.PostsManager;
+import org.nikanikoo.flux.data.managers.api.OpenVKApi;
 import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.ui.custom.SwipeToCloseHelper;
 import org.nikanikoo.flux.utils.LocaleManager;
@@ -52,7 +53,9 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.OkHttpClient;
@@ -73,6 +76,9 @@ public class PhotoViewerActivity extends AppCompatActivity {
     private static final String EXTRA_AUTHOR_NAME = "author_name";
     private static final String EXTRA_PHOTOS = "photos";
     private static final String EXTRA_IS_GIF = "is_gif";
+    private static final String EXTRA_GIF_DOC_OWNER_ID = "gif_doc_owner_id";
+    private static final String EXTRA_GIF_DOC_ID = "gif_doc_id";
+    private static final String EXTRA_GIF_DOC_ACCESS_KEY = "gif_doc_access_key";
 
     private static final int UI_HIDE_DELAY = 3000;
 
@@ -94,6 +100,10 @@ public class PhotoViewerActivity extends AppCompatActivity {
     private Post post;
     private String authorName;
     private boolean isGif;
+    private int gifDocumentOwnerId;
+    private int gifDocumentId;
+    private String gifDocumentAccessKey;
+    private boolean gifDocumentAdded;
     private PhotosManager photosManager;
 
     private boolean isUIVisible = true;
@@ -134,11 +144,19 @@ public class PhotoViewerActivity extends AppCompatActivity {
     }
 
     public static void startGif(Context context, String gifUrl, String title) {
+        startGif(context, gifUrl, title, 0, 0, null);
+    }
+
+    public static void startGif(Context context, String gifUrl, String title,
+                                int ownerId, int documentId, String accessKey) {
         Intent intent = new Intent(context, PhotoViewerActivity.class);
         intent.putStringArrayListExtra(EXTRA_IMAGE_URLS, new ArrayList<>(java.util.Collections.singletonList(gifUrl)));
         intent.putExtra(EXTRA_CURRENT_POSITION, 0);
         intent.putExtra(EXTRA_AUTHOR_NAME, title);
         intent.putExtra(EXTRA_IS_GIF, true);
+        intent.putExtra(EXTRA_GIF_DOC_OWNER_ID, ownerId);
+        intent.putExtra(EXTRA_GIF_DOC_ID, documentId);
+        intent.putExtra(EXTRA_GIF_DOC_ACCESS_KEY, accessKey);
         context.startActivity(intent);
     }
 
@@ -208,6 +226,9 @@ public class PhotoViewerActivity extends AppCompatActivity {
             post = (Post) intent.getSerializableExtra(EXTRA_POST);
             authorName = intent.getStringExtra(EXTRA_AUTHOR_NAME);
             isGif = intent.getBooleanExtra(EXTRA_IS_GIF, false);
+            gifDocumentOwnerId = intent.getIntExtra(EXTRA_GIF_DOC_OWNER_ID, 0);
+            gifDocumentId = intent.getIntExtra(EXTRA_GIF_DOC_ID, 0);
+            gifDocumentAccessKey = intent.getStringExtra(EXTRA_GIF_DOC_ACCESS_KEY);
             try {
                 photosList = (List<Photo>) intent.getSerializableExtra(EXTRA_PHOTOS);
             } catch (Exception ignored) { }
@@ -365,7 +386,6 @@ public class PhotoViewerActivity extends AppCompatActivity {
 
         if (isGif) {
             bottomPanel.setVisibility(View.GONE);
-            btnMore.setVisibility(View.GONE);
         }
 
         btnBack.setOnClickListener(v -> animateExit());
@@ -551,6 +571,11 @@ public class PhotoViewerActivity extends AppCompatActivity {
         PopupMenu popupMenu = new PopupMenu(this, btnMore);
         popupMenu.getMenuInflater().inflate(R.menu.menu_photo_viewer, popupMenu.getMenu());
 
+        if (isGif && gifDocumentOwnerId != 0 && gifDocumentId != 0) {
+            popupMenu.getMenu().add(0, 103, 0,
+                    gifDocumentAdded ? R.string.gif_added_to_documents : R.string.add_to_my_documents);
+        }
+
         if (photosList != null && currentPosition >= 0 && currentPosition < photosList.size()) {
             popupMenu.getMenu().add(0, 101, 1, R.string.photo_edit_caption_title);
             popupMenu.getMenu().add(0, 102, 2, R.string.photo_delete_title);
@@ -559,6 +584,9 @@ public class PhotoViewerActivity extends AppCompatActivity {
         popupMenu.setOnMenuItemClickListener(item -> {
             if (item.getItemId() == R.id.action_download) {
                 showDownloadChoiceDialog();
+                return true;
+            } else if (item.getItemId() == 103) {
+                addGifToMyDocuments();
                 return true;
             } else if (item.getItemId() == 101 && photosList != null && currentPosition < photosList.size()) {
                 showEditCaptionDialog(photosList.get(currentPosition));
@@ -572,6 +600,39 @@ public class PhotoViewerActivity extends AppCompatActivity {
         
         popupMenu.setOnDismissListener(menu -> scheduleUIHide());
         popupMenu.show();
+    }
+
+    private void addGifToMyDocuments() {
+        if (gifDocumentAdded || gifDocumentOwnerId == 0 || gifDocumentId == 0) return;
+
+        Map<String, String> params = new HashMap<>();
+        params.put("owner_id", String.valueOf(gifDocumentOwnerId));
+        params.put("doc_id", String.valueOf(gifDocumentId));
+        params.put("access_key", gifDocumentAccessKey != null ? gifDocumentAccessKey : "");
+
+        OpenVKApi.getInstance(this).callMethod("docs.add", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(org.json.JSONObject response) {
+                gifDocumentAdded = true;
+                Toast.makeText(PhotoViewerActivity.this, R.string.gif_added_to_documents,
+                        Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onError(String error) {
+                String normalizedError = error != null ? error.toLowerCase(java.util.Locale.ROOT) : "";
+                if (normalizedError.contains("already added")
+                        || normalizedError.contains("уже добавлен")
+                        || normalizedError.contains("уже добавлена")) {
+                    gifDocumentAdded = true;
+                    Toast.makeText(PhotoViewerActivity.this, R.string.gif_already_in_documents,
+                            Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                Toast.makeText(PhotoViewerActivity.this,
+                        getString(R.string.error) + ": " + error, Toast.LENGTH_LONG).show();
+            }
+        });
     }
 
     private void showEditCaptionDialog(Photo photo) {
@@ -843,12 +904,15 @@ public class PhotoViewerActivity extends AppCompatActivity {
                 
                 InputStream inputStream = response.body().byteStream();
                 
+                boolean gif = isGif || url.matches("(?i).*\\.gif(?:[?#].*)?$");
+                String extension = gif ? ".gif" : ".jpg";
+                String mimeType = gif ? "image/gif" : "image/jpeg";
                 String fileName = "IMG_" + System.currentTimeMillis() + "_" +
-                                 (int)(Math.random() * 1000) + ".jpg";
+                                 (int)(Math.random() * 1000) + extension;
                 
                 ContentValues values = new ContentValues();
                 values.put(MediaStore.Images.Media.DISPLAY_NAME, fileName);
-                values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
+                values.put(MediaStore.Images.Media.MIME_TYPE, mimeType);
                 values.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/" + folderName);
                 values.put(MediaStore.Images.Media.IS_PENDING, 1);
                 
@@ -940,8 +1004,9 @@ public class PhotoViewerActivity extends AppCompatActivity {
                     }
                 }
                 
+                boolean gif = isGif || url.matches("(?i).*\\.gif(?:[?#].*)?$");
                 String fileName = "IMG_" + System.currentTimeMillis() + "_" +
-                                 (int)(Math.random() * 1000) + ".jpg";
+                                 (int)(Math.random() * 1000) + (gif ? ".gif" : ".jpg");
                 File outputFile = new File(fluxFolder, fileName);
                 
                 FileOutputStream outputStream = new FileOutputStream(outputFile);

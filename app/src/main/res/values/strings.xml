@@ -281,6 +281,9 @@
     <string name="photo_viewer">Фотография</string>
     <string name="photo_more_images">+%d</string>
     <string name="download_image">Скачать изображение</string>
+    <string name="add_to_my_documents">Добавить к себе</string>
+    <string name="gif_added_to_documents">GIF добавлена в ваши документы</string>
+    <string name="gif_already_in_documents">GIF уже есть в ваших документах</string>
     <string name="download_current_image">Скачать изображение</string>
     <string name="download_all_images">Скачать все изображения</string>
     <string name="download_permission_required">Требуется разрешение для сохранения изображений</string>

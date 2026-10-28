@@ -58,11 +58,11 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     private ImageView sendButton;
     private ImageView attachButton;
     private View pendingAttachmentPreview;
-    private ImageView pendingAttachmentImage;
-    private ImageView removePendingAttachmentButton;
+    private android.widget.LinearLayout pendingAttachmentList;
     private ActivityResultLauncher<String> photoPicker;
-    private String pendingPhotoAttachment;
-    private Uri pendingPhotoUri;
+    private final List<String> pendingPhotoAttachments = new ArrayList<>();
+    private final List<Uri> pendingPhotoUris = new ArrayList<>();
+    private boolean photoUploadInProgress;
     private MessagesManager messagesManager;
     private List<Message> messages;
 
@@ -106,23 +106,26 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        photoPicker = registerForActivityResult(new ActivityResultContracts.GetContent(), this::onPhotoPicked);
+        photoPicker = registerForActivityResult(new ActivityResultContracts.GetMultipleContents(), this::onPhotosPicked);
         if (getArguments() != null) {
             peerId = getArguments().getInt(ARG_PEER_ID);
             title = getArguments().getString(ARG_TITLE);
         }
         if (savedInstanceState != null) {
-            pendingPhotoAttachment = savedInstanceState.getString("pending_photo_attachment");
-            String uri = savedInstanceState.getString("pending_photo_uri");
-            if (uri != null) pendingPhotoUri = Uri.parse(uri);
+            pendingPhotoAttachments.addAll(savedInstanceState.getStringArrayList("pending_photo_attachments") != null
+                    ? savedInstanceState.getStringArrayList("pending_photo_attachments") : new ArrayList<>());
+            ArrayList<String> uris = savedInstanceState.getStringArrayList("pending_photo_uris");
+            if (uris != null) for (String uri : uris) pendingPhotoUris.add(Uri.parse(uri));
         }
     }
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        if (pendingPhotoAttachment != null) outState.putString("pending_photo_attachment", pendingPhotoAttachment);
-        if (pendingPhotoUri != null) outState.putString("pending_photo_uri", pendingPhotoUri.toString());
+        outState.putStringArrayList("pending_photo_attachments", new ArrayList<>(pendingPhotoAttachments));
+        ArrayList<String> uris = new ArrayList<>();
+        for (Uri uri : pendingPhotoUris) uris.add(uri.toString());
+        outState.putStringArrayList("pending_photo_uris", uris);
     }
 
     @Override
@@ -194,8 +197,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         sendButton = view.findViewById(R.id.send_button);
         attachButton = view.findViewById(R.id.attach_button);
         pendingAttachmentPreview = view.findViewById(R.id.pending_attachment_preview);
-        pendingAttachmentImage = view.findViewById(R.id.pending_attachment_image);
-        removePendingAttachmentButton = view.findViewById(R.id.remove_pending_attachment);
+        pendingAttachmentList = view.findViewById(R.id.pending_attachment_list);
         dateHeaderCard = view.findViewById(R.id.date_header_card);
         dateHeaderText = view.findViewById(R.id.date_header_text);
         messagesManager = MessagesManager.getInstance(requireContext());
@@ -317,9 +319,8 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     private void setupSendButton() {
         sendButton.setOnClickListener(v -> sendMessage());
         attachButton.setOnClickListener(v -> {
-            if (pendingPhotoAttachment == null) photoPicker.launch("image/*");
+            photoPicker.launch("image/*");
         });
-        removePendingAttachmentButton.setOnClickListener(v -> clearPendingAttachment());
         
         messageInput.setOnEditorActionListener((v, actionId, event) -> {
             sendMessage();
@@ -410,36 +411,48 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
 
     private void sendMessage() {
         String messageText = messageInput.getText().toString().trim();
-        sendMessage(messageText, pendingPhotoAttachment);
+        if (photoUploadInProgress) return;
+        sendMessage(messageText, android.text.TextUtils.join(",", pendingPhotoAttachments));
     }
 
-    private void onPhotoPicked(Uri uri) {
-        if (uri == null) return;
+    private void onPhotosPicked(List<Uri> uris) {
+        if (uris == null || uris.isEmpty()) return;
+        photoUploadInProgress = true;
         attachButton.setEnabled(false);
+        sendButton.setEnabled(false);
+        uploadNextPhoto(uris, 0);
+    }
+
+    private void uploadNextPhoto(List<Uri> uris, int index) {
+        if (index >= uris.size()) {
+            photoUploadInProgress = false;
+            attachButton.setEnabled(true);
+            sendButton.setEnabled(true);
+            updatePendingAttachmentPreview();
+            return;
+        }
+        Uri uri = uris.get(index);
         PhotoUploadManager.getInstance(requireContext()).uploadMessagePhoto(uri, peerId,
                 new PhotoUploadManager.PhotoUploadCallback() {
                     @Override
                     public void onSuccess(String attachment) {
-                        if (getActivity() != null) {
-                            getActivity().runOnUiThread(() -> {
-                                pendingPhotoAttachment = attachment;
-                                pendingPhotoUri = uri;
-                                updatePendingAttachmentPreview();
-                                attachButton.setEnabled(false);
-                                sendButton.setEnabled(true);
-                            });
-                        }
+                        if (getActivity() == null) return;
+                        getActivity().runOnUiThread(() -> {
+                            pendingPhotoAttachments.add(attachment);
+                            pendingPhotoUris.add(uri);
+                            updatePendingAttachmentPreview();
+                            uploadNextPhoto(uris, index + 1);
+                        });
                     }
-
                     @Override
                     public void onError(String error) {
-                        if (getActivity() != null) {
-                            getActivity().runOnUiThread(() -> {
-                                attachButton.setEnabled(true);
-                                sendButton.setEnabled(true);
-                                Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
-                            });
-                        }
+                        if (getActivity() != null) getActivity().runOnUiThread(() -> {
+                            photoUploadInProgress = false;
+                            attachButton.setEnabled(true);
+                            sendButton.setEnabled(true);
+                            updatePendingAttachmentPreview();
+                            Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
+                        });
                     }
                 });
     }
@@ -461,7 +474,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                         messageInput.setText("");
                         sendButton.setEnabled(true);
                         messageInput.setEnabled(true);
-                        if (attachment != null && attachment.equals(pendingPhotoAttachment)) {
+                        if (attachment != null && attachment.equals(android.text.TextUtils.join(",", pendingPhotoAttachments))) {
                             clearPendingAttachment();
                         }
                         
@@ -488,22 +501,47 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     }
 
     private void updatePendingAttachmentPreview() {
-        if (pendingAttachmentPreview == null || pendingAttachmentImage == null) return;
-        if (pendingPhotoAttachment == null || pendingPhotoUri == null) {
+        if (pendingAttachmentPreview == null || pendingAttachmentList == null) return;
+        pendingAttachmentList.removeAllViews();
+        if (pendingPhotoAttachments.isEmpty()) {
             pendingAttachmentPreview.setVisibility(View.GONE);
             attachButton.setEnabled(true);
             return;
         }
-        Picasso.get().load(pendingPhotoUri).fit().centerCrop().into(pendingAttachmentImage);
+        for (int i = 0; i < pendingPhotoUris.size(); i++) {
+            final int index = i;
+            android.widget.FrameLayout item = new android.widget.FrameLayout(requireContext());
+            android.widget.LinearLayout.LayoutParams itemParams = new android.widget.LinearLayout.LayoutParams(56, 56);
+            itemParams.setMargins(0, 0, 8, 0);
+            ImageView image = new ImageView(requireContext());
+            android.widget.FrameLayout.LayoutParams imageParams = new android.widget.FrameLayout.LayoutParams(48, 48);
+            imageParams.gravity = android.view.Gravity.CENTER;
+            image.setLayoutParams(imageParams);
+            image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            Picasso.get().load(pendingPhotoUris.get(i)).fit().centerCrop().into(image);
+            item.addView(image);
+            ImageView remove = new ImageView(requireContext());
+            android.widget.FrameLayout.LayoutParams removeParams = new android.widget.FrameLayout.LayoutParams(20, 20, android.view.Gravity.TOP | android.view.Gravity.END);
+            remove.setLayoutParams(removeParams);
+            remove.setPadding(3, 3, 3, 3);
+            remove.setBackgroundResource(R.drawable.avatar_circle);
+            remove.setImageResource(R.drawable.ic_close);
+            remove.setOnClickListener(v -> {
+                pendingPhotoUris.remove(index);
+                pendingPhotoAttachments.remove(index);
+                updatePendingAttachmentPreview();
+            });
+            item.addView(remove);
+            pendingAttachmentList.addView(item, itemParams);
+        }
         pendingAttachmentPreview.setVisibility(View.VISIBLE);
-        attachButton.setEnabled(false);
     }
 
     private void clearPendingAttachment() {
-        pendingPhotoAttachment = null;
-        pendingPhotoUri = null;
-        if (pendingAttachmentImage != null) Picasso.get().cancelRequest(pendingAttachmentImage);
+        pendingPhotoAttachments.clear();
+        pendingPhotoUris.clear();
         if (pendingAttachmentPreview != null) pendingAttachmentPreview.setVisibility(View.GONE);
+        if (pendingAttachmentList != null) pendingAttachmentList.removeAllViews();
         if (attachButton != null) attachButton.setEnabled(true);
     }
     

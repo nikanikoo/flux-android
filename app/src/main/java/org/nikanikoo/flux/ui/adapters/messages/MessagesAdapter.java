@@ -258,7 +258,8 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         card.setOnClickListener(v -> {
             if (attachment.isGifDocument()) {
                 org.nikanikoo.flux.ui.activities.PhotoViewerActivity.startGif(
-                        context, attachment.getUrl(), attachment.getTitle());
+                        context, attachment.getUrl(), attachment.getTitle(),
+                        attachment.getOwnerId(), attachment.getId(), attachment.getAccessKey());
             } else {
                 openUrl(attachment.getUrl());
             }

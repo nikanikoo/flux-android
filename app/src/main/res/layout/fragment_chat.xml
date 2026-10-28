@@ -73,32 +73,22 @@
             android:padding="8dp"
             app:tint="?attr/colorPrimary" />
 
-        <FrameLayout
+        <HorizontalScrollView
             android:id="@+id/pending_attachment_preview"
-            android:layout_width="56dp"
+            android:layout_width="112dp"
             android:layout_height="56dp"
             android:layout_marginEnd="8dp"
+            android:fillViewport="false"
+            android:scrollbars="none"
             android:visibility="gone">
 
-            <ImageView
-                android:id="@+id/pending_attachment_image"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:layout_gravity="center"
-                android:contentDescription="@string/pending_photo"
-                android:scaleType="centerCrop" />
-
-            <ImageView
-                android:id="@+id/remove_pending_attachment"
-                android:layout_width="20dp"
-                android:layout_height="20dp"
-                android:layout_gravity="top|end"
-                android:background="@drawable/avatar_circle"
-                android:contentDescription="@string/remove_attachment"
-                android:padding="3dp"
-                android:src="@drawable/ic_close"
-                app:tint="?attr/colorOnSurface" />
-        </FrameLayout>
+            <LinearLayout
+                android:id="@+id/pending_attachment_list"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical"
+                android:orientation="horizontal" />
+        </HorizontalScrollView>
 
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="0dp"
