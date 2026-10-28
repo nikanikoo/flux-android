@@ -85,7 +85,9 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     private final List<Uri> pendingPhotoUris = new ArrayList<>();
     private final List<String> pendingMediaAttachments = new ArrayList<>();
     private final List<String> pendingMediaTitles = new ArrayList<>();
+    private final List<String> pendingMediaPreviews = new ArrayList<>();
     private boolean photoUploadInProgress;
+    private int recyclerBaseBottomPadding;
     private MessagesManager messagesManager;
     private List<Message> messages;
 
@@ -143,6 +145,9 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
             if (mediaAttachments != null) pendingMediaAttachments.addAll(mediaAttachments);
             ArrayList<String> mediaTitles = savedInstanceState.getStringArrayList("pending_media_titles");
             if (mediaTitles != null) pendingMediaTitles.addAll(mediaTitles);
+            ArrayList<String> mediaPreviews = savedInstanceState.getStringArrayList("pending_media_previews");
+            if (mediaPreviews != null) pendingMediaPreviews.addAll(mediaPreviews);
+            while (pendingMediaPreviews.size() < pendingMediaAttachments.size()) pendingMediaPreviews.add("");
         }
     }
 
@@ -155,6 +160,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         outState.putStringArrayList("pending_photo_uris", uris);
         outState.putStringArrayList("pending_media_attachments", new ArrayList<>(pendingMediaAttachments));
         outState.putStringArrayList("pending_media_titles", new ArrayList<>(pendingMediaTitles));
+        outState.putStringArrayList("pending_media_previews", new ArrayList<>(pendingMediaPreviews));
     }
 
     @Override
@@ -221,6 +227,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
 
     private void initViews(View view) {
         recyclerView = view.findViewById(R.id.recycler_view);
+        recyclerBaseBottomPadding = recyclerView.getPaddingBottom();
         swipeRefreshLayout = view.findViewById(R.id.swipe_refresh);
         messageInput = view.findViewById(R.id.message_input);
         sendButton = view.findViewById(R.id.send_button);
@@ -576,6 +583,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                         if (checked[i] && !pendingMediaAttachments.contains(item.attachmentId)) {
                             pendingMediaAttachments.add(item.attachmentId);
                             pendingMediaTitles.add(item.title);
+                            pendingMediaPreviews.add(item.previewUrl != null ? item.previewUrl : "");
                         }
                     }
                     updatePendingAttachmentPreview();
@@ -758,29 +766,34 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     private void updatePendingAttachmentPreview() {
         if (pendingAttachmentPreview == null || pendingAttachmentList == null) return;
         pendingAttachmentList.removeAllViews();
-        if (pendingPhotoAttachments.isEmpty() && pendingMediaAttachments.isEmpty()) {
+        boolean hasAttachments = !pendingPhotoAttachments.isEmpty() || !pendingMediaAttachments.isEmpty();
+        if (!hasAttachments) {
             pendingAttachmentPreview.setVisibility(View.GONE);
             attachButton.setEnabled(true);
+            updateRecyclerBottomPadding(false);
             return;
         }
         for (int i = 0; i < pendingPhotoUris.size(); i++) {
             final int index = i;
-            android.widget.FrameLayout item = new android.widget.FrameLayout(requireContext());
-            android.widget.LinearLayout.LayoutParams itemParams = new android.widget.LinearLayout.LayoutParams(56, 56);
-            itemParams.setMargins(0, 0, 8, 0);
+            MaterialCardView item = new MaterialCardView(requireContext());
+            android.widget.LinearLayout.LayoutParams itemParams = new android.widget.LinearLayout.LayoutParams(dp(88), dp(88));
+            itemParams.setMargins(0, 0, dp(8), 0);
+            item.setRadius(dp(12));
+            item.setCardElevation(dp(1));
             ImageView image = new ImageView(requireContext());
-            android.widget.FrameLayout.LayoutParams imageParams = new android.widget.FrameLayout.LayoutParams(48, 48);
-            imageParams.gravity = android.view.Gravity.CENTER;
-            image.setLayoutParams(imageParams);
+            image.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT));
             image.setScaleType(ImageView.ScaleType.CENTER_CROP);
             Picasso.get().load(pendingPhotoUris.get(i)).fit().centerCrop().into(image);
             item.addView(image);
             ImageView remove = new ImageView(requireContext());
-            android.widget.FrameLayout.LayoutParams removeParams = new android.widget.FrameLayout.LayoutParams(20, 20, android.view.Gravity.TOP | android.view.Gravity.END);
+            android.widget.FrameLayout.LayoutParams removeParams = new android.widget.FrameLayout.LayoutParams(
+                    dp(24), dp(24), android.view.Gravity.TOP | android.view.Gravity.END);
             remove.setLayoutParams(removeParams);
-            remove.setPadding(3, 3, 3, 3);
+            remove.setPadding(dp(4), dp(4), dp(4), dp(4));
             remove.setBackgroundResource(R.drawable.avatar_circle);
             remove.setImageResource(R.drawable.ic_close);
+            remove.setColorFilter(android.graphics.Color.WHITE);
             remove.setOnClickListener(v -> {
                 pendingPhotoUris.remove(index);
                 pendingPhotoAttachments.remove(index);
@@ -791,37 +804,61 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         }
         for (int i = 0; i < pendingMediaAttachments.size(); i++) {
             final int index = i;
-            android.widget.FrameLayout item = new android.widget.FrameLayout(requireContext());
-            android.widget.LinearLayout.LayoutParams itemParams = new android.widget.LinearLayout.LayoutParams(88, 56);
-            itemParams.setMargins(0, 0, 8, 0);
+            MaterialCardView item = new MaterialCardView(requireContext());
+            android.widget.LinearLayout.LayoutParams itemParams = new android.widget.LinearLayout.LayoutParams(dp(104), dp(92));
+            itemParams.setMargins(0, 0, dp(8), 0);
+            item.setRadius(dp(12));
+            item.setCardElevation(dp(1));
+            android.widget.LinearLayout content = new android.widget.LinearLayout(requireContext());
+            content.setOrientation(android.widget.LinearLayout.VERTICAL);
+            content.setPadding(dp(4), dp(4), dp(4), dp(3));
+            ImageView preview = new ImageView(requireContext());
+            preview.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            content.addView(preview, new android.widget.LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(62)));
+            String previewUrl = i < pendingMediaPreviews.size() ? pendingMediaPreviews.get(i) : "";
+            if (org.nikanikoo.flux.utils.ImageUtils.isValidImageUrl(previewUrl)) {
+                Picasso.get().load(previewUrl).fit().centerCrop()
+                        .placeholder(R.drawable.ic_image_placeholder)
+                        .error(R.drawable.ic_image_placeholder).into(preview);
+            } else {
+                preview.setImageResource(R.drawable.ic_image_placeholder);
+            }
             TextView title = new TextView(requireContext());
-            android.widget.FrameLayout.LayoutParams titleParams = new android.widget.FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
-            title.setLayoutParams(titleParams);
-            title.setGravity(android.view.Gravity.CENTER);
-            title.setMaxLines(2);
+            title.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            title.setMaxLines(1);
             title.setEllipsize(android.text.TextUtils.TruncateAt.END);
             title.setText(pendingMediaTitles.get(i));
-            title.setTextSize(11);
-            title.setPadding(5, 5, 5, 5);
-            title.setBackgroundResource(R.drawable.avatar_circle);
-            item.addView(title);
+            title.setTextSize(10);
+            content.addView(title, new android.widget.LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+            item.addView(content);
             ImageView remove = new ImageView(requireContext());
             android.widget.FrameLayout.LayoutParams removeParams = new android.widget.FrameLayout.LayoutParams(
-                    20, 20, android.view.Gravity.TOP | android.view.Gravity.END);
+                    dp(24), dp(24), android.view.Gravity.TOP | android.view.Gravity.END);
             remove.setLayoutParams(removeParams);
-            remove.setPadding(3, 3, 3, 3);
+            remove.setPadding(dp(4), dp(4), dp(4), dp(4));
             remove.setBackgroundResource(R.drawable.avatar_circle);
             remove.setImageResource(R.drawable.ic_close);
+            remove.setColorFilter(android.graphics.Color.WHITE);
             remove.setOnClickListener(v -> {
                 pendingMediaAttachments.remove(index);
                 pendingMediaTitles.remove(index);
+                if (index < pendingMediaPreviews.size()) pendingMediaPreviews.remove(index);
                 updatePendingAttachmentPreview();
             });
             item.addView(remove);
             pendingAttachmentList.addView(item, itemParams);
         }
         pendingAttachmentPreview.setVisibility(View.VISIBLE);
+        updateRecyclerBottomPadding(true);
+    }
+
+    private void updateRecyclerBottomPadding(boolean hasAttachments) {
+        if (recyclerView == null) return;
+        int extra = hasAttachments ? dp(112) : 0;
+        recyclerView.setPadding(recyclerView.getPaddingLeft(), recyclerView.getPaddingTop(),
+                recyclerView.getPaddingRight(), recyclerBaseBottomPadding + extra);
     }
 
     private void clearPendingAttachment() {
@@ -829,6 +866,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         pendingPhotoUris.clear();
         pendingMediaAttachments.clear();
         pendingMediaTitles.clear();
+        pendingMediaPreviews.clear();
         if (pendingAttachmentPreview != null) pendingAttachmentPreview.setVisibility(View.GONE);
         if (pendingAttachmentList != null) pendingAttachmentList.removeAllViews();
         if (attachButton != null) attachButton.setEnabled(true);
