@@ -47,6 +47,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
     public interface OnMessageClickListener {
         void onAvatarClick(int userId, String userName);
+        void onReplyClick(int messageId);
     }
 
     public MessagesAdapter(Context context, List<Message> messages) {
@@ -278,9 +279,17 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         }
         if (text.length() == 0) {
             view.setVisibility(View.GONE);
+            view.setOnClickListener(null);
         } else {
             view.setText(text.toString().trim());
             view.setVisibility(View.VISIBLE);
+            if (reply != null && reply.getId() > 0) {
+                view.setOnClickListener(v -> {
+                    if (listener != null) listener.onReplyClick(reply.getId());
+                });
+            } else {
+                view.setOnClickListener(null);
+            }
         }
     }
 
@@ -592,6 +601,16 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         if (position >= 0) {
             notifyItemChanged(position);
         }
+    }
+
+    public int findMessagePosition(int messageId) {
+        for (int position = 0; position < items.size(); position++) {
+            Object item = items.get(position);
+            if (item instanceof Message && ((Message) item).getId() == messageId) {
+                return position;
+            }
+        }
+        return RecyclerView.NO_POSITION;
     }
 
     @Override

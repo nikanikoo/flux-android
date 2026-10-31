@@ -10,6 +10,7 @@
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:minWidth="200dp"
         android:layout_marginStart="64dp"
         android:orientation="vertical"
         android:background="@drawable/message_bubble_outgoing"
@@ -22,7 +23,7 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="6dp"
             android:padding="8dp"
-            android:background="@drawable/message_bubble_incoming"
+            android:background="@drawable/message_reply_preview_outgoing"
             android:textColor="?attr/colorOnPrimary"
             android:textSize="13sp"
             android:visibility="gone" />

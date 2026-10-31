@@ -88,6 +88,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     private final List<String> pendingMediaPreviews = new ArrayList<>();
     private boolean photoUploadInProgress;
     private int recyclerBaseBottomPadding;
+    private int pendingReplyMessageId;
     private MessagesManager messagesManager;
     private List<Message> messages;
 
@@ -636,6 +637,8 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                             // Для истории добавляем в начало списка
                             adapter.addMessagesToTop(loadedMessages);
                         }
+
+                        tryScrollToPendingReply();
                         
                         swipeRefreshLayout.setRefreshing(false);
 
@@ -658,6 +661,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                 if (getActivity() != null) {
                     getActivity().runOnUiThread(() -> {
                         paginationHelper.stopLoading();
+                        pendingReplyMessageId = 0;
                         Toast.makeText(requireContext(), getString(R.string.chat_loading_error) + error, Toast.LENGTH_SHORT).show();
                         swipeRefreshLayout.setRefreshing(false);
                     });
@@ -869,6 +873,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         pendingMediaPreviews.clear();
         if (pendingAttachmentPreview != null) pendingAttachmentPreview.setVisibility(View.GONE);
         if (pendingAttachmentList != null) pendingAttachmentList.removeAllViews();
+        updateRecyclerBottomPadding(false);
         if (attachButton != null) attachButton.setEnabled(true);
     }
     
@@ -935,6 +940,26 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                     .replace(containerId, groupProfileFragment)
                     .addToBackStack("group_" + (-userId))
                     .commit();
+        }
+    }
+
+    @Override
+    public void onReplyClick(int messageId) {
+        pendingReplyMessageId = messageId;
+        tryScrollToPendingReply();
+    }
+
+    private void tryScrollToPendingReply() {
+        if (pendingReplyMessageId == 0 || adapter == null || recyclerView == null) return;
+
+        int position = adapter.findMessagePosition(pendingReplyMessageId);
+        if (position != RecyclerView.NO_POSITION) {
+            pendingReplyMessageId = 0;
+            recyclerView.post(() -> recyclerView.smoothScrollToPosition(position));
+        } else if (paginationHelper != null && paginationHelper.canLoadMore()) {
+            loadMessages(false);
+        } else if (paginationHelper != null) {
+            pendingReplyMessageId = 0;
         }
     }
     
