@@ -613,6 +613,24 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         return RecyclerView.NO_POSITION;
     }
 
+    public int markOutgoingMessagesReadThrough(int conversationMessageId) {
+        if (conversationMessageId <= 0) return 0;
+        int updated = 0;
+        for (int position = 0; position < items.size(); position++) {
+            Object item = items.get(position);
+            if (item instanceof Message) {
+                Message message = (Message) item;
+                int localId = message.getConversationMessageId();
+                if (message.isOut() && localId > 0 && localId <= conversationMessageId && !message.isReadState()) {
+                    message.setReadState(true);
+                    notifyItemChanged(position);
+                    updated++;
+                }
+            }
+        }
+        return updated;
+    }
+
     @Override
     public void onViewRecycled(@NonNull RecyclerView.ViewHolder holder) {
         super.onViewRecycled(holder);

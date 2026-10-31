@@ -40,15 +40,17 @@ public class LongPollService extends Service {
             @Override
             public void onNewMessage(int messageId, int peerId, long timestamp, String text, int fromId, boolean isOut) {
                 Log.d(TAG, "LongPoll event - messageId: " + messageId + ", peerId: " + peerId + 
-                          ", fromId: " + fromId + ", isOut: " + isOut + ", timestamp: " + timestamp + ", text: " + text);
+                          ", fromId: " + fromId + ", isOut: " + isOut + ", timestamp: " + timestamp
+                          + ", textLength: " + (text != null ? text.length() : 0));
                 
                 // Уведомления теперь обрабатываются в MainActivity, здесь только логируем
                 Log.d(TAG, "Message event processed by service (notifications handled by MainActivity)");
             }
 
             @Override
-            public void onMessageRead(int peerId, int localId) {
-                Log.d(TAG, "Message read event - peerId: " + peerId + ", localId: " + localId);
+            public void onMessageRead(int peerId, int localId, boolean outgoingMessagesRead) {
+                Log.d(TAG, "Message read event - peerId: " + peerId + ", localId: " + localId
+                        + ", outgoingMessagesRead: " + outgoingMessagesRead);
                 // Обработка чтения сообщений теперь в MainActivity
             }
 

@@ -5,6 +5,7 @@ import java.util.List;
 
 public class Message {
     private int id;
+    private int conversationMessageId;
     private int userId;
     private int fromId;
     private String text;
@@ -30,6 +31,7 @@ public class Message {
 
     // Getters
     public int getId() { return id; }
+    public int getConversationMessageId() { return conversationMessageId; }
     public int getUserId() { return userId; }
     public int getFromId() { return fromId; }
     public String getText() { return text; }
@@ -47,6 +49,7 @@ public class Message {
     public void setUserName(String userName) { this.userName = userName; }
     public void setUserPhoto(String userPhoto) { this.userPhoto = userPhoto; }
     public void setReadState(boolean readState) { this.readState = readState; }
+    public void setConversationMessageId(int conversationMessageId) { this.conversationMessageId = conversationMessageId; }
     public void setUserVerified(boolean userVerified) { this.userVerified = userVerified; }
     public void setAttachments(List<MessageAttachment> attachments) {
         this.attachments = attachments != null ? attachments : new ArrayList<>();

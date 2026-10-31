@@ -377,9 +377,10 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
             }
 
             @Override
-            public void onMessageRead(int peerId, int localId) {
-                updateChatIfVisible(peerId);
-                updateMessagesListOnRead(peerId);
+            public void onMessageRead(int peerId, int localId, boolean outgoingMessagesRead) {
+                if (!outgoingMessagesRead) {
+                    updateMessagesListOnRead(peerId);
+                }
                 onNotificationBadgeUpdate();
             }
 

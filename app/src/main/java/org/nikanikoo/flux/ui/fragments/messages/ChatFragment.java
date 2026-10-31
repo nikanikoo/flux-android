@@ -1082,12 +1082,50 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
 
     @Override
     public void onNewMessage(int messageId, int peerId, long timestamp, String text, int fromId, boolean isOut) {
-        refreshMessagesIfSamePeer(peerId);
+        Log.d("ChatFragment", "LongPoll new message: id=" + messageId + ", eventPeer=" + peerId
+                + ", currentPeer=" + this.peerId);
+        if (this.peerId != peerId || messagesManager == null) {
+            Log.d("ChatFragment", "Ignoring LongPoll message: peer mismatch or manager unavailable");
+            return;
+        }
+
+        messagesManager.getMessageById(messageId, peerId, new MessagesManager.MessagesCallback() {
+            @Override
+            public void onSuccess(List<Message> newMessages) {
+                if (newMessages == null || newMessages.isEmpty()) {
+                    Log.w("ChatFragment", "LongPoll getById returned no message for id=" + messageId);
+                    refreshMessagesIfSamePeer(peerId);
+                    return;
+                }
+                androidx.fragment.app.FragmentActivity activity = getActivity();
+                if (activity == null) return;
+                activity.runOnUiThread(() -> {
+                    if (adapter == null || ChatFragment.this.peerId != peerId) return;
+                    for (Message message : newMessages) {
+                        adapter.addMessage(message);
+                    }
+                    Log.d("ChatFragment", "Added " + newMessages.size() + " LongPoll message(s) to chat");
+                    if (adapter.getItemCount() > 0 && recyclerView != null) {
+                        recyclerView.post(() -> recyclerView.smoothScrollToPosition(adapter.getItemCount() - 1));
+                    }
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                Log.e("ChatFragment", "Could not load LongPoll message id=" + messageId + ": " + error);
+                refreshMessagesIfSamePeer(peerId);
+            }
+        });
     }
 
     @Override
-    public void onMessageRead(int peerId, int localId) {
-        refreshMessagesIfSamePeer(peerId);
+    public void onMessageRead(int peerId, int localId, boolean outgoingMessagesRead) {
+        int updated = this.peerId == peerId && outgoingMessagesRead && adapter != null
+                ? adapter.markOutgoingMessagesReadThrough(localId) : 0;
+        Log.d("ChatFragment", "LongPoll read: eventPeer=" + peerId + ", currentPeer=" + this.peerId
+                + ", localId=" + localId + ", outgoingMessagesRead=" + outgoingMessagesRead
+                + ", updatedBubbles=" + updated);
     }
 
     @Override

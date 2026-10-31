@@ -121,6 +121,40 @@ public class MessagesManager extends BaseManager<MessagesManager> {
             }
         });
     }
+
+    public void getMessageById(int messageId, int peerId, MessagesCallback callback) {
+        Logger.d(TAG, "LongPoll: requesting message id=" + messageId + ", peerId=" + peerId);
+        Map<String, String> params = new HashMap<>();
+        params.put("message_ids", String.valueOf(messageId));
+        params.put("extended", "1");
+        params.put("fields", "photo_50,verified");
+
+        api.callMethod("messages.getById", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                AsyncTaskHelper.executeAsync(() -> parseMessagesResponse(response, peerId),
+                        new AsyncTaskHelper.AsyncCallback<List<Message>>() {
+                            @Override
+                            public void onSuccess(List<Message> messages) {
+                                Logger.d(TAG, "LongPoll: getById returned " + messages.size() + " messages for id=" + messageId);
+                                callback.onSuccess(messages);
+                            }
+
+                            @Override
+                            public void onError(String error) {
+                                Logger.e(TAG, "LongPoll: failed to parse getById for id=" + messageId + ": " + error);
+                                callback.onError(error);
+                            }
+                        });
+            }
+
+            @Override
+            public void onError(String error) {
+                Logger.e(TAG, "LongPoll: getById API error for id=" + messageId + ": " + error);
+                callback.onError(error);
+            }
+        });
+    }
     
     /**
      * Parse messages response in background thread
@@ -153,6 +187,7 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                 boolean readState = item.optInt("read_state", 0) == 1;
 
                 Message message = new Message(id, messagePeerId, fromId, text, date, out, readState);
+                message.setConversationMessageId(item.optInt("conversation_message_id", item.optInt("local_id", 0)));
                 message.setAttachments(parseAttachments(item.optJSONArray("attachments")));
                 message.setReply(parseReference(item.optJSONObject("reply_message"), profiles,
                         item.optInt("reply_to", 0)));
