@@ -50,6 +50,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         void onReplyClick(int messageId);
         void onMessageOptions(View anchor, Message message);
         void onReplySwipe(Message message);
+        void onWallPostClick(MessageAttachment attachment);
     }
 
     public MessagesAdapter(Context context, List<Message> messages) {
@@ -318,6 +319,11 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         text.append(snippet == null || snippet.isEmpty() ? "Сообщение" : snippet).append('\n');
     }
 
+    /**
+     * Добавление карточки с постом в сообщение
+     * @param container контейнер вложений в сообщении
+     * @param attachment пост
+     */
     private void addWallCard(LinearLayout container, MessageAttachment attachment) {
         LinearLayout card = new LinearLayout(context);
         card.setOrientation(LinearLayout.VERTICAL);
@@ -361,7 +367,9 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             previewParams.topMargin = dp(6);
             card.addView(preview, previewParams);
         }
-        card.setOnClickListener(v -> openUrl(attachment.getTargetUrl()));
+        card.setOnClickListener(v -> {
+            if (listener != null) listener.onWallPostClick(attachment);
+        });
         container.addView(card);
     }
 

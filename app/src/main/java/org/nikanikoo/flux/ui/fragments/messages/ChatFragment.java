@@ -1069,6 +1069,29 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         if (message != null) setReplyTarget(message);
     }
 
+    /**
+     * Открытие поста (CommentsActivity) при нажатии на репост какого-то поста внутри сообщения
+     * @param attachment - сам прикреплённый к сообщению пост
+     */
+    @Override
+    public void onWallPostClick(org.nikanikoo.flux.data.models.MessageAttachment attachment) {
+        if (!isAdded()) return;
+        if (attachment == null || attachment.getOwnerId() == 0 || attachment.getId() == 0) {
+            Toast.makeText(requireContext(), R.string.message_post_open_error, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        org.nikanikoo.flux.data.models.Post post = new org.nikanikoo.flux.data.models.Post(
+                getString(R.string.loading), "", "", 0, 0);
+        post.setOwnerId(attachment.getOwnerId());
+        post.setPostId(attachment.getId());
+
+        android.content.Intent intent = new android.content.Intent(requireContext(),
+                org.nikanikoo.flux.ui.activities.CommentsActivity.class);
+        intent.putExtra(org.nikanikoo.flux.ui.activities.CommentsActivity.EXTRA_POST, post);
+        startActivity(intent);
+    }
+
     //Отображение меню при клике на сообщение
     @Override
     public void onMessageOptions(View anchor, Message message) {

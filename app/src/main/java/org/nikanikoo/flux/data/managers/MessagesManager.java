@@ -284,9 +284,9 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                 title = type;
             }
             String url = "doc".equals(type) ? data.optString("url", data.optString("private_url", "")) : "";
-            int documentOwnerId = "doc".equals(type) ? data.optInt("owner_id", 0) : 0;
-            int documentId = "doc".equals(type) ? data.optInt("id", 0) : 0;
-            String documentAccessKey = "doc".equals(type) ? data.optString("access_key", null) : null;
+            int navigationOwnerId = "doc".equals(type) ? data.optInt("owner_id", 0) : 0;
+            int navigationMediaId = "doc".equals(type) ? data.optInt("id", 0) : 0;
+            String navigationAccessKey = "doc".equals(type) ? data.optString("access_key", null) : null;
             String targetUrl = "";
             String attachmentId = "";
             int attachmentOwnerId = data.optInt("owner_id", 0);
@@ -296,6 +296,8 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                 int ownerId = data.optInt("owner_id", data.optInt("to_id", 0));
                 int postId = data.optInt("id", 0);
                 if (ownerId != 0 && postId != 0) targetUrl = "wall" + ownerId + "_" + postId;
+                navigationOwnerId = ownerId;
+                navigationMediaId = postId;
             }
             if ("video".equals(type) && parsedVideo != null) {
                 attachmentOwnerId = parsedVideo.getOwnerId();
@@ -310,7 +312,7 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                         + (!attachmentAccessKey.isEmpty() ? "_" + attachmentAccessKey : "");
             }
             parsed.add(new MessageAttachment(type, imageUrl, title, subtitle, parsedVideo, url, targetUrl,
-                    documentOwnerId, documentId, documentAccessKey, attachmentId));
+                    navigationOwnerId, navigationMediaId, navigationAccessKey, attachmentId));
         }
         return parsed;
     }

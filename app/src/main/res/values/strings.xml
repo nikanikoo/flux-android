@@ -823,4 +823,5 @@
     <string name="chat_unknown_user">Пользователь</string>
     <string name="you">Вы</string>
     <string name="attachment">Вложение</string>
+    <string name="message_post_open_error">Не удалось открыть пост</string>
 </resources>
