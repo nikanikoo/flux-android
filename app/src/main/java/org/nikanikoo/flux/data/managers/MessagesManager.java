@@ -42,6 +42,11 @@ public class MessagesManager extends BaseManager<MessagesManager> {
         void onSuccess(int messageId);
         void onError(String error);
     }
+
+    public interface MessageActionCallback {
+        void onSuccess();
+        void onError(String error);
+    }
     
     public interface UserInfoCallback {
         void onSuccess(String userName, String userPhoto);
@@ -283,13 +288,29 @@ public class MessagesManager extends BaseManager<MessagesManager> {
             int documentId = "doc".equals(type) ? data.optInt("id", 0) : 0;
             String documentAccessKey = "doc".equals(type) ? data.optString("access_key", null) : null;
             String targetUrl = "";
+            String attachmentId = "";
+            int attachmentOwnerId = data.optInt("owner_id", 0);
+            int attachmentMediaId = data.optInt("id", 0);
+            String attachmentAccessKey = data.optString("access_key", "");
             if ("wall".equals(type)) {
                 int ownerId = data.optInt("owner_id", data.optInt("to_id", 0));
                 int postId = data.optInt("id", 0);
                 if (ownerId != 0 && postId != 0) targetUrl = "wall" + ownerId + "_" + postId;
             }
+            if ("video".equals(type) && parsedVideo != null) {
+                attachmentOwnerId = parsedVideo.getOwnerId();
+                attachmentMediaId = parsedVideo.getId();
+                attachmentAccessKey = parsedVideo.getAccessKey();
+            }
+            if ("wall".equals(type)) {
+                attachmentId = targetUrl;
+            } else if (attachmentOwnerId != 0 && attachmentMediaId != 0
+                    && ("photo".equals(type) || "video".equals(type) || "audio".equals(type) || "doc".equals(type))) {
+                attachmentId = type + attachmentOwnerId + "_" + attachmentMediaId
+                        + (!attachmentAccessKey.isEmpty() ? "_" + attachmentAccessKey : "");
+            }
             parsed.add(new MessageAttachment(type, imageUrl, title, subtitle, parsedVideo, url, targetUrl,
-                    documentOwnerId, documentId, documentAccessKey));
+                    documentOwnerId, documentId, documentAccessKey, attachmentId));
         }
         return parsed;
     }
@@ -341,12 +362,20 @@ public class MessagesManager extends BaseManager<MessagesManager> {
     }
 
     public void sendMessage(int peerId, String message, String attachment, SendMessageCallback callback) {
+        sendMessage(peerId, message, attachment, 0, callback);
+    }
+
+    public void sendMessage(int peerId, String message, String attachment, int replyToMessageId,
+                            SendMessageCallback callback) {
         Map<String, String> params = new HashMap<>();
         params.put("peer_id", String.valueOf(peerId));
         params.put("message", message);
         params.put("random_id", String.valueOf(System.currentTimeMillis()));
         if (attachment != null && !attachment.isEmpty()) {
             params.put("attachment", attachment);
+        }
+        if (replyToMessageId > 0) {
+            params.put("reply_to", String.valueOf(replyToMessageId));
         }
 
         api.callMethod("messages.send", params, new OpenVKApi.ApiCallback() {
@@ -364,6 +393,64 @@ public class MessagesManager extends BaseManager<MessagesManager> {
             @Override
             public void onError(String error) {
                 Logger.e(TAG, "Error sending message: " + error);
+                callback.onError(error);
+            }
+        });
+    }
+
+    public void editMessage(int peerId, int messageId, String text, String attachments,
+                            MessageActionCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_id", String.valueOf(peerId));
+        params.put("message_id", String.valueOf(messageId));
+        params.put("message", text != null ? text : "");
+        params.put("attachment", attachments != null ? attachments : "");
+        params.put("keep_forward_messages", "1");
+        api.callMethod("messages.edit", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                callback.onSuccess();
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    public void deleteMessage(int peerId, int messageId, boolean deleteForAll,
+                              MessageActionCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_id", String.valueOf(peerId));
+        params.put("message_ids", String.valueOf(messageId));
+        params.put("delete_for_all", deleteForAll ? "1" : "0");
+        api.callMethod("messages.delete", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                callback.onSuccess();
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    public void forwardMessage(int peerId, int messageId, MessageActionCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_id", String.valueOf(peerId));
+        params.put("forward_messages", String.valueOf(messageId));
+        params.put("random_id", String.valueOf(System.currentTimeMillis()));
+        api.callMethod("messages.send", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                callback.onSuccess();
+            }
+
+            @Override
+            public void onError(String error) {
                 callback.onError(error);
             }
         });

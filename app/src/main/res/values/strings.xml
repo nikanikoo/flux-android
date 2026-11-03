@@ -808,4 +808,19 @@
     <string name="chat_rename_hint">Название беседы</string>
     <string name="chat_remove_member_action">Исключить</string>
     <string name="chat_action_success">Готово</string>
+    <string name="message_copied">Текст сообщения скопирован</string>
+    <string name="forward_message">Переслать</string>
+    <string name="edit_message_title">Редактировать сообщение</string>
+    <string name="edit_message_hint">Текст сообщения</string>
+    <string name="delete_message_confirm">Удалить это сообщение?</string>
+    <string name="choose_forward_conversation">Переслать в диалог</string>
+    <string name="forward_message_success">Сообщение переслано</string>
+    <string name="message_edited">Сообщение изменено</string>
+    <string name="message_deleted">Сообщение удалено</string>
+    <string name="message_action_error">Не удалось выполнить действие: %1$s</string>
+    <string name="no_conversations">Нет доступных диалогов</string>
+    <string name="cancel_reply">Отменить ответ</string>
+    <string name="chat_unknown_user">Пользователь</string>
+    <string name="you">Вы</string>
+    <string name="attachment">Вложение</string>
 </resources>

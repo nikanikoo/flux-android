@@ -48,6 +48,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     public interface OnMessageClickListener {
         void onAvatarClick(int userId, String userName);
         void onReplyClick(int messageId);
+        void onMessageOptions(View anchor, Message message);
     }
 
     public MessagesAdapter(Context context, List<Message> messages) {
@@ -113,6 +114,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         
         // Устанавливаем цвет ссылок таким же, как у обычного текста
         holder.messageText.setLinkTextColor(holder.messageText.getCurrentTextColor());
+        bindMessageOptions(holder.bubble, message);
         bindReferences(holder.replyPreview, message);
         bindAttachments(holder.attachments, message.getAttachments());
         
@@ -141,6 +143,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         
         // Устанавливаем цвет ссылок таким же, как у обычного текста
         holder.messageText.setLinkTextColor(holder.messageText.getCurrentTextColor());
+        bindMessageOptions(holder.bubble, message);
         bindReferences(holder.replyPreview, message);
         bindAttachments(holder.attachments, message.getAttachments());
         
@@ -166,6 +169,16 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 listener.onAvatarClick(message.getFromId(), message.getUserName());
             }
         });
+    }
+
+    // Обработчик клика на опции сообщения
+    private void bindMessageOptions(View bubble, Message message) {
+        bubble.setOnClickListener(v -> {
+            if (listener != null) {
+                listener.onMessageOptions(v, message);
+            }
+        });
+        //TODO: возможно добавить onLongClickListener, но пока пусть будет так, ещё надо разобраться, как будет лучше. - Руся
     }
 
     private void bindAttachments(LinearLayout container, List<MessageAttachment> attachments) {
@@ -523,6 +536,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     }
 
     static class OutgoingMessageViewHolder extends RecyclerView.ViewHolder {
+        LinearLayout bubble;
         TextView messageText;
         TextView replyPreview;
         LinearLayout attachments;
@@ -531,6 +545,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
         OutgoingMessageViewHolder(@NonNull View itemView) {
             super(itemView);
+            bubble = itemView.findViewById(R.id.message_bubble);
             messageText = itemView.findViewById(R.id.message_text);
             replyPreview = itemView.findViewById(R.id.reply_preview);
             attachments = itemView.findViewById(R.id.message_attachments);
@@ -541,6 +556,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
     static class IncomingMessageViewHolder extends RecyclerView.ViewHolder {
         ImageView avatarImage;
+        LinearLayout bubble;
         TextView messageText;
         TextView replyPreview;
         LinearLayout attachments;
@@ -549,6 +565,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         IncomingMessageViewHolder(@NonNull View itemView) {
             super(itemView);
             avatarImage = itemView.findViewById(R.id.avatar_image);
+            bubble = itemView.findViewById(R.id.message_bubble);
             messageText = itemView.findViewById(R.id.message_text);
             replyPreview = itemView.findViewById(R.id.reply_preview);
             attachments = itemView.findViewById(R.id.message_attachments);

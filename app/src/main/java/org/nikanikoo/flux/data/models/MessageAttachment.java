@@ -11,6 +11,7 @@ public class MessageAttachment {
     private final int ownerId;
     private final int id;
     private final String accessKey;
+    private final String attachmentId;
 
     public MessageAttachment(String type, String imageUrl, String title, String subtitle) {
         this(type, imageUrl, title, subtitle, null);
@@ -28,6 +29,12 @@ public class MessageAttachment {
     public MessageAttachment(String type, String imageUrl, String title, String subtitle,
                             Video video, String url, String targetUrl,
                             int ownerId, int id, String accessKey) {
+        this(type, imageUrl, title, subtitle, video, url, targetUrl, ownerId, id, accessKey, "");
+    }
+
+    public MessageAttachment(String type, String imageUrl, String title, String subtitle,
+                            Video video, String url, String targetUrl,
+                            int ownerId, int id, String accessKey, String attachmentId) {
         this.type = type;
         this.imageUrl = imageUrl;
         this.title = title;
@@ -38,6 +45,7 @@ public class MessageAttachment {
         this.ownerId = ownerId;
         this.id = id;
         this.accessKey = accessKey;
+        this.attachmentId = attachmentId != null ? attachmentId : "";
     }
 
     public String getType() { return type; }
@@ -50,6 +58,7 @@ public class MessageAttachment {
     public int getOwnerId() { return ownerId; }
     public int getId() { return id; }
     public String getAccessKey() { return accessKey; }
+    public String getAttachmentId() { return attachmentId; }
     public boolean isGifDocument() {
         if (!"doc".equals(type)) return false;
         return "gif".equalsIgnoreCase(subtitle)

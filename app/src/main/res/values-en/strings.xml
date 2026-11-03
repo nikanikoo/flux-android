@@ -723,4 +723,19 @@
     <string name="chat_rename_hint">Chat name</string>
     <string name="chat_remove_member_action">Remove</string>
     <string name="chat_action_success">Done</string>
+    <string name="message_copied">Message text copied</string>
+    <string name="forward_message">Forward</string>
+    <string name="edit_message_title">Edit message</string>
+    <string name="edit_message_hint">Message text</string>
+    <string name="delete_message_confirm">Delete this message?</string>
+    <string name="choose_forward_conversation">Forward to conversation</string>
+    <string name="forward_message_success">Message forwarded</string>
+    <string name="message_edited">Message edited</string>
+    <string name="message_deleted">Message deleted</string>
+    <string name="message_action_error">Action failed: %1$s</string>
+    <string name="no_conversations">No available conversations</string>
+    <string name="cancel_reply">Cancel reply</string>
+    <string name="chat_unknown_user">User</string>
+    <string name="you">You</string>
+    <string name="attachment">Attachment</string>
 </resources>

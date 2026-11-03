@@ -1,6 +1,9 @@
 package org.nikanikoo.flux.ui.fragments.messages;
 
 import android.os.Bundle;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
@@ -14,6 +17,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.PopupMenu;
 import android.widget.CheckBox;
+import android.text.InputType;
+import android.text.TextUtils;
 import com.squareup.picasso.Picasso;
 
 import com.google.android.material.card.MaterialCardView;
@@ -80,6 +85,9 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     private ImageView attachButton;
     private View pendingAttachmentPreview;
     private android.widget.LinearLayout pendingAttachmentList;
+    private View pendingReplyPreview;
+    private TextView pendingReplyAuthor;
+    private TextView pendingReplyText;
     private ActivityResultLauncher<String> photoPicker;
     private final List<String> pendingPhotoAttachments = new ArrayList<>();
     private final List<Uri> pendingPhotoUris = new ArrayList<>();
@@ -89,6 +97,9 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     private boolean photoUploadInProgress;
     private int recyclerBaseBottomPadding;
     private int pendingReplyMessageId;
+    private int replyingToMessageId;
+    private String replyingToAuthor = "";
+    private String replyingToText = "";
     private MessagesManager messagesManager;
     private List<Message> messages;
 
@@ -149,6 +160,9 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
             ArrayList<String> mediaPreviews = savedInstanceState.getStringArrayList("pending_media_previews");
             if (mediaPreviews != null) pendingMediaPreviews.addAll(mediaPreviews);
             while (pendingMediaPreviews.size() < pendingMediaAttachments.size()) pendingMediaPreviews.add("");
+            replyingToMessageId = savedInstanceState.getInt("replying_to_message_id", 0);
+            replyingToAuthor = savedInstanceState.getString("replying_to_author", "");
+            replyingToText = savedInstanceState.getString("replying_to_text", "");
         }
     }
 
@@ -162,6 +176,9 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         outState.putStringArrayList("pending_media_attachments", new ArrayList<>(pendingMediaAttachments));
         outState.putStringArrayList("pending_media_titles", new ArrayList<>(pendingMediaTitles));
         outState.putStringArrayList("pending_media_previews", new ArrayList<>(pendingMediaPreviews));
+        outState.putInt("replying_to_message_id", replyingToMessageId);
+        outState.putString("replying_to_author", replyingToAuthor);
+        outState.putString("replying_to_text", replyingToText);
     }
 
     @Override
@@ -235,10 +252,15 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         attachButton = view.findViewById(R.id.attach_button);
         pendingAttachmentPreview = view.findViewById(R.id.pending_attachment_preview);
         pendingAttachmentList = view.findViewById(R.id.pending_attachment_list);
+        pendingReplyPreview = view.findViewById(R.id.pending_reply_preview);
+        pendingReplyAuthor = view.findViewById(R.id.pending_reply_author);
+        pendingReplyText = view.findViewById(R.id.pending_reply_text);
+        view.findViewById(R.id.cancel_reply_button).setOnClickListener(v -> clearReplyTarget());
         dateHeaderCard = view.findViewById(R.id.date_header_card);
         dateHeaderText = view.findViewById(R.id.date_header_text);
         messagesManager = MessagesManager.getInstance(requireContext());
         messages = new ArrayList<>();
+        updateReplyPreview();
         updatePendingAttachmentPreview();
 
         swipeRefreshLayout.setOnRefreshListener(() -> {
@@ -733,12 +755,14 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         sendButton.setEnabled(false);
         messageInput.setEnabled(false);
         
-        messagesManager.sendMessage(peerId, messageText, attachment, new MessagesManager.SendMessageCallback() {
+        messagesManager.sendMessage(peerId, messageText, attachment, replyingToMessageId,
+                new MessagesManager.SendMessageCallback() {
             @Override
             public void onSuccess(int messageId) {
                 if (getActivity() != null) {
                     getActivity().runOnUiThread(() -> {
                         messageInput.setText("");
+                        clearReplyTarget();
                         sendButton.setEnabled(true);
                         messageInput.setEnabled(true);
                         if (attachment != null && attachment.equals(getPendingAttachmentString())) {
@@ -947,6 +971,178 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     public void onReplyClick(int messageId) {
         pendingReplyMessageId = messageId;
         tryScrollToPendingReply();
+    }
+
+    //Отображение меню при клике на сообщение
+    @Override
+    public void onMessageOptions(View anchor, Message message) {
+        if (!isAdded() || message == null) return;
+
+        PopupMenu menu = new PopupMenu(requireContext(), anchor);
+        if (message.isOut() && canEditMessage(message)) {
+            menu.getMenu().add(0, 1, 0, R.string.edit);
+        }
+        if (message.getText() != null && !message.getText().isEmpty()) {
+            menu.getMenu().add(0, 2, 1, R.string.copy);
+        }
+        menu.getMenu().add(0, 3, 2, R.string.reply);
+        menu.getMenu().add(0, 4, 3, R.string.forward_message);
+        menu.getMenu().add(0, 5, 4, R.string.delete);
+        menu.setOnMenuItemClickListener(item -> {
+            switch (item.getItemId()) {
+                case 1: showEditMessageDialog(message); return true;
+                case 2: copyMessageText(message); return true;
+                case 3: setReplyTarget(message); return true;
+                case 4: showForwardConversationPicker(message); return true;
+                case 5: confirmDeleteMessage(message); return true;
+                default: return false;
+            }
+        });
+        menu.show();
+    }
+
+    private void setReplyTarget(Message message) {
+        replyingToMessageId = message.getId();
+        replyingToAuthor = message.getUserName() == null || message.getUserName().isEmpty()
+                ? getString(message.isOut() ? R.string.you : R.string.chat_unknown_user)
+                : message.getUserName();
+        replyingToText = message.getText() == null ? "" : message.getText().trim();
+        if (replyingToText.isEmpty() && message.getAttachments() != null && !message.getAttachments().isEmpty()) {
+            replyingToText = getString(R.string.attachment);
+        }
+        updateReplyPreview();
+        messageInput.requestFocus();
+    }
+
+    private void clearReplyTarget() {
+        replyingToMessageId = 0;
+        replyingToAuthor = "";
+        replyingToText = "";
+        updateReplyPreview();
+    }
+
+    private void updateReplyPreview() {
+        if (pendingReplyPreview == null) return;
+        boolean visible = replyingToMessageId > 0;
+        pendingReplyPreview.setVisibility(visible ? View.VISIBLE : View.GONE);
+        if (visible) {
+            pendingReplyAuthor.setText(replyingToAuthor);
+            pendingReplyText.setText(replyingToText);
+        }
+    }
+
+    private boolean canEditMessage(Message message) {
+        if (message.getAttachments() == null) return true;
+        for (org.nikanikoo.flux.data.models.MessageAttachment attachment : message.getAttachments()) {
+            String type = attachment.getType();
+            if ("gift".equals(type) || "sticker".equals(type)
+                    || attachment.getAttachmentId() == null || attachment.getAttachmentId().isEmpty()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private void copyMessageText(Message message) {
+        ClipboardManager clipboard = (ClipboardManager) requireContext().getSystemService(Context.CLIPBOARD_SERVICE);
+        if (clipboard != null) {
+            clipboard.setPrimaryClip(ClipData.newPlainText("message", message.getText()));
+            Toast.makeText(requireContext(), R.string.message_copied, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void showEditMessageDialog(Message message) {
+        EditText input = new EditText(requireContext());
+        input.setText(message.getText());
+        input.setHint(R.string.edit_message_hint);
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        input.setMinLines(2);
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.edit_message_title)
+                .setView(input)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.save, (dialog, which) -> {
+                    String text = input.getText() != null ? input.getText().toString() : "";
+                    ArrayList<String> ids = new ArrayList<>();
+                    if (message.getAttachments() != null) {
+                        for (org.nikanikoo.flux.data.models.MessageAttachment attachment : message.getAttachments()) {
+                            if (!TextUtils.isEmpty(attachment.getAttachmentId())) ids.add(attachment.getAttachmentId());
+                        }
+                    }
+                    messagesManager.editMessage(peerId, message.getId(), text, TextUtils.join(",", ids),
+                            messageActionCallback(R.string.message_edited));
+                }).show();
+    }
+
+    private void confirmDeleteMessage(Message message) {
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setMessage(R.string.delete_message_confirm)
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.delete, (dialog, which) ->
+                        messagesManager.deleteMessage(peerId, message.getId(), message.isOut(),
+                                messageActionCallback(R.string.message_deleted)))
+                .show();
+    }
+
+    private void showForwardConversationPicker(Message message) {
+        messagesManager.getConversations(100, 0, new MessagesManager.ConversationsCallback() {
+            @Override
+            public void onSuccess(List<Conversation> conversations) {
+                if (!isAdded()) return;
+                ArrayList<Conversation> targets = new ArrayList<>();
+                ArrayList<String> labels = new ArrayList<>();
+                for (Conversation conversation : conversations) {
+                    if (conversation.getPeerId() == peerId) continue;
+                    targets.add(conversation);
+                    labels.add(conversation.getTitle());
+                }
+                if (targets.isEmpty()) {
+                    Toast.makeText(requireContext(), R.string.no_conversations, Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                        .setTitle(R.string.choose_forward_conversation)
+                        .setItems(labels.toArray(new String[0]), (dialog, which) ->
+                                messagesManager.forwardMessage(targets.get(which).getPeerId(), message.getId(),
+                                        messageActionCallback(R.string.forward_message_success)))
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .show();
+            }
+
+            @Override
+            public void onError(String error) {
+                showMessageActionError(error);
+            }
+        });
+    }
+
+    private MessagesManager.MessageActionCallback messageActionCallback(int successMessage) {
+        return new MessagesManager.MessageActionCallback() {
+            @Override
+            public void onSuccess() {
+                if (!isAdded()) return;
+                requireActivity().runOnUiThread(() -> {
+                    if (!isAdded()) return;
+                    Toast.makeText(requireContext(), successMessage, Toast.LENGTH_SHORT).show();
+                    loadMessages(true);
+                    refreshConversationsList();
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                showMessageActionError(error);
+            }
+        };
+    }
+
+    private void showMessageActionError(String error) {
+        if (!isAdded()) return;
+        requireActivity().runOnUiThread(() -> {
+            if (isAdded()) Toast.makeText(requireContext(), getString(R.string.message_action_error, error),
+                    Toast.LENGTH_LONG).show();
+        });
     }
 
     private void tryScrollToPendingReply() {
