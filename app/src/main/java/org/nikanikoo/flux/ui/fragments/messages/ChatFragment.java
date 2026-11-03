@@ -9,6 +9,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
@@ -276,6 +277,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         layoutManager.setStackFromEnd(true);
         recyclerView.setLayoutManager(layoutManager);
         recyclerView.setAdapter(adapter);
+        recyclerView.addOnItemTouchListener(createReplySwipeListener());
 
         hideDateHeaderHandler = new Handler(Looper.getMainLooper());
         hideDateHeaderRunnable = this::hideDateHeader;
@@ -293,6 +295,95 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                 }
             }
         });
+    }
+
+    /**
+     * Обработка свайпа сообщения в сторону для ответа на него
+     */
+    private RecyclerView.OnItemTouchListener createReplySwipeListener() {
+        return new RecyclerView.OnItemTouchListener() {
+            private View bubble;
+            private Message message;
+            private float startX;
+            private float startY;
+            private boolean replyStarted;
+            private final int swipeThreshold = dp(72);
+
+            @Override
+            public boolean onInterceptTouchEvent(@androidx.annotation.NonNull RecyclerView recyclerView,
+                                                 @androidx.annotation.NonNull MotionEvent event) {
+                if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                    resetGesture();
+                    startX = event.getX();
+                    startY = event.getY();
+                    View item = recyclerView.findChildViewUnder(startX, startY);
+                    if (item != null) {
+                        View candidate = item.findViewById(R.id.message_bubble);
+                        if (candidate != null && isTouchInside(candidate, recyclerView, event)) {
+                            Object taggedMessage = candidate.getTag();
+                            if (taggedMessage instanceof Message) {
+                                bubble = candidate;
+                                message = (Message) taggedMessage;
+                            }
+                        }
+                    }
+                    return false;
+                }
+
+                if (event.getActionMasked() == MotionEvent.ACTION_MOVE && bubble != null && !replyStarted) {
+                    float deltaX = event.getX() - startX;
+                    float deltaY = event.getY() - startY;
+                    if (Math.abs(deltaX) >= swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY) * 1.2f) {
+                        replyStarted = true;
+                        onReplySwipe(message);
+                        return true;
+                    }
+                }
+
+                if ((event.getActionMasked() == MotionEvent.ACTION_UP
+                        || event.getActionMasked() == MotionEvent.ACTION_CANCEL) && !replyStarted) {
+                    resetGesture();
+                }
+                return false;
+            }
+
+            @Override
+            public void onTouchEvent(@androidx.annotation.NonNull RecyclerView recyclerView,
+                                     @androidx.annotation.NonNull MotionEvent event) {
+                if (bubble == null) return;
+                if (event.getActionMasked() == MotionEvent.ACTION_MOVE) {
+                    float deltaX = event.getX() - startX;
+                    float maxOffset = dp(36);
+                    bubble.setTranslationX(Math.max(-maxOffset, Math.min(maxOffset, deltaX * 0.25f)));
+                } else if (event.getActionMasked() == MotionEvent.ACTION_UP
+                        || event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
+                    bubble.animate().translationX(0).setDuration(150).start();
+                    resetGesture();
+                }
+            }
+
+            @Override
+            public void onRequestDisallowInterceptTouchEvent(boolean disallowIntercept) {}
+
+            private boolean isTouchInside(View target, View parent, MotionEvent event) {
+                int[] targetLocation = new int[2];
+                int[] parentLocation = new int[2];
+                target.getLocationOnScreen(targetLocation);
+                parent.getLocationOnScreen(parentLocation);
+                float x = event.getRawX() - parentLocation[0];
+                float y = event.getRawY() - parentLocation[1];
+                int left = targetLocation[0] - parentLocation[0];
+                int top = targetLocation[1] - parentLocation[1];
+                return x >= left && x <= left + target.getWidth()
+                        && y >= top && y <= top + target.getHeight();
+            }
+
+            private void resetGesture() {
+                bubble = null;
+                message = null;
+                replyStarted = false;
+            }
+        };
     }
     
     private void setupEndlessScroll() {
@@ -971,6 +1062,11 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     public void onReplyClick(int messageId) {
         pendingReplyMessageId = messageId;
         tryScrollToPendingReply();
+    }
+
+    @Override
+    public void onReplySwipe(Message message) {
+        if (message != null) setReplyTarget(message);
     }
 
     //Отображение меню при клике на сообщение

@@ -49,6 +49,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         void onAvatarClick(int userId, String userName);
         void onReplyClick(int messageId);
         void onMessageOptions(View anchor, Message message);
+        void onReplySwipe(Message message);
     }
 
     public MessagesAdapter(Context context, List<Message> messages) {
@@ -173,6 +174,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
     // Обработчик клика на опции сообщения
     private void bindMessageOptions(View bubble, Message message) {
+        bubble.setTag(message);
         bubble.setOnClickListener(v -> {
             if (listener != null) {
                 listener.onMessageOptions(v, message);
