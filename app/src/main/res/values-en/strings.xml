@@ -739,4 +739,8 @@
     <string name="you">You</string>
     <string name="attachment">Attachment</string>
     <string name="message_post_open_error">Could not open the post</string>
+    <string name="repost_choose_group">Choose a group</string>
+    <string name="repost_choose_conversation">Choose a conversation</string>
+    <string name="repost_no_groups">No groups where you can publish posts</string>
+    <string name="repost_no_conversations">No available conversations</string>
 </resources>
