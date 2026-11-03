@@ -738,6 +738,7 @@
     <string name="chat_unknown_user">User</string>
     <string name="you">You</string>
     <string name="attachment">Attachment</string>
+    <string name="chat_event_generic">Conversation event</string>
     <string name="message_post_open_error">Could not open the post</string>
     <string name="repost_choose_group">Choose a group</string>
     <string name="repost_choose_conversation">Choose a conversation</string>

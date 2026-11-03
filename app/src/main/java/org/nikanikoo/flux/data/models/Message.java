@@ -15,6 +15,7 @@ public class Message {
     private String userName;
     private String userPhoto;
     private boolean userVerified;
+    private String actionType;
     private List<MessageAttachment> attachments = new ArrayList<>();
     private MessageReference reply;
     private List<MessageReference> forwardedMessages = new ArrayList<>();
@@ -41,6 +42,12 @@ public class Message {
     public String getUserName() { return userName; }
     public String getUserPhoto() { return userPhoto; }
     public boolean isUserVerified() { return userVerified; }
+    public String getActionType() { return actionType; }
+    public boolean isChatMembershipEvent() {
+        return "chat_kick_user".equals(actionType)
+                || "chat_invite_user".equals(actionType)
+                || "chat_invite_user_by_link".equals(actionType);
+    }
     public List<MessageAttachment> getAttachments() { return attachments; }
     public MessageReference getReply() { return reply; }
     public List<MessageReference> getForwardedMessages() { return forwardedMessages; }
@@ -51,6 +58,7 @@ public class Message {
     public void setReadState(boolean readState) { this.readState = readState; }
     public void setConversationMessageId(int conversationMessageId) { this.conversationMessageId = conversationMessageId; }
     public void setUserVerified(boolean userVerified) { this.userVerified = userVerified; }
+    public void setActionType(String actionType) { this.actionType = actionType; }
     public void setAttachments(List<MessageAttachment> attachments) {
         this.attachments = attachments != null ? attachments : new ArrayList<>();
     }

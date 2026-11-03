@@ -40,6 +40,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     private static final int TYPE_INCOMING = 0;
     private static final int TYPE_OUTGOING = 1;
     private static final int TYPE_DATE_HEADER = 2;
+    private static final int TYPE_CHAT_EVENT = 3;
 
     private List<Object> items;
     private Context context;
@@ -69,7 +70,9 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     public int getItemViewType(int position) {
         Object item = items.get(position);
         if (item instanceof Message) {
-            return ((Message) item).isOut() ? TYPE_OUTGOING : TYPE_INCOMING;
+            Message message = (Message) item;
+            if (message.isChatMembershipEvent()) return TYPE_CHAT_EVENT;
+            return message.isOut() ? TYPE_OUTGOING : TYPE_INCOMING;
         } else if (item instanceof DateHeader) {
             return TYPE_DATE_HEADER;
         }
@@ -85,6 +88,9 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         } else if (viewType == TYPE_INCOMING) {
             View view = LayoutInflater.from(context).inflate(R.layout.item_message_incoming, parent, false);
             return new IncomingMessageViewHolder(view);
+        } else if (viewType == TYPE_CHAT_EVENT) {
+            View view = LayoutInflater.from(context).inflate(R.layout.item_chat_event, parent, false);
+            return new ChatEventViewHolder(view);
         } else {
             View view = LayoutInflater.from(context).inflate(R.layout.item_date_header, parent, false);
             return new DateHeaderViewHolder(view);
@@ -99,6 +105,8 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             bindOutgoingMessage((OutgoingMessageViewHolder) holder, (Message) item);
         } else if (holder instanceof IncomingMessageViewHolder) {
             bindIncomingMessage((IncomingMessageViewHolder) holder, (Message) item);
+        } else if (holder instanceof ChatEventViewHolder) {
+            bindChatEvent((ChatEventViewHolder) holder, (Message) item);
         } else if (holder instanceof DateHeaderViewHolder) {
             bindDateHeader((DateHeaderViewHolder) holder, (DateHeader) item);
         }
@@ -390,8 +398,28 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         return (int) (value * context.getResources().getDisplayMetrics().density + 0.5f);
     }
 
+    /**
+     * Показывает заголовок даты
+     * @param holder держатель представления заголовка
+     * @param dateHeader заголовок даты
+     */
     private void bindDateHeader(DateHeaderViewHolder holder, DateHeader dateHeader) {
         holder.dateText.setText(dateHeader.getText());
+    }
+
+    /**
+     * Показывает событие беседы отдельной строкой с именем инициатора и текстом действия.
+     * @param holder держатель представления события
+     * @param message сообщение с данными системного события
+     */
+    private void bindChatEvent(ChatEventViewHolder holder, Message message) {
+        String eventText = message.getText() != null ? message.getText().trim() : "";
+        String actorName = message.getUserName();
+        if (actorName != null && !actorName.trim().isEmpty()) {
+            eventText = actorName.trim() + (eventText.isEmpty() ? "" : " " + eventText);
+        }
+        if (eventText.isEmpty()) eventText = context.getString(R.string.chat_event_generic);
+        holder.eventText.setText(ValidationUtils.SanitizeText(eventText));
     }
 
     @Override
@@ -589,6 +617,15 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         DateHeaderViewHolder(@NonNull View itemView) {
             super(itemView);
             dateText = itemView.findViewById(R.id.date_text);
+        }
+    }
+
+    static class ChatEventViewHolder extends RecyclerView.ViewHolder {
+        TextView eventText;
+
+        ChatEventViewHolder(@NonNull View itemView) {
+            super(itemView);
+            eventText = itemView.findViewById(R.id.chat_event_text);
         }
     }
 

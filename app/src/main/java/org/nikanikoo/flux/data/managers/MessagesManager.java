@@ -192,6 +192,11 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                 boolean readState = item.optInt("read_state", 0) == 1;
 
                 Message message = new Message(id, messagePeerId, fromId, text, date, out, readState);
+                JSONObject action = item.optJSONObject("action");
+                String actionType = action != null
+                        ? action.optString("type", "")
+                        : item.optString("action", "");
+                message.setActionType(actionType);
                 message.setConversationMessageId(item.optInt("conversation_message_id", item.optInt("local_id", 0)));
                 message.setAttachments(parseAttachments(item.optJSONArray("attachments")));
                 message.setReply(parseReference(item.optJSONObject("reply_message"), profiles,
