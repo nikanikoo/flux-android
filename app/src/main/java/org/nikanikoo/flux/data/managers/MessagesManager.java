@@ -197,6 +197,13 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                         ? action.optString("type", "")
                         : item.optString("action", "");
                 message.setActionType(actionType);
+                String actionText = action != null
+                        ? action.optString("text", item.optString("action_text", ""))
+                        : item.optString("action_text", "");
+                message.setActionText(actionText);
+                message.setActionMid(action != null
+                        ? action.optInt("member_id", item.optInt("action_mid", 0))
+                        : item.optInt("action_mid", 0));
                 message.setConversationMessageId(item.optInt("conversation_message_id", item.optInt("local_id", 0)));
                 message.setAttachments(parseAttachments(item.optJSONArray("attachments")));
                 message.setReply(parseReference(item.optJSONObject("reply_message"), profiles,

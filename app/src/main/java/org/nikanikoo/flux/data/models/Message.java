@@ -16,6 +16,8 @@ public class Message {
     private String userPhoto;
     private boolean userVerified;
     private String actionType;
+    private String actionText;
+    private int actionMid;
     private List<MessageAttachment> attachments = new ArrayList<>();
     private MessageReference reply;
     private List<MessageReference> forwardedMessages = new ArrayList<>();
@@ -43,10 +45,13 @@ public class Message {
     public String getUserPhoto() { return userPhoto; }
     public boolean isUserVerified() { return userVerified; }
     public String getActionType() { return actionType; }
-    public boolean isChatMembershipEvent() {
+    public String getActionText() { return actionText; }
+    public int getActionMid() { return actionMid; }
+    public boolean isChatSystemEvent() {
         return "chat_kick_user".equals(actionType)
                 || "chat_invite_user".equals(actionType)
-                || "chat_invite_user_by_link".equals(actionType);
+                || "chat_invite_user_by_link".equals(actionType)
+                || "coins_transfer".equals(actionType);
     }
     public List<MessageAttachment> getAttachments() { return attachments; }
     public MessageReference getReply() { return reply; }
@@ -59,6 +64,8 @@ public class Message {
     public void setConversationMessageId(int conversationMessageId) { this.conversationMessageId = conversationMessageId; }
     public void setUserVerified(boolean userVerified) { this.userVerified = userVerified; }
     public void setActionType(String actionType) { this.actionType = actionType; }
+    public void setActionText(String actionText) { this.actionText = actionText; }
+    public void setActionMid(int actionMid) { this.actionMid = actionMid; }
     public void setAttachments(List<MessageAttachment> attachments) {
         this.attachments = attachments != null ? attachments : new ArrayList<>();
     }

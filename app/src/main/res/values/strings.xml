@@ -824,6 +824,13 @@
     <string name="you">Вы</string>
     <string name="attachment">Вложение</string>
     <string name="chat_event_generic">Событие беседы</string>
+    <string name="coins_transfer_outgoing">Вы передали %1$d %2$s</string>
+    <plurals name="vote_count">
+        <item quantity="one">голос</item>
+        <item quantity="few">голоса</item>
+        <item quantity="many">голосов</item>
+        <item quantity="other">голосов</item>
+    </plurals>
     <string name="message_post_open_error">Не удалось открыть пост</string>
     <string name="repost_choose_group">Выберите группу</string>
     <string name="repost_choose_conversation">Выберите диалог</string>

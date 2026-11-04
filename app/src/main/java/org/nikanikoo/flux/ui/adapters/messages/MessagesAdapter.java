@@ -71,7 +71,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         Object item = items.get(position);
         if (item instanceof Message) {
             Message message = (Message) item;
-            if (message.isChatMembershipEvent()) return TYPE_CHAT_EVENT;
+            if (message.isChatSystemEvent()) return TYPE_CHAT_EVENT;
             return message.isOut() ? TYPE_OUTGOING : TYPE_INCOMING;
         } else if (item instanceof DateHeader) {
             return TYPE_DATE_HEADER;
@@ -415,10 +415,21 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     private void bindChatEvent(ChatEventViewHolder holder, Message message) {
         String eventText = message.getText() != null ? message.getText().trim() : "";
         String actorName = message.getUserName();
-        if (actorName != null && !actorName.trim().isEmpty()) {
+        boolean coinsTransfer = "coins_transfer".equals(message.getActionType());
+        if (coinsTransfer && message.isOut()) {
+            int amount = message.getActionMid();
+            String voteWord = context.getResources().getQuantityString(R.plurals.vote_count, amount);
+            eventText = context.getString(R.string.coins_transfer_outgoing, amount, voteWord);
+        } else if (!coinsTransfer && actorName != null && !actorName.trim().isEmpty()) {
             eventText = actorName.trim() + (eventText.isEmpty() ? "" : " " + eventText);
         }
         if (eventText.isEmpty()) eventText = context.getString(R.string.chat_event_generic);
+        if (coinsTransfer) {
+            String sentMessage = message.getActionText();
+            if (sentMessage != null && !sentMessage.trim().isEmpty()) {
+                eventText += "\n«" + sentMessage.trim() + "»";
+            }
+        }
         holder.eventText.setText(ValidationUtils.SanitizeText(eventText));
     }
 
