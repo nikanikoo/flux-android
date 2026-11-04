@@ -246,7 +246,7 @@ public class MessagesManager extends BaseManager<MessagesManager> {
 
             String type = attachment.optString("type", "");
             if (type.isEmpty()) {
-                for (String candidate : new String[]{"photo", "video", "audio", "doc", "wall", "sticker", "poll"}) {
+                for (String candidate : new String[]{"photo", "video", "audio", "doc", "wall", "sticker", "gift", "poll"}) {
                     if (attachment.optJSONObject(candidate) != null) {
                         type = candidate;
                         break;
@@ -292,6 +292,13 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                     JSONObject tilePhoto = firstTile == null ? null : firstTile.optJSONObject("photo");
                     imageUrl = ImageUtils.extractOptimalImageUrl(tilePhoto);
                 }
+            } else if ("gift".equals(type)) {
+                title = data.optString("message", "");
+                JSONObject giftData = data.optJSONObject("gift");
+                if (giftData == null) giftData = data;
+                imageUrl = giftData.optString("thumb_256", "");
+                if (imageUrl.isEmpty()) imageUrl = giftData.optString("thumb_96", "");
+                if (imageUrl.isEmpty()) imageUrl = giftData.optString("thumb_48", "");
             } else {
                 title = type;
             }

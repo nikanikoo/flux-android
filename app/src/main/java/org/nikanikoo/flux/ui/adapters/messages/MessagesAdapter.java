@@ -200,6 +200,8 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 addWallCard(container, attachment);
             } else if ("doc".equals(attachment.getType())) {
                 addDocumentCard(container, attachment);
+            } else if ("gift".equals(attachment.getType())) {
+                addGiftPreview(container, attachment);
             } else if (attachment.getImageUrl() != null && !attachment.getImageUrl().isEmpty()) {
                 ImageView image = new ImageView(context);
                 LinearLayout.LayoutParams imageParams = new LinearLayout.LayoutParams(dp(220), dp(160));
@@ -239,6 +241,45 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 container.addView(label);
             }
         }
+    }
+
+    /**
+     * Добавление подарка в сообщение
+     * @param container контейнер сообщения
+     * @param attachment подарок
+     */
+    private void addGiftPreview(LinearLayout container, MessageAttachment attachment) {
+        LinearLayout giftContent = new LinearLayout(context);
+        giftContent.setOrientation(LinearLayout.VERTICAL);
+        giftContent.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
+
+        if (attachment.getImageUrl() != null && !attachment.getImageUrl().isEmpty()) {
+            ImageView image = new ImageView(context);
+            image.setLayoutParams(new LinearLayout.LayoutParams(dp(144), dp(144)));
+            image.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            image.setContentDescription(context.getString(R.string.message_gift_image));
+            Picasso.get().load(attachment.getImageUrl())
+                    .placeholder(android.R.drawable.ic_menu_gallery)
+                    .error(android.R.drawable.ic_menu_gallery)
+                    .fit().centerInside().into(image);
+            giftContent.addView(image);
+        }
+
+        if (attachment.getTitle() != null && !attachment.getTitle().trim().isEmpty()) {
+            TextView comment = new TextView(context);
+            comment.setText(ValidationUtils.SanitizeText(attachment.getTitle().trim()));
+            comment.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+            comment.setGravity(android.view.Gravity.CENTER);
+            LinearLayout.LayoutParams commentParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            commentParams.topMargin = dp(4);
+            giftContent.addView(comment, commentParams);
+        }
+
+        LinearLayout.LayoutParams contentParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        contentParams.topMargin = dp(6);
+        container.addView(giftContent, contentParams);
     }
 
     private void addDocumentCard(LinearLayout container, MessageAttachment attachment) {

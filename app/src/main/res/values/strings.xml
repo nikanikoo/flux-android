@@ -823,6 +823,7 @@
     <string name="chat_unknown_user">Пользователь</string>
     <string name="you">Вы</string>
     <string name="attachment">Вложение</string>
+    <string name="message_gift_image">Изображение подарка</string>
     <string name="chat_event_generic">Событие беседы</string>
     <string name="coins_transfer_outgoing">Вы передали %1$d %2$s</string>
     <plurals name="vote_count">
