@@ -8,16 +8,24 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.util.TypedValue;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.Rect;
 import android.view.LayoutInflater;
+import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.LinearLayout;
+import android.widget.PopupWindow;
+import android.widget.PopupMenu;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.widget.PopupMenu;
 import android.widget.CheckBox;
+import androidx.core.content.ContextCompat;
+import androidx.core.graphics.drawable.DrawableCompat;
 import android.text.InputType;
 import android.text.TextUtils;
 import com.squareup.picasso.Picasso;
@@ -1095,29 +1103,108 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     //Отображение меню при клике на сообщение
     @Override
     public void onMessageOptions(View anchor, Message message) {
-        if (!isAdded() || message == null) return;
+        if (!isAdded() || message == null || anchor == null) return;
 
-        PopupMenu menu = new PopupMenu(requireContext(), anchor);
+        Context context = requireContext();
+        LinearLayout menuContent = new LinearLayout(context);
+        menuContent.setOrientation(LinearLayout.VERTICAL);
+        menuContent.setPadding(dp(8), dp(8), dp(8), dp(8));
+
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(resolveThemeColor(com.google.android.material.R.attr.colorSurfaceContainer));
+        background.setCornerRadius(dp(16));
+        background.setStroke(dp(1), resolveThemeColor(com.google.android.material.R.attr.colorOutlineVariant));
+        menuContent.setBackground(background);
+        menuContent.setClipToOutline(true);
+
+        PopupWindow menu = new PopupWindow(menuContent, dp(240), ViewGroup.LayoutParams.WRAP_CONTENT, true);
+        menu.setBackgroundDrawable(background.getConstantState() != null
+                ? background.getConstantState().newDrawable().mutate() : background);
+        menu.setElevation(dp(6));
+        menu.setOutsideTouchable(true);
+        menu.setInputMethodMode(PopupWindow.INPUT_METHOD_NOT_NEEDED);
+        menu.setClippingEnabled(true);
+
         if (message.isOut() && canEditMessage(message)) {
-            menu.getMenu().add(0, 1, 0, R.string.edit);
+            addMessageAction(menuContent, menu, R.string.edit, R.drawable.ic_edit, false,
+                    () -> showEditMessageDialog(message));
         }
         if (message.getText() != null && !message.getText().isEmpty()) {
-            menu.getMenu().add(0, 2, 1, R.string.copy);
+            addMessageAction(menuContent, menu, R.string.copy, R.drawable.ic_copy, false,
+                    () -> copyMessageText(message));
         }
-        menu.getMenu().add(0, 3, 2, R.string.reply);
-        menu.getMenu().add(0, 4, 3, R.string.forward_message);
-        menu.getMenu().add(0, 5, 4, R.string.delete);
-        menu.setOnMenuItemClickListener(item -> {
-            switch (item.getItemId()) {
-                case 1: showEditMessageDialog(message); return true;
-                case 2: copyMessageText(message); return true;
-                case 3: setReplyTarget(message); return true;
-                case 4: showForwardConversationPicker(message); return true;
-                case 5: confirmDeleteMessage(message); return true;
-                default: return false;
-            }
+        addMessageAction(menuContent, menu, R.string.reply, R.drawable.ic_reply, false,
+                () -> setReplyTarget(message));
+        addMessageAction(menuContent, menu, R.string.forward_message, R.drawable.ic_share, false,
+                () -> showForwardConversationPicker(message));
+        addMessageAction(menuContent, menu, R.string.delete, R.drawable.ic_delete, true,
+                () -> confirmDeleteMessage(message));
+
+        menuContent.measure(
+                View.MeasureSpec.makeMeasureSpec(dp(240), View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+        int menuHeight = menuContent.getMeasuredHeight();
+        int[] anchorLocation = new int[2];
+        anchor.getLocationOnScreen(anchorLocation);
+        Rect visibleFrame = new Rect();
+        anchor.getWindowVisibleDisplayFrame(visibleFrame);
+
+        int belowSpace = visibleFrame.bottom - (anchorLocation[1] + anchor.getHeight());
+        int aboveSpace = anchorLocation[1] - visibleFrame.top;
+        boolean showAbove = belowSpace < menuHeight && aboveSpace > belowSpace;
+        int yOffset = showAbove ? -anchor.getHeight() - menuHeight : 0;
+
+        menu.showAsDropDown(anchor, 0, yOffset, message.isOut() ? Gravity.END : Gravity.START);
+    }
+
+    private void addMessageAction(LinearLayout menuContent, PopupWindow menu, int titleRes,
+                                  int iconRes, boolean destructive, Runnable action) {
+        Context context = menuContent.getContext();
+        LinearLayout row = new LinearLayout(context);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setPadding(dp(12), 0, dp(12), 0);
+        row.setClickable(true);
+        row.setFocusable(true);
+
+        TypedValue selectableBackground = new TypedValue();
+        if (context.getTheme().resolveAttribute(android.R.attr.selectableItemBackground,
+                selectableBackground, true)) {
+            row.setBackgroundResource(selectableBackground.resourceId);
+        }
+
+        int iconTint = resolveThemeColor(destructive
+                ? android.R.attr.colorError
+                : com.google.android.material.R.attr.colorOnSurfaceVariant);
+        ImageView icon = new ImageView(context);
+        icon.setImageDrawable(ContextCompat.getDrawable(context, iconRes));
+        DrawableCompat.setTint(DrawableCompat.wrap(icon.getDrawable()), iconTint);
+        row.addView(icon, new LinearLayout.LayoutParams(dp(20), dp(20)));
+
+        TextView title = new TextView(context);
+        title.setText(titleRes);
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        title.setTextColor(resolveThemeColor(destructive
+                ? android.R.attr.colorError
+                : com.google.android.material.R.attr.colorOnSurface));
+        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        titleParams.setMarginStart(dp(16));
+        row.addView(title, titleParams);
+
+        row.setOnClickListener(v -> {
+            menu.dismiss();
+            action.run();
         });
-        menu.show();
+        menuContent.addView(row, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(48)));
+    }
+
+    private int resolveThemeColor(int attribute) {
+        TypedValue value = new TypedValue();
+        requireContext().getTheme().resolveAttribute(attribute, value, true);
+        if (value.resourceId != 0) return ContextCompat.getColor(requireContext(), value.resourceId);
+        return value.data;
     }
 
     private void setReplyTarget(Message message) {
