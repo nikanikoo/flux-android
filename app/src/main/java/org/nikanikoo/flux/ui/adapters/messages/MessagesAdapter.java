@@ -7,10 +7,16 @@ import android.net.Uri;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.Color;
 import android.text.util.Linkify;
+import android.text.Layout;
+import android.text.Selection;
+import android.text.Spannable;
+import android.text.style.ClickableSpan;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewConfiguration;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.LinearLayout;
@@ -45,6 +51,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     private List<Object> items;
     private Context context;
     private OnMessageClickListener listener;
+    private TextView selectedMessageText;
 
     public interface OnMessageClickListener {
         void onAvatarClick(int userId, String userName);
@@ -64,6 +71,10 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
     public void setOnMessageClickListener(OnMessageClickListener listener) {
         this.listener = listener;
+    }
+
+    public void clearSelectedMessageText() {
+        clearTrackedSelection();
     }
 
     @Override
@@ -124,7 +135,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         
         // Устанавливаем цвет ссылок таким же, как у обычного текста
         holder.messageText.setLinkTextColor(holder.messageText.getCurrentTextColor());
-        bindMessageOptions(holder.bubble, message);
+        bindMessageOptions(holder.bubble, holder.messageText, message);
         bindReferences(holder.replyPreview, message);
         bindAttachments(holder.attachments, message.getAttachments());
         
@@ -153,7 +164,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         
         // Устанавливаем цвет ссылок таким же, как у обычного текста
         holder.messageText.setLinkTextColor(holder.messageText.getCurrentTextColor());
-        bindMessageOptions(holder.bubble, message);
+        bindMessageOptions(holder.bubble, holder.messageText, message);
         bindReferences(holder.replyPreview, message);
         bindAttachments(holder.attachments, message.getAttachments());
         
@@ -182,14 +193,94 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     }
 
     // Обработчик клика на опции сообщения
-    private void bindMessageOptions(View bubble, Message message) {
+    private void bindMessageOptions(View bubble, TextView messageText, Message message) {
         bubble.setTag(message);
-        bubble.setOnClickListener(v -> {
+        View.OnClickListener openOptions = v -> {
+            clearTrackedSelection();
+            clearTextSelection(messageText);
             if (listener != null) {
-                listener.onMessageOptions(v, message);
+                listener.onMessageOptions(bubble, message);
+            }
+        };
+        bubble.setOnClickListener(openOptions);
+        messageText.setOnClickListener(openOptions);
+        messageText.setOnTouchListener(new View.OnTouchListener() {
+            private float downX;
+            private float downY;
+            private long downTime;
+
+            @Override
+            public boolean onTouch(View view, MotionEvent event) {
+                if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                    downX = event.getX();
+                    downY = event.getY();
+                    downTime = event.getEventTime();
+                    return false;
+                }
+
+                if (event.getActionMasked() == MotionEvent.ACTION_UP) {
+                    float dx = event.getX() - downX;
+                    float dy = event.getY() - downY;
+                    int touchSlop = ViewConfiguration.get(view.getContext()).getScaledTouchSlop();
+                    boolean shortTap = event.getEventTime() - downTime
+                            < ViewConfiguration.getLongPressTimeout()
+                            && dx * dx + dy * dy < touchSlop * touchSlop;
+
+                    if (shortTap) {
+                        boolean hadSelection = hasTextSelection(messageText);
+                        if (!hadSelection && hasClickableSpanAt(messageText, event.getX(), event.getY())) {
+                            return false;
+                        }
+                        clearTrackedSelection();
+                        clearTextSelection(messageText);
+                        view.setPressed(false);
+                        view.cancelLongPress();
+                        view.performClick();
+                        return true;
+                    }
+
+                    // Let the TextView finish its long-press selection before remembering it.
+                    messageText.post(() -> {
+                        if (hasTextSelection(messageText)) selectedMessageText = messageText;
+                    });
+                }
+                return false;
             }
         });
-        //TODO: возможно добавить onLongClickListener, но пока пусть будет так, ещё надо разобраться, как будет лучше. - Руся
+    }
+
+    private boolean hasClickableSpanAt(TextView textView, float touchX, float touchY) {
+        if (!(textView.getText() instanceof Spannable)) return false;
+        Layout layout = textView.getLayout();
+        if (layout == null) return false;
+
+        int x = (int) (touchX - textView.getTotalPaddingLeft() + textView.getScrollX());
+        int y = (int) (touchY - textView.getTotalPaddingTop() + textView.getScrollY());
+        if (x < 0 || y < 0 || y > layout.getHeight()) return false;
+        int line = layout.getLineForVertical(y);
+        int offset = layout.getOffsetForHorizontal(line, x);
+        ClickableSpan[] spans = ((Spannable) textView.getText())
+                .getSpans(offset, offset, ClickableSpan.class);
+        return spans.length > 0;
+    }
+
+    private boolean hasTextSelection(TextView textView) {
+        if (!(textView.getText() instanceof Spannable)) return false;
+        Spannable text = (Spannable) textView.getText();
+        int start = Selection.getSelectionStart(text);
+        int end = Selection.getSelectionEnd(text);
+        return start >= 0 && end >= 0 && start != end;
+    }
+
+    private void clearTextSelection(TextView textView) {
+        if (textView != null && textView.getText() instanceof Spannable) {
+            Selection.removeSelection((Spannable) textView.getText());
+        }
+        if (selectedMessageText == textView) selectedMessageText = null;
+    }
+
+    private void clearTrackedSelection() {
+        if (selectedMessageText != null) clearTextSelection(selectedMessageText);
     }
 
     private void bindAttachments(LinearLayout container, List<MessageAttachment> attachments) {

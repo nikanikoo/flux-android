@@ -322,6 +322,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                                                  @androidx.annotation.NonNull MotionEvent event) {
                 if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
                     resetGesture();
+                    if (adapter != null) adapter.clearSelectedMessageText();
                     startX = event.getX();
                     startY = event.getY();
                     View item = recyclerView.findChildViewUnder(startX, startY);
