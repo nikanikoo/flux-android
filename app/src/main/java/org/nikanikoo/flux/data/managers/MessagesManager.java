@@ -299,6 +299,18 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                 imageUrl = giftData.optString("thumb_256", "");
                 if (imageUrl.isEmpty()) imageUrl = giftData.optString("thumb_96", "");
                 if (imageUrl.isEmpty()) imageUrl = giftData.optString("thumb_48", "");
+            } else if ("sticker".equals(type)) {
+                imageUrl = data.optString("photo_128", "");
+                if (imageUrl.isEmpty()) imageUrl = data.optString("photo_256", "");
+                if (imageUrl.isEmpty()) imageUrl = data.optString("photo_64", "");
+                if (imageUrl.isEmpty()) {
+                    JSONArray images = data.optJSONArray("images");
+                    if (images != null && images.length() > 0) {
+                        JSONObject image = images.optJSONObject(0);
+                        if (image != null) imageUrl = image.optString("url", "");
+                    }
+                }
+                title = data.optString("emoji", "Sticker");
             } else {
                 title = type;
             }
@@ -388,10 +400,18 @@ public class MessagesManager extends BaseManager<MessagesManager> {
 
     public void sendMessage(int peerId, String message, String attachment, int replyToMessageId,
                             SendMessageCallback callback) {
+        sendMessage(peerId, message, attachment, replyToMessageId, 0, callback);
+    }
+
+    public void sendMessage(int peerId, String message, String attachment, int replyToMessageId,
+                            int stickerId, SendMessageCallback callback) {
         Map<String, String> params = new HashMap<>();
         params.put("peer_id", String.valueOf(peerId));
         params.put("message", message);
         params.put("random_id", String.valueOf(System.currentTimeMillis()));
+        if (stickerId > 0) {
+            params.put("sticker_id", String.valueOf(stickerId));
+        }
         if (attachment != null && !attachment.isEmpty()) {
             params.put("attachment", attachment);
         }

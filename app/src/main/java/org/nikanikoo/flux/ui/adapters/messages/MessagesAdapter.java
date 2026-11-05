@@ -211,6 +211,14 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
             @Override
             public boolean onTouch(View view, MotionEvent event) {
+                // Track selection as it changes, rather than waiting until ACTION_UP.
+                // RecyclerView's touch listener may clear it as soon as the next tap starts.
+                if ((event.getActionMasked() == MotionEvent.ACTION_MOVE
+                        || event.getActionMasked() == MotionEvent.ACTION_UP)
+                        && hasTextSelection(messageText)) {
+                    selectedMessageText = messageText;
+                }
+
                 if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
                     downX = event.getX();
                     downY = event.getY();
@@ -275,6 +283,8 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     private void clearTextSelection(TextView textView) {
         if (textView != null && textView.getText() instanceof Spannable) {
             Selection.removeSelection((Spannable) textView.getText());
+            textView.clearFocus();
+            textView.invalidate();
         }
         if (selectedMessageText == textView) selectedMessageText = null;
     }
@@ -293,6 +303,8 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 addDocumentCard(container, attachment);
             } else if ("gift".equals(attachment.getType())) {
                 addGiftPreview(container, attachment);
+            } else if ("sticker".equals(attachment.getType())) {
+                addStickerImage(container, attachment.getImageUrl());
             } else if (attachment.getImageUrl() != null && !attachment.getImageUrl().isEmpty()) {
                 ImageView image = new ImageView(context);
                 LinearLayout.LayoutParams imageParams = new LinearLayout.LayoutParams(dp(220), dp(160));
@@ -371,6 +383,27 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         contentParams.topMargin = dp(6);
         container.addView(giftContent, contentParams);
+    }
+
+    /**
+     * добавление стикера в сообщение
+     * @param container контейнер сообщения
+     * @param imageUrl ссылка на стикер
+     */
+    private void addStickerImage(LinearLayout container, String imageUrl) {
+        if (imageUrl == null || imageUrl.isEmpty()) return;
+
+        ImageView image = new ImageView(context);
+        image.setLayoutParams(new LinearLayout.LayoutParams(dp(128), dp(128)));
+        image.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        image.setContentDescription(context.getString(R.string.message_sticker_image));
+        Picasso.get().load(imageUrl)
+                .placeholder(R.drawable.ic_image_placeholder)
+                .error(R.drawable.ic_image_error)
+                .fit().centerInside().into(image);
+        LinearLayout.LayoutParams imageParams = (LinearLayout.LayoutParams) image.getLayoutParams();
+        imageParams.topMargin = dp(6);
+        container.addView(image, imageParams);
     }
 
     private void addDocumentCard(LinearLayout container, MessageAttachment attachment) {

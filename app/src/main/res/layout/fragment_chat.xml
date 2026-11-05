@@ -202,6 +202,19 @@
         </com.google.android.material.textfield.TextInputLayout>
 
         <ImageView
+            android:id="@+id/sticker_button"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="2dp"
+            android:src="@drawable/ic_sticker"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="@string/attach_sticker_action"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:padding="8dp"
+            app:tint="?attr/colorPrimary" />
+
+        <ImageView
             android:id="@+id/send_button"
             android:layout_width="36dp"
             android:layout_height="36dp"

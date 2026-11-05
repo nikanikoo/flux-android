@@ -46,10 +46,12 @@ import org.nikanikoo.flux.data.managers.VideoManager;
 import org.nikanikoo.flux.data.managers.api.OpenVKApi;
 import org.nikanikoo.flux.data.models.Audio;
 import org.nikanikoo.flux.data.models.Video;
+import org.nikanikoo.flux.data.models.Sticker;
 import org.nikanikoo.flux.data.models.Conversation;
 import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.ui.activities.ChatActivity;
 import org.nikanikoo.flux.ui.activities.MainActivity;
+import org.nikanikoo.flux.ui.dialogs.StickerPickerDialog;
 import org.nikanikoo.flux.ui.fragments.profile.ProfileFragment;
 import org.nikanikoo.flux.ui.fragments.profile.GroupProfileFragment;
 
@@ -92,6 +94,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     private EditText messageInput;
     private ImageView sendButton;
     private ImageView attachButton;
+    private ImageView stickerButton;
     private View pendingAttachmentPreview;
     private android.widget.LinearLayout pendingAttachmentList;
     private View pendingReplyPreview;
@@ -259,6 +262,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         messageInput = view.findViewById(R.id.message_input);
         sendButton = view.findViewById(R.id.send_button);
         attachButton = view.findViewById(R.id.attach_button);
+        stickerButton = view.findViewById(R.id.sticker_button);
         pendingAttachmentPreview = view.findViewById(R.id.pending_attachment_preview);
         pendingAttachmentList = view.findViewById(R.id.pending_attachment_list);
         pendingReplyPreview = view.findViewById(R.id.pending_reply_preview);
@@ -480,6 +484,8 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         attachButton.setOnClickListener(v -> {
             showAttachmentMenu();
         });
+        stickerButton.setOnClickListener(v ->
+                StickerPickerDialog.show(requireContext(), this::sendSticker));
         
         messageInput.setOnEditorActionListener((v, actionId, event) -> {
             sendMessage();
@@ -798,6 +804,34 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         sendMessage(messageText, getPendingAttachmentString());
     }
 
+    private void sendSticker(Sticker sticker) {
+        if (sticker == null || !stickerButton.isEnabled()) return;
+        stickerButton.setEnabled(false);
+        messagesManager.sendMessage(peerId, "", null, replyingToMessageId, sticker.getId(),
+                new MessagesManager.SendMessageCallback() {
+                    @Override
+                    public void onSuccess(int messageId) {
+                        if (getActivity() == null) return;
+                        getActivity().runOnUiThread(() -> {
+                            stickerButton.setEnabled(true);
+                            clearReplyTarget();
+                            loadMessages(true);
+                            refreshConversationsList();
+                        });
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        if (getActivity() == null) return;
+                        getActivity().runOnUiThread(() -> {
+                            stickerButton.setEnabled(true);
+                            Toast.makeText(requireContext(), getString(R.string.chat_send_error, error),
+                                    Toast.LENGTH_LONG).show();
+                        });
+                    }
+                });
+    }
+
     private String getPendingAttachmentString() {
         List<String> all = new ArrayList<>(pendingPhotoAttachments);
         all.addAll(pendingMediaAttachments);
@@ -847,7 +881,11 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     }
 
     private void sendMessage(String messageText, String attachment) {
-        if (messageText.isEmpty() && (attachment == null || attachment.isEmpty())) {
+        sendMessage(messageText, attachment, 0);
+    }
+
+    private void sendMessage(String messageText, String attachment, int stickerId) {
+        if (messageText.isEmpty() && (attachment == null || attachment.isEmpty()) && stickerId <= 0) {
             return;
         }
         
@@ -855,7 +893,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         sendButton.setEnabled(false);
         messageInput.setEnabled(false);
         
-        messagesManager.sendMessage(peerId, messageText, attachment, replyingToMessageId,
+        messagesManager.sendMessage(peerId, messageText, attachment, replyingToMessageId, stickerId,
                 new MessagesManager.SendMessageCallback() {
             @Override
             public void onSuccess(int messageId) {
