@@ -52,6 +52,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     private Context context;
     private OnMessageClickListener listener;
     private TextView selectedMessageText;
+    private boolean groupChat;
 
     public interface OnMessageClickListener {
         void onAvatarClick(int userId, String userName);
@@ -71,6 +72,10 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
     public void setOnMessageClickListener(OnMessageClickListener listener) {
         this.listener = listener;
+    }
+
+    public void setGroupChat(boolean groupChat) {
+        this.groupChat = groupChat;
     }
 
     public void clearSelectedMessageText() {
@@ -135,6 +140,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         
         // Устанавливаем цвет ссылок таким же, как у обычного текста
         holder.messageText.setLinkTextColor(holder.messageText.getCurrentTextColor());
+        bindSenderName(holder.senderName, message);
         bindMessageOptions(holder.bubble, holder.messageText, message);
         bindReferences(holder.replyPreview, message);
         bindAttachments(holder.attachments, message.getAttachments());
@@ -164,6 +170,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         
         // Устанавливаем цвет ссылок таким же, как у обычного текста
         holder.messageText.setLinkTextColor(holder.messageText.getCurrentTextColor());
+        bindSenderName(holder.senderName, message);
         bindMessageOptions(holder.bubble, holder.messageText, message);
         bindReferences(holder.replyPreview, message);
         bindAttachments(holder.attachments, message.getAttachments());
@@ -193,6 +200,20 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     }
 
     // Обработчик клика на опции сообщения
+    private void bindSenderName(TextView senderNameView, Message message) {
+        if (!groupChat) {
+            senderNameView.setVisibility(View.GONE);
+            return;
+        }
+
+        String senderName = message.getUserName();
+        if (senderName == null || senderName.trim().isEmpty()) {
+            senderName = context.getString(message.isOut() ? R.string.you : R.string.chat_unknown_user);
+        }
+        senderNameView.setText(senderName);
+        senderNameView.setVisibility(View.VISIBLE);
+    }
+
     private void bindMessageOptions(View bubble, TextView messageText, Message message) {
         bubble.setTag(message);
         View.OnClickListener openOptions = v -> {
@@ -751,6 +772,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
     static class OutgoingMessageViewHolder extends RecyclerView.ViewHolder {
         LinearLayout bubble;
+        TextView senderName;
         TextView messageText;
         TextView replyPreview;
         LinearLayout attachments;
@@ -760,6 +782,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         OutgoingMessageViewHolder(@NonNull View itemView) {
             super(itemView);
             bubble = itemView.findViewById(R.id.message_bubble);
+            senderName = itemView.findViewById(R.id.sender_name);
             messageText = itemView.findViewById(R.id.message_text);
             replyPreview = itemView.findViewById(R.id.reply_preview);
             attachments = itemView.findViewById(R.id.message_attachments);
@@ -771,6 +794,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     static class IncomingMessageViewHolder extends RecyclerView.ViewHolder {
         ImageView avatarImage;
         LinearLayout bubble;
+        TextView senderName;
         TextView messageText;
         TextView replyPreview;
         LinearLayout attachments;
@@ -780,6 +804,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             super(itemView);
             avatarImage = itemView.findViewById(R.id.avatar_image);
             bubble = itemView.findViewById(R.id.message_bubble);
+            senderName = itemView.findViewById(R.id.sender_name);
             messageText = itemView.findViewById(R.id.message_text);
             replyPreview = itemView.findViewById(R.id.reply_preview);
             attachments = itemView.findViewById(R.id.message_attachments);

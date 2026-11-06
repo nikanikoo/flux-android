@@ -31,6 +31,18 @@
         android:elevation="2dp">
 
         <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/sender_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="?attr/colorPrimary"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <com.google.android.material.textview.MaterialTextView
             android:id="@+id/reply_preview"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

@@ -85,6 +85,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     
     private static final String ARG_PEER_ID = "peer_id";
     private static final String ARG_TITLE = "title";
+    private static final int GROUP_PEER_ID_OFFSET = 2_000_000_000;
     
     private int peerId;
     private String title;
@@ -284,6 +285,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
 
     private void setupRecyclerView() {
         adapter = new MessagesAdapter(requireContext(), messages);
+        adapter.setGroupChat(peerId > GROUP_PEER_ID_OFFSET);
         adapter.setOnMessageClickListener(this);
         layoutManager = new LinearLayoutManager(requireContext());
         layoutManager.setStackFromEnd(true);
