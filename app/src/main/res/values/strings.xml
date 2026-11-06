@@ -823,6 +823,17 @@
     <string name="chat_unknown_user">Пользователь</string>
     <string name="you">Вы</string>
     <string name="attachment">Вложение</string>
+    <string name="conversation_preview_photo">Фото</string>
+    <string name="conversation_preview_video">Видео</string>
+    <string name="conversation_preview_audio">Аудио</string>
+    <string name="conversation_preview_document">Документ</string>
+    <string name="conversation_preview_post">Запись</string>
+    <string name="conversation_preview_sticker">Стикер</string>
+    <string name="conversation_preview_gift">Подарок</string>
+    <string name="conversation_preview_poll">Опрос</string>
+    <string name="conversation_preview_attachment">Вложение</string>
+    <string name="conversation_preview_attachment_count">%1$s ×%2$d</string>
+    <string name="conversation_preview_with_text">%1$s · %2$s</string>
     <string name="message_sticker_image">Стикер</string>
     <string name="comment_sticker_image">Стикер в комментарии</string>
     <string name="attach_sticker_action">Стикер</string>

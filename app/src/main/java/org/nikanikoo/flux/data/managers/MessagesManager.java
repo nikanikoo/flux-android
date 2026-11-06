@@ -8,12 +8,14 @@ import org.nikanikoo.flux.data.models.Conversation;
 import org.nikanikoo.flux.data.models.Message;
 import org.nikanikoo.flux.data.models.MessageAttachment;
 import org.nikanikoo.flux.data.models.MessageReference;
+import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.utils.ImageUtils;
 import org.nikanikoo.flux.utils.AsyncTaskHelper;
 import org.nikanikoo.flux.utils.Logger;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -642,7 +644,7 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                 String lastMessageText = "";
                 long lastMessageDate = 0;
                 if (lastMessage != null) {
-                    lastMessageText = lastMessage.optString("text", "");
+                    lastMessageText = createConversationPreview(lastMessage);
                     lastMessageDate = lastMessage.optLong("date", 0);
                 }
 
@@ -669,6 +671,64 @@ public class MessagesManager extends BaseManager<MessagesManager> {
 
         Logger.d(TAG, "Успешно обработано " + conversations.size() + " диалогов");
         return conversations;
+    }
+
+	/**
+	* Создаёт превью для раздела сообщений
+	* Если это обычный текст - пишется его содержимое, если вложение, то пишется что за вложение
+	* message сообщение, для которого создаётся превью
+	*/
+    private String createConversationPreview(JSONObject message) {
+        String text = message.optString("text", "").trim();
+        if (text.isEmpty()) text = message.optString("body", "").trim();
+        JSONArray attachments = message.optJSONArray("attachments");
+        if (attachments == null || attachments.length() == 0) return text;
+
+        Map<Integer, Integer> attachmentCounts = new LinkedHashMap<>();
+        for (int i = 0; i < attachments.length(); i++) {
+            JSONObject attachment = attachments.optJSONObject(i);
+            if (attachment == null) continue;
+
+            String type = attachment.optString("type", "");
+            if (type.isEmpty()) {
+                for (String candidate : new String[]{"photo", "video", "audio", "doc", "wall", "sticker", "gift", "poll"}) {
+                    if (attachment.optJSONObject(candidate) != null) {
+                        type = candidate;
+                        break;
+                    }
+                }
+            }
+
+            int labelRes;
+            switch (type) {
+                case "photo": labelRes = R.string.conversation_preview_photo; break;
+                case "video": labelRes = R.string.conversation_preview_video; break;
+                case "audio": labelRes = R.string.conversation_preview_audio; break;
+                case "doc": labelRes = R.string.conversation_preview_document; break;
+                case "wall": labelRes = R.string.conversation_preview_post; break;
+                case "sticker": labelRes = R.string.conversation_preview_sticker; break;
+                case "gift": labelRes = R.string.conversation_preview_gift; break;
+                case "poll": labelRes = R.string.conversation_preview_poll; break;
+                default: labelRes = R.string.conversation_preview_attachment; break;
+            }
+            Integer count = attachmentCounts.get(labelRes);
+            attachmentCounts.put(labelRes, count == null ? 1 : count + 1);
+        }
+
+        if (attachmentCounts.isEmpty()) return text;
+
+        List<String> labels = new ArrayList<>();
+        for (Map.Entry<Integer, Integer> entry : attachmentCounts.entrySet()) {
+            String label = context.getString(entry.getKey());
+            int count = entry.getValue();
+            labels.add(count > 1
+                    ? context.getString(R.string.conversation_preview_attachment_count, label, count)
+                    : label);
+        }
+        String attachmentPreview = android.text.TextUtils.join(", ", labels);
+        return text.isEmpty()
+                ? attachmentPreview
+                : context.getString(R.string.conversation_preview_with_text, attachmentPreview, text);
     }
 
     // Пометить сообщения как прочитанные
