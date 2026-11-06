@@ -1257,6 +1257,16 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         }
         updateReplyPreview();
         messageInput.requestFocus();
+        messageInput.post(() -> {
+            if (!isAdded() || getActivity() == null || !messageInput.isAttachedToWindow()) return;
+            android.view.inputmethod.InputMethodManager inputMethodManager =
+                    (android.view.inputmethod.InputMethodManager) requireContext()
+                            .getSystemService(android.content.Context.INPUT_METHOD_SERVICE);
+            if (inputMethodManager != null) {
+                inputMethodManager.showSoftInput(messageInput,
+                        android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
+            }
+        });
     }
 
     private void clearReplyTarget() {
