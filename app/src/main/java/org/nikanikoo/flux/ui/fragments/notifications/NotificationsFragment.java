@@ -16,8 +16,10 @@ import org.nikanikoo.flux.ui.custom.NotificationBadgeListener;
 import org.nikanikoo.flux.ui.adapters.notifications.NotificationsAdapter;
 import org.nikanikoo.flux.data.managers.NotificationsManager;
 import org.nikanikoo.flux.data.models.Post;
+import org.nikanikoo.flux.data.models.Photo;
 import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.ui.activities.MainActivity;
+import org.nikanikoo.flux.ui.activities.PhotoViewerActivity;
 import org.nikanikoo.flux.ui.fragments.BaseFragment;
 import org.nikanikoo.flux.ui.fragments.comments.CommentsFragment;
 import org.nikanikoo.flux.ui.fragments.profile.ProfileFragment;
@@ -126,6 +128,7 @@ public class NotificationsFragment extends BaseFragment implements Notifications
         currentOffset = 0;
         hasMoreData = true;
         isLoadingArchived = false;
+        notifications.clear();
         
         Logger.d(TAG, "Loading notifications from beginning");
         
@@ -150,7 +153,13 @@ public class NotificationsFragment extends BaseFragment implements Notifications
                             notifications.addAll(unreadNotifications);
                             adapter.updateNotifications(notifications);
                             markAllReadFab.setVisibility(View.VISIBLE);
-                            currentOffset = unreadNotifications.size();
+                            currentOffset = allNotifications.size();
+                            if (allNotifications.size() < PAGE_SIZE) {
+                                isLoadingArchived = true;
+                                currentOffset = 0;
+                                loadArchivedNotifications(0);
+                                return;
+                            }
                         } else {
                             // Нет новых уведомлений - загружаем архивные
                             Logger.d(TAG, "No new notifications, loading archived");
@@ -190,11 +199,46 @@ public class NotificationsFragment extends BaseFragment implements Notifications
         if (isLoadingArchived) {
             loadArchivedNotifications(currentOffset);
         } else {
-            // Если мы еще не переключились на архивные, переключаемся
-            isLoadingArchived = true;
-            currentOffset = 0;
-            loadArchivedNotifications(0);
+            loadMoreNewNotifications();
         }
+    }
+
+    private void loadMoreNewNotifications() {
+        notificationsManager.getNotifications(PAGE_SIZE, currentOffset, new NotificationsManager.NotificationsCallback() {
+            @Override
+            public void onSuccess(List<Notification> newNotifications) {
+                if (getActivity() == null) return;
+                getActivity().runOnUiThread(() -> {
+                    List<Notification> unread = new ArrayList<>();
+                    for (Notification notification : newNotifications) {
+                        if (!notification.isRead()) unread.add(notification);
+                    }
+                    notifications.addAll(unread);
+                    currentOffset += newNotifications.size();
+                    adapter.updateNotifications(notifications);
+
+                    if (newNotifications.size() < PAGE_SIZE) {
+                        isLoadingArchived = true;
+                        currentOffset = 0;
+                        loadArchivedNotifications(0);
+                        return;
+                    }
+                    isLoading = false;
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                if (getActivity() == null) return;
+                getActivity().runOnUiThread(() -> {
+                    Logger.e(TAG, "Error loading more new notifications: " + error);
+                    isLoading = false;
+                    isLoadingArchived = true;
+                    currentOffset = 0;
+                    loadArchivedNotifications(0);
+                });
+            }
+        });
     }
 
     private void loadArchivedNotifications(int offset) {
@@ -212,11 +256,6 @@ public class NotificationsFragment extends BaseFragment implements Notifications
                             hasMoreData = false;
                             Logger.d(TAG, "No more archived notifications available");
                         } else {
-                            if (offset == 0) {
-                                // Первая загрузка архивных - очищаем список
-                                notifications.clear();
-                            }
-                            
                             notifications.addAll(archivedNotifications);
                             currentOffset += archivedNotifications.size();
                             
@@ -261,6 +300,8 @@ public class NotificationsFragment extends BaseFragment implements Notifications
                         for (Notification notification : notifications) {
                             notification.setRead(true);
                         }
+                        notifications.clear();
+                        currentOffset = 0;
                         adapter.updateNotifications(notifications);
                         markAllReadFab.setVisibility(View.GONE);
                         Toast.makeText(requireContext(), getString(R.string.notifications_all_read), Toast.LENGTH_SHORT).show();
@@ -301,11 +342,32 @@ public class NotificationsFragment extends BaseFragment implements Notifications
         switch (type) {
             case "mention":
             case "comment_post":
+            case "reply_comment":
+            case "reply_comment_unknown":
+            case "reply_comment_photo":
+            case "reply_comment_video":
+            case "mention_comment_photo":
+            case "mention_comment_video":
+            case "mention_comment_note":
+            case "mention_comments":
+            case "mention_comment_unknown":
                 // Переход к посту
                 navigateToPost(notification);
                 break;
                 
             case "comment_photo":
+                Photo photo = notification.getPhoto();
+                if (photo != null && photo.getBestUrl() != null && !photo.getBestUrl().isEmpty()) {
+                    PhotoViewerActivity.startWithPhotos(requireContext(), java.util.Collections.singletonList(photo),
+                            0, notification.getFromName());
+                } else {
+                    navigateToProfile(notification.getFromId(), notification.getFromName());
+                }
+                break;
+
+            case "comment_video":
+            case "comment_note":
+            case "comment_topic":
                 // Переход к посту с комментариями
                 navigateToPost(notification);
                 break;
@@ -317,7 +379,15 @@ public class NotificationsFragment extends BaseFragment implements Notifications
                 break;
                 
             case "sent_gift":
-                // Переход к профилю отправителя подарка
+            case "voices_transfer":
+            case "up_rating":
+                // Переход к профилю отправителя
+                navigateToProfile(notification.getFromId(), notification.getFromName());
+                break;
+
+            case "make_you_admin":
+            case "new_posts_in_club":
+            case "wall_publish":
                 navigateToProfile(notification.getFromId(), notification.getFromName());
                 break;
                 
@@ -364,11 +434,13 @@ public class NotificationsFragment extends BaseFragment implements Notifications
      */
     private void navigateToProfile(int userId, String userName) {
         if (userId != 0) {
-            ProfileFragment profileFragment = ProfileFragment.newInstanceWithId(userId, userName);
+            androidx.fragment.app.Fragment destination = userId < 0
+                    ? GroupProfileFragment.newInstance(-userId, userName)
+                    : ProfileFragment.newInstanceWithId(userId, userName);
             
             if (getActivity() != null) {
                 getActivity().getSupportFragmentManager().beginTransaction()
-                        .replace(R.id.fragment_container, profileFragment)
+                        .replace(R.id.fragment_container, destination)
                         .addToBackStack("profile_" + userId)
                         .commit();
                 

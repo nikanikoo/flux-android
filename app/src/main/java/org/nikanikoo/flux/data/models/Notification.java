@@ -3,6 +3,7 @@ package org.nikanikoo.flux.data.models;
 import android.content.Context;
 
 import org.nikanikoo.flux.R;
+import org.nikanikoo.flux.data.models.Photo;
 
 public class Notification {
     private static Context appContext;
@@ -20,6 +21,7 @@ public class Notification {
     private int postOwnerId;
     private int postId;
     private boolean commentDataLoaded;
+    private Photo photo;
 
     public static void setAppContext(Context context) {
         if (context != null) {
@@ -54,6 +56,7 @@ public class Notification {
     public int getPostId() { return postId; }
     public boolean isCommentDataLoaded() { return commentDataLoaded; }
     public boolean isArchived() { return isArchived; }
+    public Photo getPhoto() { return photo; }
 
     // Setters
     public void setRead(boolean read) { 
@@ -66,6 +69,7 @@ public class Notification {
     public void setPostOwnerId(int postOwnerId) { this.postOwnerId = postOwnerId; }
     public void setPostId(int postId) { this.postId = postId; }
     public void setCommentDataLoaded(boolean commentDataLoaded) { this.commentDataLoaded = commentDataLoaded; }
+    public void setPhoto(Photo photo) { this.photo = photo; }
     
     // Обновление данных комментария
     public void updateCommentData(String commentText, String authorName, String authorPhoto, int authorId) {
@@ -94,6 +98,38 @@ public class Notification {
                 return getString(R.string.notification_comment_post);
             case "comment_photo":
                 return getString(R.string.notification_comment_photo);
+            case "comment_video":
+                return getString(R.string.notification_comment_video);
+            case "comment_note":
+                return getString(R.string.notification_comment_note);
+            case "comment_topic":
+                return getString(R.string.notification_comment_topic);
+            case "comment_unknown":
+                return getString(R.string.notification_comment_generic);
+            case "reply_comment":
+            case "reply_comment_unknown":
+                return getString(R.string.notification_reply_comment);
+            case "reply_comment_photo":
+                return getString(R.string.notification_reply_comment_photo);
+            case "reply_comment_video":
+                return getString(R.string.notification_reply_comment_video);
+            case "mention_comment_photo":
+            case "mention_comment_video":
+            case "mention_comment_note":
+            case "mention_comments":
+                return getString(R.string.notification_mention_comment);
+            case "mention_comment_unknown":
+                return getString(R.string.notification_mention_generic);
+            case "make_you_admin":
+                return getString(R.string.notification_make_you_admin);
+            case "wall_publish":
+                return getString(R.string.notification_wall_publish);
+            case "new_posts_in_club":
+                return getString(R.string.notification_new_posts_in_club);
+            case "voices_transfer":
+                return getString(R.string.notification_voices_transfer);
+            case "up_rating":
+                return getString(R.string.notification_up_rating);
             case "sent_gift":
                 return getString(R.string.notification_sent_gift);
             case "wall":
@@ -116,6 +152,29 @@ public class Notification {
                 return R.drawable.ic_note_stack;
             case "comment_photo":
                 return R.drawable.ic_photo;
+            case "comment_video":
+            case "reply_comment_video":
+                return R.drawable.ic_video_library;
+            case "comment_note":
+            case "comment_topic":
+            case "comment_unknown":
+            case "reply_comment":
+            case "reply_comment_photo":
+            case "reply_comment_unknown":
+            case "mention_comment_photo":
+            case "mention_comment_video":
+            case "mention_comment_note":
+            case "mention_comments":
+            case "mention_comment_unknown":
+                return R.drawable.ic_chat_bubble;
+            case "voices_transfer":
+            case "up_rating":
+                return R.drawable.ic_redeem;
+            case "make_you_admin":
+            case "new_posts_in_club":
+                return R.drawable.ic_group;
+            case "wall_publish":
+                return R.drawable.ic_newspaper;
             case "sent_gift":
                 return R.drawable.ic_redeem;
             case "wall":

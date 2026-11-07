@@ -3,9 +3,11 @@ package org.nikanikoo.flux.data.managers;
 import android.content.Context;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.data.managers.api.OpenVKApi;
 import org.nikanikoo.flux.data.models.Comment;
 import org.nikanikoo.flux.data.models.Notification;
+import org.nikanikoo.flux.data.models.Photo;
 import org.nikanikoo.flux.utils.AsyncTaskHelper;
 import org.nikanikoo.flux.utils.Logger;
 
@@ -235,6 +237,37 @@ public class NotificationsManager extends BaseManager<NotificationsManager> {
             if (onComplete != null) onComplete.run();
             return;
         }
+
+        if ("comment_photo".equals(notification.getType())) {
+            Photo photo = notification.getPhoto();
+            long commentDate = getNotificationTimestamp(notification);
+            if (photo == null || commentDate == 0) {
+                notification.setCommentDataLoaded(true);
+                if (onComplete != null) onComplete.run();
+                return;
+            }
+
+            notification.setCommentDataLoaded(true);
+            PhotosManager.getInstance(context).getPhotoComments(photo.getOwnerId(), photo.getId(), 0, 100, "desc",
+                    new PhotosManager.PhotoCommentsCallback() {
+                        @Override
+                        public void onSuccess(List<Comment> comments, int totalCount) {
+                            Comment match = findCommentByDate(comments, commentDate);
+                            if (match != null) {
+                                notification.updateCommentData(match.getText(), match.getAuthorName(),
+                                        match.getAuthorAvatarUrl(), match.getFromId());
+                            }
+                            if (onComplete != null) onComplete.run();
+                        }
+
+                        @Override
+                        public void onError(String error) {
+                            Logger.e(TAG, "Failed to load photo comment: " + error);
+                            if (onComplete != null) onComplete.run();
+                        }
+                    });
+            return;
+        }
         
         if (notification.getPostId() == 0 || notification.getPostOwnerId() == 0) {
             Logger.d(TAG, "Missing post data for " + notification.getType() + " notification");
@@ -318,18 +351,7 @@ public class NotificationsManager extends BaseManager<NotificationsManager> {
                 Logger.d(TAG, "Loaded " + comments.size() + " comments for post " + postOwnerId + "_" + postId);
                 
                 // Ищем комментарий по времени (с допуском ±5 секунд)
-                Comment targetComment = null;
-                long minTimeDiff = Long.MAX_VALUE;
-                
-                for (Comment comment : comments) {
-                    long timeDiff = Math.abs(comment.getDate() - commentDate);
-                    Logger.d(TAG, "Comment " + comment.getId() + " date=" + comment.getDate() + " diff=" + timeDiff);
-                    
-                    if (timeDiff <= 5 && timeDiff < minTimeDiff) { // Допуск ±5 секунд
-                        targetComment = comment;
-                        minTimeDiff = timeDiff;
-                    }
-                }
+                Comment targetComment = findCommentByDate(comments, commentDate);
                 
                 if (targetComment != null) {
                     Logger.d(TAG, "Found matching comment: " + targetComment.getText());
@@ -352,6 +374,31 @@ public class NotificationsManager extends BaseManager<NotificationsManager> {
             }
         });
     }
+
+    private Comment findCommentByDate(List<Comment> comments, long commentDate) {
+        Comment targetComment = null;
+        long minTimeDiff = Long.MAX_VALUE;
+        for (Comment comment : comments) {
+            long timeDiff = Math.abs(comment.getDate() - commentDate);
+            if (timeDiff <= 5 && timeDiff < minTimeDiff) {
+                targetComment = comment;
+                minTimeDiff = timeDiff;
+            }
+        }
+        return targetComment;
+    }
+
+    private long getNotificationTimestamp(Notification notification) {
+        String id = notification.getId();
+        if (id.startsWith("archived_")) id = id.substring("archived_".length());
+        String[] parts = id.split("_");
+        if (parts.length < 2) return 0;
+        try {
+            return Long.parseLong(parts[parts.length - 2]);
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
     
     // Вспомогательный метод для обработки sent_gift уведомлений
     private void processSentGiftNotification(JSONObject item, Notification notification, JSONArray profiles) {
@@ -364,7 +411,7 @@ public class NotificationsManager extends BaseManager<NotificationsManager> {
                 notification.setFromId(fromId);
                 
                 // Ищем профиль отправителя в массиве profiles
-                if (fromId != 0 && profiles != null) {
+                if (fromId > 0 && profiles != null) {
                     for (int j = 0; j < profiles.length(); j++) {
                         JSONObject profile = profiles.getJSONObject(j);
                         int profileId = profile.has("uid") ? profile.getInt("uid") : profile.getInt("id");
@@ -385,7 +432,7 @@ public class NotificationsManager extends BaseManager<NotificationsManager> {
                     if (!firstName.isEmpty() || !lastName.isEmpty()) {
                         notification.setFromName(firstName + " " + lastName);
                     } else {
-                        notification.setFromName("Пользователь");
+                        notification.setFromName(context.getString(R.string.notification_unknown_actor));
                     }
                 }
             }
@@ -417,7 +464,8 @@ public class NotificationsManager extends BaseManager<NotificationsManager> {
             try {
                 JSONObject item = items.getJSONObject(i);
                 
-                String type = item.getString("type");
+                String type = item.optString("type", "unknown");
+                if (type.isEmpty() || "null".equals(type)) type = "unknown";
                 String date = formatDate(item.getLong("date"));
                 String text = "";
                 String feedback = "";
@@ -431,7 +479,7 @@ public class NotificationsManager extends BaseManager<NotificationsManager> {
                     // Для mention, comment_post и comment_photo извлекаем текст комментария/упоминания
                     if ("mention".equals(type)) {
                         text = feedback;
-                    } else if ("comment_post".equals(type) || "comment_photo".equals(type)) {
+                    } else if (type.startsWith("comment_") || type.startsWith("reply_comment")) {
                         // Для comment_post и comment_photo обрабатываем текст и вложения
                         text = processCommentAttachments(feedbackObj, feedback);
                     } else {
@@ -461,7 +509,10 @@ public class NotificationsManager extends BaseManager<NotificationsManager> {
                         // Для comment_post НЕ показываем контекст поста, только если совсем нет текста комментария
                         if ("comment_post".equals(type) && (text == null || text.isEmpty())) {
                             text = "[Комментарий без текста]";
-                        } else if (text == null || text.isEmpty()) {
+                        } else if ((text == null || text.isEmpty())
+                                && !type.startsWith("comment_")
+                                && !type.startsWith("reply_comment")
+                                && !type.startsWith("mention_comment")) {
                             text = parent;
                         }
                     }
@@ -488,12 +539,29 @@ public class NotificationsManager extends BaseManager<NotificationsManager> {
                 // Найдем информацию об отправителе
                 int fromId = 0;
                 if ("mention".equals(type)) {
-                    // Для mention отправитель находится в feedback
-                    if (item.has("feedback") && !item.isNull("feedback")) {
-                        JSONObject feedbackObj = item.getJSONObject("feedback");
-                        fromId = feedbackObj.optInt("from_id", 0);
+                    // API включает автора упоминания в profiles, но в самом item не связывает профиль с событием.
+                    if (profiles != null && profiles.length() == 1) {
+                        JSONObject profile = profiles.getJSONObject(0);
+                        fromId = profile.optInt("uid", profile.optInt("id", 0));
                     }
-                } else if ("comment_post".equals(type) || "comment_photo".equals(type)) {
+                } else if ("copy_post".equals(type)) {
+                    // У репоста parent.from_id — автор исходной записи; репостер доступен только в profiles.
+                    if (profiles != null && profiles.length() == 1) {
+                        JSONObject profile = profiles.getJSONObject(0);
+                        fromId = profile.optInt("uid", profile.optInt("id", 0));
+                    }
+                } else if (type.startsWith("mention_comment")) {
+                    if (profiles != null && profiles.length() == 1) {
+                        JSONObject profile = profiles.getJSONObject(0);
+                        fromId = profile.optInt("uid", profile.optInt("id", 0));
+                    }
+                } else if ("wall".equals(type)) {
+                    JSONObject feedbackObj = item.optJSONObject("feedback");
+                    fromId = feedbackObj != null ? feedbackObj.optInt("from_id", 0) : 0;
+                } else if (type.startsWith("reply_comment")) {
+                    JSONObject feedbackObj = item.optJSONObject("feedback");
+                    fromId = feedbackObj != null ? feedbackObj.optInt("owner_id", 0) : 0;
+                } else if (type.startsWith("comment_")) {
                     // Для comment_post и comment_photo отправитель находится в feedback
                     if (item.has("feedback") && !item.isNull("feedback")) {
                         JSONObject feedbackObj = item.getJSONObject("feedback");
@@ -520,16 +588,37 @@ public class NotificationsManager extends BaseManager<NotificationsManager> {
                     
                     if (fromId == 0 && item.has("parent") && !item.isNull("parent")) {
                         JSONObject parentObj = item.getJSONObject("parent");
-                        if (parentObj.has("from_id")) {
-                            fromId = parentObj.getInt("from_id");
+                        fromId = parentObj.optInt("from_id", parentObj.optInt("owner_id", 0));
+                        if (fromId == 0 && ("voices_transfer".equals(type) || "up_rating".equals(type))) {
+                            fromId = parentObj.optInt("id", 0);
                         }
                     }
                 }
+
+                if (fromId == 0 && profiles != null && profiles.length() == 1
+                        && type.startsWith("comment_")) {
+                    JSONObject profile = profiles.getJSONObject(0);
+                    fromId = profile.optInt("uid", profile.optInt("id", 0));
+                }
                 
                 notification.setFromId(fromId);
+
+                JSONObject notificationParent = item.optJSONObject("parent");
+                if ("make_you_admin".equals(type) && notificationParent != null) {
+                    int groupId = notificationParent.optInt("gid", notificationParent.optInt("id", 0));
+                    if (groupId > 0) {
+                        fromId = -groupId;
+                        notification.setFromId(fromId);
+                    }
+                } else if (("wall_publish".equals(type) || "new_posts_in_club".equals(type))
+                        && (groups == null || groups.length() != 1)) {
+                    // Эти типы приходят без parent; при нескольких сообществах API не позволяет сопоставить автора.
+                    fromId = 0;
+                    notification.setFromId(0);
+                }
                 
                 // Ищем профиль отправителя
-                if (fromId != 0 && profiles != null) {
+                if (fromId > 0 && profiles != null) {
                     for (int j = 0; j < profiles.length(); j++) {
                         JSONObject profile = profiles.getJSONObject(j);
                         // Используем uid вместо id для профилей
@@ -543,14 +632,48 @@ public class NotificationsManager extends BaseManager<NotificationsManager> {
                         }
                     }
                 }
+
+                if (fromId < 0 && groups != null) {
+                    for (int j = 0; j < groups.length(); j++) {
+                        JSONObject group = groups.getJSONObject(j);
+                        int groupId = group.optInt("gid", group.optInt("id", 0));
+                        if (groupId == Math.abs(fromId)) {
+                            notification.setFromName(group.optString("name", group.optString("title", "")));
+                            notification.setFromPhoto(group.optString("photo", group.optString("photo_medium", "")));
+                            break;
+                        }
+                    }
+                } else if (fromId == 0 && groups != null && groups.length() == 1
+                        && ("wall_publish".equals(type) || "new_posts_in_club".equals(type))) {
+                    JSONObject group = groups.getJSONObject(0);
+                    int groupId = group.optInt("gid", group.optInt("id", 0));
+                    if (groupId != 0) {
+                        notification.setFromId(-groupId);
+                        notification.setFromName(group.optString("name", group.optString("title", "")));
+                        notification.setFromPhoto(group.optString("photo", group.optString("photo_medium", "")));
+                    }
+                }
                 
                 // Если имя не найдено, используем заглушку
                 if (notification.getFromName() == null || notification.getFromName().isEmpty()) {
-                    notification.setFromName("Пользователь");
+                    notification.setFromName(context.getString(R.string.notification_unknown_actor));
                 }
                 
                 // Извлекаем данные поста/объекта для разных типов уведомлений
                 try {
+                    if ("comment_photo".equals(type)) {
+                        JSONObject photoData = item.optJSONObject("parent");
+                        if (photoData != null) {
+                            Photo photo = new Photo();
+                            photo.setId(photoData.optInt("id", 0));
+                            photo.setOwnerId(photoData.optInt("owner_id", 0));
+                            photo.setPhoto604(photoData.optString("src", ""));
+                            photo.setPhoto1280(photoData.optString("src_big", photoData.optString("src", "")));
+                            photo.setText(photoData.optString("text", ""));
+                            notification.setPhoto(photo);
+                        }
+                    }
+
                     if ("mention".equals(type)) {
                         // Для mention данные поста находятся в feedback
                         if (item.has("feedback") && !item.isNull("feedback")) {
@@ -566,27 +689,23 @@ public class NotificationsManager extends BaseManager<NotificationsManager> {
                             
                             Logger.d(TAG, "mention notification - postId=" + postId + " postOwnerId=" + postOwnerId);
                         }
-                    } else if (item.has("parent") && !item.isNull("parent")) {
-                        JSONObject parentObj = item.getJSONObject("parent");
-                        
-                        // Для уведомлений связанных с постами
-                        if ("comment_post".equals(type) || "comment_photo".equals(type) || 
-                            "like_post".equals(type) || "copy_post".equals(type) || 
-                            "wall".equals(type)) {
-                            
-                            int postId = parentObj.optInt("id", 0);
-                            int postOwnerId = parentObj.optInt("owner_id", 0);
-                            if (postOwnerId == 0) {
-                                postOwnerId = parentObj.optInt("to_id", 0); // Альтернативное поле
-                            }
-                            if (postOwnerId == 0) {
-                                postOwnerId = parentObj.optInt("from_id", 0); // Еще одно альтернативное поле
-                            }
-                            
+                    }
+                    if (!"mention".equals(type)) {
+                        JSONObject parentObj = item.optJSONObject("parent");
+                        JSONObject postObj = parentObj;
+                        if (type.startsWith("reply_comment") || type.startsWith("mention_comment")) {
+                            postObj = parentObj == null ? null : parentObj.optJSONObject("post");
+                        } else if ("mention".equals(type)) {
+                            postObj = item.optJSONObject("feedback");
+                        }
+
+                        if (postObj != null && ("comment_post".equals(type) || "like_post".equals(type)
+                                || "copy_post".equals(type) || "wall".equals(type) || "mention".equals(type)
+                                || type.startsWith("reply_comment") || type.startsWith("mention_comment"))) {
+                            int postId = postObj.optInt("id", 0);
+                            int postOwnerId = postObj.optInt("owner_id", postObj.optInt("to_id", 0));
                             notification.setPostId(postId);
                             notification.setPostOwnerId(postOwnerId);
-                            
-                            Logger.d(TAG, type + " notification - postId=" + postId + " postOwnerId=" + postOwnerId);
                         }
                     }
                 } catch (Exception e) {

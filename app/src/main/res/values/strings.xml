@@ -400,11 +400,26 @@
     <string name="notification_like_post">понравился ваш пост</string>
     <string name="notification_comment_post">оставил(а) комментарий под вашим постом</string>
     <string name="notification_comment_photo">оставил(а) комментарий под вашей фотографией</string>
+    <string name="notification_comment_video">оставил(а) комментарий под вашим видео</string>
+    <string name="notification_comment_note">оставил(а) комментарий под вашей заметкой</string>
+    <string name="notification_comment_topic">оставил(а) комментарий в теме</string>
+    <string name="notification_comment_generic">оставил(а) комментарий</string>
+    <string name="notification_reply_comment">ответил(а) на ваш комментарий</string>
+    <string name="notification_reply_comment_photo">ответил(а) на ваш комментарий к фотографии</string>
+    <string name="notification_reply_comment_video">ответил(а) на ваш комментарий к видео</string>
+    <string name="notification_mention_comment">упомянул(а) вас в комментарии</string>
+    <string name="notification_mention_generic">совершил(а) действие, связанное с вами</string>
+    <string name="notification_make_you_admin">назначил(а) вас администратором сообщества</string>
+    <string name="notification_wall_publish">опубликовал(а) предложенную вами запись</string>
+    <string name="notification_new_posts_in_club">новые записи в сообществе</string>
+    <string name="notification_voices_transfer">перевёл(а) вам голоса</string>
+    <string name="notification_up_rating">повысил(а) ваш рейтинг</string>
     <string name="notification_sent_gift">отправил(а) вам подарок</string>
     <string name="notification_wall">написал(а) на вашей стене пост</string>
     <string name="notification_mention">упомянул вас в посте или в одной из веток его обсуждения</string>
     <string name="notification_copy_post">поделился(-ась) вашим постом</string>
     <string name="notification_default">что-то сделал</string>
+    <string name="notification_unknown_actor">Пользователь</string>
 
 
     <!-- Settings -->

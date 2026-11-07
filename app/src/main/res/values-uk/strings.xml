@@ -291,11 +291,26 @@
     <string name="notification_like_post">сподобався ваш пост</string>
     <string name="notification_comment_post">залишив(ла) коментар під вашим постом</string>
     <string name="notification_comment_photo">залишив(ла) коментар под вашим фото</string>
+    <string name="notification_comment_video">залишив(ла) коментар під вашим відео</string>
+    <string name="notification_comment_note">залишив(ла) коментар під вашою нотаткою</string>
+    <string name="notification_comment_topic">залишив(ла) коментар у темі</string>
+    <string name="notification_comment_generic">залишив(ла) коментар</string>
+    <string name="notification_reply_comment">відповів(ла) на ваш коментар</string>
+    <string name="notification_reply_comment_photo">відповів(ла) на ваш коментар до фото</string>
+    <string name="notification_reply_comment_video">відповів(ла) на ваш коментар до відео</string>
+    <string name="notification_mention_comment">згадав(ла) вас у коментарі</string>
+    <string name="notification_mention_generic">зробив(ла) щось, пов’язане з вами</string>
+    <string name="notification_make_you_admin">призначив(ла) вас адміністратором спільноти</string>
+    <string name="notification_wall_publish">опублікував(ла) запропонований вами допис</string>
+    <string name="notification_new_posts_in_club">нові дописи у спільноті</string>
+    <string name="notification_voices_transfer">переказав(ла) вам голоси</string>
+    <string name="notification_up_rating">підвищив(ла) ваш рейтинг</string>
     <string name="notification_sent_gift">надіслав(ла) вам подарунок</string>
     <string name="notification_wall">написав(ла) на вашій стіні пост</string>
     <string name="notification_mention">згадав вас у пості або в одній з гілок його обговорення</string>
     <string name="notification_copy_post">поділився(-ась) вашим постом</string>
     <string name="notification_default">щось зробив</string>
+    <string name="notification_unknown_actor">Користувач</string>
 
 
     <!-- Settings -->

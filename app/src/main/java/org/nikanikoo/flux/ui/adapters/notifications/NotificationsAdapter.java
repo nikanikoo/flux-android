@@ -83,7 +83,9 @@ public class NotificationsAdapter extends RecyclerView.Adapter<NotificationsAdap
         }
         
         // Специальная обработка для mention, comment_post и comment_photo
-        if ("mention".equals(notification.getType()) || "comment_post".equals(notification.getType()) || "comment_photo".equals(notification.getType())) {
+        String type = notification.getType();
+        if ("mention".equals(type) || type.startsWith("comment_")
+                || type.startsWith("reply_comment") || type.startsWith("mention_comment")) {
             if (!notification.getText().isEmpty()) {
                 // Для mention, comment_post и comment_photo показываем текст комментария/упоминания
                 String displayText = notification.getText();

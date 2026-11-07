@@ -352,6 +352,7 @@
 
     <!-- Settings -->
     <string name="notification_default">did something</string>
+    <string name="notification_unknown_actor">Someone</string>
     <string name="settings_title">Settings</string>
     <string name="settings_balance">Balance</string>
     <string name="settings_balance_desc">Votes</string>
@@ -572,6 +573,20 @@
     <string name="notification_like_post">liked your post</string>
     <string name="notification_comment_post">commented on your post</string>
     <string name="notification_comment_photo">commented on your photo</string>
+    <string name="notification_comment_video">commented on your video</string>
+    <string name="notification_comment_note">commented on your note</string>
+    <string name="notification_comment_topic">commented in a topic</string>
+    <string name="notification_comment_generic">left a comment</string>
+    <string name="notification_reply_comment">replied to your comment</string>
+    <string name="notification_reply_comment_photo">replied to your photo comment</string>
+    <string name="notification_reply_comment_video">replied to your video comment</string>
+    <string name="notification_mention_comment">mentioned you in a comment</string>
+    <string name="notification_mention_generic">did something related to you</string>
+    <string name="notification_make_you_admin">made you a community administrator</string>
+    <string name="notification_wall_publish">published your suggested post</string>
+    <string name="notification_new_posts_in_club">new posts in a community</string>
+    <string name="notification_voices_transfer">sent you voices</string>
+    <string name="notification_up_rating">increased your rating</string>
     <string name="notification_sent_gift">sent you a gift</string>
     <string name="notification_wall">posted on your wall</string>
     <string name="notification_mention">mentioned you in a post</string>

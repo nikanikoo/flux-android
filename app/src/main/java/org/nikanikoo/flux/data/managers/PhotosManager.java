@@ -282,6 +282,10 @@ public class PhotosManager extends BaseManager<PhotosManager> {
     }
 
     public void getPhotoComments(int ownerId, int photoId, int offset, int count, PhotoCommentsCallback callback) {
+        getPhotoComments(ownerId, photoId, offset, count, "asc", callback);
+    }
+
+    public void getPhotoComments(int ownerId, int photoId, int offset, int count, String sort, PhotoCommentsCallback callback) {
         Map<String, String> params = new HashMap<>();
         params.put("owner_id", String.valueOf(ownerId));
         params.put("photo_id", String.valueOf(photoId));
@@ -290,6 +294,7 @@ public class PhotosManager extends BaseManager<PhotosManager> {
         params.put("extended", "1");
         params.put("need_likes", "1");
         params.put("fields", "photo_50,photo_100,photo_200,verified");
+        params.put("sort", sort);
 
         api.callMethod("photos.getComments", params, new OpenVKApi.ApiCallback() {
             @Override
