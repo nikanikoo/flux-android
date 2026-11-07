@@ -44,6 +44,7 @@ public class ChatActivity extends AppCompatActivity {
     private int chatId;
     private String peerName;
     private ActivityResultLauncher<String> chatPhotoPicker;
+    private MiniPlayerController miniPlayerController;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,6 +58,8 @@ public class ChatActivity extends AppCompatActivity {
         chatId = peerId > 2000000000 ? peerId - 2000000000 : 0;
         chatPhotoPicker = registerForActivityResult(new ActivityResultContracts.GetContent(), this::onChatPhotoPicked);
         setContentView(R.layout.activity_chat);
+        miniPlayerController = new MiniPlayerController(this);
+        miniPlayerController.initViews(findViewById(R.id.chat_mini_player));
 
         ThemeManager.applySystemBarsAppearance(this);
 
@@ -70,6 +73,18 @@ public class ChatActivity extends AppCompatActivity {
                 .replace(R.id.chat_container, chatFragment)
                 .commit();
         }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (miniPlayerController != null) miniPlayerController.bindService();
+    }
+
+    @Override
+    protected void onPause() {
+        if (miniPlayerController != null) miniPlayerController.unbindService();
+        super.onPause();
     }
 
     @Override

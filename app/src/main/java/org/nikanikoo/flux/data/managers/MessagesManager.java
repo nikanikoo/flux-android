@@ -5,6 +5,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.nikanikoo.flux.data.managers.api.OpenVKApi;
 import org.nikanikoo.flux.data.models.Conversation;
+import org.nikanikoo.flux.data.models.Audio;
 import org.nikanikoo.flux.data.models.Message;
 import org.nikanikoo.flux.data.models.MessageAttachment;
 import org.nikanikoo.flux.data.models.MessageReference;
@@ -12,6 +13,7 @@ import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.utils.ImageUtils;
 import org.nikanikoo.flux.utils.AsyncTaskHelper;
 import org.nikanikoo.flux.utils.Logger;
+import org.nikanikoo.flux.utils.AttachmentProcessor;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -263,6 +265,7 @@ public class MessagesManager extends BaseManager<MessagesManager> {
             String title = "";
             String subtitle = "";
             org.nikanikoo.flux.data.models.Video parsedVideo = null;
+            Audio parsedAudio = null;
             if ("photo".equals(type)) {
                 imageUrl = ImageUtils.extractOptimalImageUrl(data);
             } else if ("video".equals(type)) {
@@ -273,8 +276,14 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                     subtitle = parsedVideo.getFormattedDuration();
                 }
             } else if ("audio".equals(type)) {
-                title = data.optString("title", "Audio");
-                subtitle = data.optString("artist", "");
+                parsedAudio = AttachmentProcessor.parseAudio(data);
+                if (parsedAudio != null) {
+                    title = parsedAudio.getTitle();
+                    subtitle = parsedAudio.getArtist();
+                } else {
+                    title = data.optString("title", "Audio");
+                    subtitle = data.optString("artist", "");
+                }
             } else if ("doc".equals(type)) {
                 title = data.optString("title", "Document");
                 subtitle = data.optString("ext", "");
@@ -344,8 +353,11 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                 attachmentId = type + attachmentOwnerId + "_" + attachmentMediaId
                         + (!attachmentAccessKey.isEmpty() ? "_" + attachmentAccessKey : "");
             }
-            parsed.add(new MessageAttachment(type, imageUrl, title, subtitle, parsedVideo, url, targetUrl,
-                    navigationOwnerId, navigationMediaId, navigationAccessKey, attachmentId));
+            MessageAttachment messageAttachment = new MessageAttachment(type, imageUrl, title, subtitle,
+                    parsedVideo, url, targetUrl, navigationOwnerId, navigationMediaId,
+                    navigationAccessKey, attachmentId);
+            messageAttachment.setAudio(parsedAudio);
+            parsed.add(messageAttachment);
         }
         return parsed;
     }

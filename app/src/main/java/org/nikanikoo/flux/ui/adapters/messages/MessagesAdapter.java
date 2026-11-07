@@ -30,6 +30,7 @@ import org.nikanikoo.flux.data.models.MessageAttachment;
 import org.nikanikoo.flux.data.models.MessageReference;
 import org.nikanikoo.flux.data.managers.api.OpenVKApi;
 import org.nikanikoo.flux.R;
+import org.nikanikoo.flux.ui.views.AudioAttachmentView;
 import org.nikanikoo.flux.utils.MentionUtils;
 import org.nikanikoo.flux.utils.SafeLinkMovementMethod;
 import org.nikanikoo.flux.utils.ValidationUtils;
@@ -37,6 +38,7 @@ import org.nikanikoo.flux.utils.ValidationUtils;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -322,6 +324,15 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 addWallCard(container, attachment);
             } else if ("doc".equals(attachment.getType())) {
                 addDocumentCard(container, attachment);
+            } else if ("audio".equals(attachment.getType()) && attachment.getAudio() != null) {
+                LinearLayout audioContainer = new LinearLayout(context);
+                audioContainer.setOrientation(LinearLayout.VERTICAL);
+                LinearLayout.LayoutParams audioParams = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                audioParams.topMargin = dp(8);
+                container.addView(audioContainer, audioParams);
+                AudioAttachmentView.addAudioAttachments(context, audioContainer,
+                        Collections.singletonList(attachment.getAudio()), null);
             } else if ("gift".equals(attachment.getType())) {
                 addGiftPreview(container, attachment);
             } else if ("sticker".equals(attachment.getType())) {

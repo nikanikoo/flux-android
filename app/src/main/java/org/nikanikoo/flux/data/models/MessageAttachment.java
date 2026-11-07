@@ -6,6 +6,7 @@ public class MessageAttachment {
     private final String title;
     private final String subtitle;
     private final Video video;
+    private Audio audio;
     private final String url;
     private final String targetUrl;
     private final int ownerId;
@@ -53,12 +54,14 @@ public class MessageAttachment {
     public String getTitle() { return title; }
     public String getSubtitle() { return subtitle; }
     public Video getVideo() { return video; }
+    public Audio getAudio() { return audio; }
     public String getUrl() { return url; }
     public String getTargetUrl() { return targetUrl; }
     public int getOwnerId() { return ownerId; }
     public int getId() { return id; }
     public String getAccessKey() { return accessKey; }
     public String getAttachmentId() { return attachmentId; }
+    public void setAudio(Audio audio) { this.audio = audio; }
     public boolean isGifDocument() {
         if (!"doc".equals(type)) return false;
         return "gif".equalsIgnoreCase(subtitle)
