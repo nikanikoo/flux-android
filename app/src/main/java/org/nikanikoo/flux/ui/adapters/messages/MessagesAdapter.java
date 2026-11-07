@@ -635,6 +635,12 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         return items.size();
     }
 
+    public Message getMessageAtPosition(int position) {
+        if (position < 0 || position >= items.size()) return null;
+        Object item = items.get(position);
+        return item instanceof Message ? (Message) item : null;
+    }
+
     public void setMessages(List<Message> newMessages) {
         this.items.clear();
         this.items.addAll(groupMessagesByDate(newMessages));

@@ -111,6 +111,8 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     private int recyclerBaseBottomPadding;
     private int pendingReplyMessageId;
     private int replyingToMessageId;
+    private int lastMarkedReadMessageId;
+    private int pendingReadMessageId;
     private String replyingToAuthor = "";
     private String replyingToText = "";
     private MessagesManager messagesManager;
@@ -306,6 +308,13 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
 
                 if (firstVisibleItem >= 0 && lastVisibleItem >= 0) {
                     updateDateHeader(firstVisibleItem, lastVisibleItem);
+                }
+            }
+
+            @Override
+            public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
+                if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+                    scheduleMarkVisibleMessagesAsRead();
                 }
             }
         });
@@ -778,9 +787,8 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                             );
                         }
 
-                        // Помечаем сообщения как прочитанные только при первой загрузке
                         if (isRefresh) {
-                            messagesManager.markAsRead(peerId);
+                            scheduleMarkVisibleMessagesAsRead();
                         }
                     });
                 }
@@ -1518,6 +1526,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
             longPollManager.addMessageEventListener(this);
             longPollManager.setTypingEventListener(this);
         }
+        scheduleMarkVisibleMessagesAsRead();
     }
 
     @Override
@@ -1553,14 +1562,19 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                 androidx.fragment.app.FragmentActivity activity = getActivity();
                 if (activity == null) return;
                 activity.runOnUiThread(() -> {
-                    if (adapter == null || ChatFragment.this.peerId != peerId) return;
+                    if (adapter == null || ChatFragment.this.peerId != peerId || !isResumed()) return;
+                    int lastIncomingMessageId = 0;
                     for (Message message : newMessages) {
                         adapter.addMessage(message);
+                        if (!message.isOut()) {
+                            lastIncomingMessageId = Math.max(lastIncomingMessageId, message.getId());
+                        }
                     }
                     Log.d("ChatFragment", "Added " + newMessages.size() + " LongPoll message(s) to chat");
                     if (adapter.getItemCount() > 0 && recyclerView != null) {
                         recyclerView.post(() -> recyclerView.smoothScrollToPosition(adapter.getItemCount() - 1));
                     }
+                    if (lastIncomingMessageId > 0) scheduleMarkVisibleMessagesAsRead();
                 });
             }
 
@@ -1579,6 +1593,56 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         Log.d("ChatFragment", "LongPoll read: eventPeer=" + peerId + ", currentPeer=" + this.peerId
                 + ", localId=" + localId + ", outgoingMessagesRead=" + outgoingMessagesRead
                 + ", updatedBubbles=" + updated);
+    }
+
+    private void scheduleMarkVisibleMessagesAsRead() {
+        if (recyclerView != null) {
+            recyclerView.post(this::markVisibleMessagesAsRead);
+        }
+    }
+
+    private void markVisibleMessagesAsRead() {
+        if (!isResumed() || recyclerView == null || layoutManager == null || adapter == null) return;
+
+        int firstPosition = layoutManager.findFirstVisibleItemPosition();
+        int lastPosition = layoutManager.findLastVisibleItemPosition();
+        if (firstPosition == RecyclerView.NO_POSITION || lastPosition == RecyclerView.NO_POSITION) return;
+
+        int viewportTop = recyclerView.getPaddingTop();
+        int viewportBottom = recyclerView.getHeight() - recyclerView.getPaddingBottom();
+        int lastVisibleIncomingMessageId = 0;
+        for (int position = firstPosition; position <= lastPosition; position++) {
+            View itemView = layoutManager.findViewByPosition(position);
+            if (itemView == null || itemView.getVisibility() != View.VISIBLE
+                    || itemView.getBottom() <= viewportTop || itemView.getTop() >= viewportBottom) {
+                continue;
+            }
+
+            Message message = adapter.getMessageAtPosition(position);
+            if (message != null && !message.isOut() && !message.isChatSystemEvent()) {
+                lastVisibleIncomingMessageId = Math.max(lastVisibleIncomingMessageId, message.getId());
+            }
+        }
+
+        if (lastVisibleIncomingMessageId <= lastMarkedReadMessageId
+                || lastVisibleIncomingMessageId <= pendingReadMessageId) {
+            return;
+        }
+
+        final int messageIdToMark = lastVisibleIncomingMessageId;
+        pendingReadMessageId = messageIdToMark;
+        messagesManager.markAsRead(peerId, messageIdToMark, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(org.json.JSONObject response) {
+                lastMarkedReadMessageId = Math.max(lastMarkedReadMessageId, messageIdToMark);
+                if (pendingReadMessageId == messageIdToMark) pendingReadMessageId = 0;
+            }
+
+            @Override
+            public void onError(String error) {
+                if (pendingReadMessageId == messageIdToMark) pendingReadMessageId = 0;
+            }
+        });
     }
 
     @Override

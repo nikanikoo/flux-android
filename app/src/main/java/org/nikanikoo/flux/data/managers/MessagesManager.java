@@ -763,19 +763,25 @@ public class MessagesManager extends BaseManager<MessagesManager> {
     }
 
     // Пометить сообщения как прочитанные
-    public void markAsRead(int peerId) {
+    public void markAsRead(int peerId, int startMessageId, OpenVKApi.ApiCallback callback) {
         Map<String, String> params = new HashMap<>();
         params.put("peer_id", String.valueOf(peerId));
+        if (startMessageId > 0) {
+            params.put("start_message_id", String.valueOf(startMessageId));
+        }
 
         api.callMethod("messages.markAsRead", params, new OpenVKApi.ApiCallback() {
             @Override
             public void onSuccess(JSONObject response) {
-                // Успешно помечено как прочитанное
+                Logger.d(TAG, "Marked messages as read for peer " + peerId
+                        + " through message " + startMessageId);
+                if (callback != null) callback.onSuccess(response);
             }
 
             @Override
             public void onError(String error) {
-                // Ошибка пометки как прочитанное
+                Logger.e(TAG, "Could not mark messages as read for peer " + peerId + ": " + error);
+                if (callback != null) callback.onError(error);
             }
         });
     }
