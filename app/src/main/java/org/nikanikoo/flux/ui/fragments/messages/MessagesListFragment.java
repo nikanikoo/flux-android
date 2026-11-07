@@ -7,6 +7,7 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import org.nikanikoo.flux.data.models.Conversation;
+import org.nikanikoo.flux.data.models.Message;
 import org.nikanikoo.flux.ui.adapters.messages.ConversationsAdapter;
 import org.nikanikoo.flux.data.managers.MessagesManager;
 import org.nikanikoo.flux.R;
@@ -155,10 +156,33 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
         }
     }
 
-    public void onNewMessageReceived(int peerId, String text, long timestamp, boolean isOut) {
+    public void onNewMessageReceived(int messageId, int peerId, String text, long timestamp, boolean isOut) {
         if (getActivity() != null && isViewCreated) {
-            getActivity().runOnUiThread(() -> {
+            if (messageId <= 0) {
                 handleNewMessageLocally(peerId, text, timestamp, isOut);
+                return;
+            }
+
+            messagesManager.getMessageById(messageId, peerId, new MessagesManager.MessagesCallback() {
+                @Override
+                public void onSuccess(List<Message> messages) {
+                    if (getActivity() == null || !isViewCreated) return;
+                    if (messages == null || messages.isEmpty()) {
+                        handleNewMessageLocally(peerId, text, timestamp, isOut);
+                        return;
+                    }
+
+                    Message message = messages.get(0);
+                    handleNewMessageLocally(peerId, messagesManager.createConversationPreview(message),
+                            message.getDate(), message.isOut());
+                }
+
+                @Override
+                public void onError(String error) {
+                    if (getActivity() != null && isViewCreated) {
+                        handleNewMessageLocally(peerId, text, timestamp, isOut);
+                    }
+                }
             });
         }
     }
@@ -210,6 +234,7 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
         }
         
         if (targetConversation != null) {
+            if (timestamp < targetConversation.getLastMessageDate()) return;
             targetConversation.setLastMessage(text);
             targetConversation.setLastMessageDate(timestamp);
             if (!isOut) {

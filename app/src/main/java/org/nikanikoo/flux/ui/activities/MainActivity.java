@@ -372,7 +372,7 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
                     MessageNotificationManager.getInstance(MainActivity.this)
                             .showMessageNotification(messageId, fromId, peerId, text, timestamp);
                 }
-                updateMessagesListIfVisible(peerId, text, timestamp, isOut);
+                updateMessagesListIfVisible(messageId, peerId, text, timestamp, isOut);
                 onNotificationBadgeUpdate();
             }
 
@@ -943,11 +943,11 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
     
     // ==================== Helper Methods ====================
     
-    private void updateMessagesListIfVisible(int peerId, String text, long timestamp, boolean isOut) {
+    private void updateMessagesListIfVisible(int messageId, int peerId, String text, long timestamp, boolean isOut) {
         androidx.fragment.app.Fragment currentFragment = 
                 getSupportFragmentManager().findFragmentById(R.id.fragment_container);
         if (currentFragment instanceof MessagesListFragment) {
-            ((MessagesListFragment) currentFragment).onNewMessageReceived(peerId, text, timestamp, isOut);
+            ((MessagesListFragment) currentFragment).onNewMessageReceived(messageId, peerId, text, timestamp, isOut);
         }
     }
 

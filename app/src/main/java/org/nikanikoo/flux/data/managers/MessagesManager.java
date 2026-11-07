@@ -682,25 +682,44 @@ public class MessagesManager extends BaseManager<MessagesManager> {
         String text = message.optString("text", "").trim();
         if (text.isEmpty()) text = message.optString("body", "").trim();
         JSONArray attachments = message.optJSONArray("attachments");
-        if (attachments == null || attachments.length() == 0) return text;
+        List<String> attachmentTypes = new ArrayList<>();
+        if (attachments != null) {
+            for (int i = 0; i < attachments.length(); i++) {
+                JSONObject attachment = attachments.optJSONObject(i);
+                if (attachment == null) continue;
 
-        Map<Integer, Integer> attachmentCounts = new LinkedHashMap<>();
-        for (int i = 0; i < attachments.length(); i++) {
-            JSONObject attachment = attachments.optJSONObject(i);
-            if (attachment == null) continue;
-
-            String type = attachment.optString("type", "");
-            if (type.isEmpty()) {
-                for (String candidate : new String[]{"photo", "video", "audio", "doc", "wall", "sticker", "gift", "poll"}) {
-                    if (attachment.optJSONObject(candidate) != null) {
-                        type = candidate;
-                        break;
+                String type = attachment.optString("type", "");
+                if (type.isEmpty()) {
+                    for (String candidate : new String[]{"photo", "video", "audio", "doc", "wall", "sticker", "gift", "poll"}) {
+                        if (attachment.optJSONObject(candidate) != null) {
+                            type = candidate;
+                            break;
+                        }
                     }
                 }
+                attachmentTypes.add(type);
             }
+        }
+        return formatConversationPreview(text, attachmentTypes);
+    }
 
+    public String createConversationPreview(Message message) {
+        if (message == null) return "";
+        List<String> attachmentTypes = new ArrayList<>();
+        for (MessageAttachment attachment : message.getAttachments()) {
+            if (attachment != null) attachmentTypes.add(attachment.getType());
+        }
+        return formatConversationPreview(message.getText(), attachmentTypes);
+    }
+
+    private String formatConversationPreview(String text, List<String> attachmentTypes) {
+        text = text == null ? "" : text.trim();
+        if (attachmentTypes == null || attachmentTypes.isEmpty()) return text;
+
+        Map<Integer, Integer> attachmentCounts = new LinkedHashMap<>();
+        for (String type : attachmentTypes) {
             int labelRes;
-            switch (type) {
+            switch (type == null ? "" : type) {
                 case "photo": labelRes = R.string.conversation_preview_photo; break;
                 case "video": labelRes = R.string.conversation_preview_video; break;
                 case "audio": labelRes = R.string.conversation_preview_audio; break;

@@ -84,10 +84,6 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
     private ImageView btnAttachSticker;
     private ImageView btnSendComment;
     private Uri selectedImageUri;
-    private Sticker selectedSticker;
-    private View pendingStickerPreview;
-    private ImageView pendingStickerImage;
-    private ImageView btnRemovePendingSticker;
     
     // Новые Views для редактирования и ответов
     private View editCommentHeader;
@@ -169,9 +165,6 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
         editComment = view.findViewById(R.id.edit_comment);
         btnAttachImage = view.findViewById(R.id.btn_attach_image);
         btnAttachSticker = view.findViewById(R.id.btn_attach_sticker);
-        pendingStickerPreview = view.findViewById(R.id.pending_sticker_preview);
-        pendingStickerImage = view.findViewById(R.id.pending_sticker_image);
-        btnRemovePendingSticker = view.findViewById(R.id.remove_pending_sticker);
         btnSendComment = view.findViewById(R.id.btn_send_comment);
         editCommentHeader = view.findViewById(R.id.edit_comment_header);
         headerIcon = view.findViewById(R.id.header_icon);
@@ -497,18 +490,13 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
         btnAttachSticker.setOnClickListener(v -> {
             if (editingComment != null) return;
             StickerPickerDialog.show(requireContext(), sticker -> {
-                selectedSticker = sticker;
-                updateStickerAttachmentPreview();
+                if (sticker != null) sendComment("", sticker);
             });
-        });
-        btnRemovePendingSticker.setOnClickListener(v -> {
-            selectedSticker = null;
-            updateStickerAttachmentPreview();
         });
         
         btnSendComment.setOnClickListener(v -> {
             String commentText = editComment.getText().toString().trim();
-            if (commentText.isEmpty() && selectedImageUri == null && selectedSticker == null) {
+            if (commentText.isEmpty() && selectedImageUri == null) {
                 Toast.makeText(getContext(), getString(R.string.comments_add_error), Toast.LENGTH_SHORT).show();
                 return;
             }
@@ -516,7 +504,7 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
             if (editingComment != null) {
                 updateComment(editingComment, commentText);
             } else {
-                sendComment(commentText, selectedSticker);
+                sendComment(commentText, null);
             }
         });
         
@@ -524,7 +512,6 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
         
         // Обновляем индикатор выбранного изображения
         updateImageAttachmentIndicator();
-        updateStickerAttachmentPreview();
     }
 
     private void updateImageAttachmentIndicator() {
@@ -533,20 +520,6 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
         } else {
             btnAttachImage.setColorFilter(androidx.core.content.ContextCompat.getColor(requireContext(), R.color.like_inactive));
         }
-    }
-
-    private void updateStickerAttachmentPreview() {
-        if (pendingStickerPreview == null || pendingStickerImage == null) return;
-        if (selectedSticker == null) {
-            pendingStickerPreview.setVisibility(View.GONE);
-            btnAttachSticker.setColorFilter(androidx.core.content.ContextCompat.getColor(
-                    requireContext(), R.color.like_inactive));
-            return;
-        }
-        pendingStickerPreview.setVisibility(View.VISIBLE);
-        Picasso.get().load(selectedSticker.getImageUrl()).fit().centerInside().into(pendingStickerImage);
-        btnAttachSticker.setColorFilter(androidx.core.content.ContextCompat.getColor(
-                requireContext(), R.color.primary_color));
     }
 
     private void loadComments() {
@@ -684,12 +657,12 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
             public void onSuccess(Comment comment) {
                 if (getActivity() != null) {
                     getActivity().runOnUiThread(() -> {
-                        editComment.setText("");
-                        selectedImageUri = null;
-                        selectedSticker = null;
-                        updateImageAttachmentIndicator();
-                        updateStickerAttachmentPreview();
-                        editCommentHeader.setVisibility(View.GONE);
+                        if (sticker == null) {
+                            editComment.setText("");
+                            selectedImageUri = null;
+                            updateImageAttachmentIndicator();
+                            editCommentHeader.setVisibility(View.GONE);
+                        }
                         
                         // Обновляем счетчик комментариев
                         originalPost.setCommentCount(originalPost.getCommentCount() + 1);
