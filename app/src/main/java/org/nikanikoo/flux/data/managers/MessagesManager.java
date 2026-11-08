@@ -691,6 +691,17 @@ public class MessagesManager extends BaseManager<MessagesManager> {
 	* message сообщение, для которого создаётся превью
 	*/
     private String createConversationPreview(JSONObject message) {
+        JSONObject action = message.optJSONObject("action");
+        String actionType = action != null
+                ? action.optString("type", "")
+                : message.optString("action_type", message.optString("action", ""));
+        if ("coins_transfer".equals(actionType) && message.optInt("out", 0) == 1) {
+            int amount = action != null
+                    ? action.optInt("member_id", message.optInt("action_mid", 0))
+                    : message.optInt("action_mid", 0);
+            if (amount > 0) return createOutgoingCoinsTransferPreview(amount);
+        }
+
         String text = message.optString("text", "").trim();
         if (text.isEmpty()) text = message.optString("body", "").trim();
         JSONArray attachments = message.optJSONArray("attachments");
@@ -717,11 +728,19 @@ public class MessagesManager extends BaseManager<MessagesManager> {
 
     public String createConversationPreview(Message message) {
         if (message == null) return "";
+        if ("coins_transfer".equals(message.getActionType()) && message.isOut() && message.getActionMid() > 0) {
+            return createOutgoingCoinsTransferPreview(message.getActionMid());
+        }
         List<String> attachmentTypes = new ArrayList<>();
         for (MessageAttachment attachment : message.getAttachments()) {
             if (attachment != null) attachmentTypes.add(attachment.getType());
         }
         return formatConversationPreview(message.getText(), attachmentTypes);
+    }
+
+    private String createOutgoingCoinsTransferPreview(int amount) {
+        String voteWord = context.getResources().getQuantityString(R.plurals.vote_count, amount);
+        return context.getString(R.string.coins_transfer_outgoing, amount, voteWord);
     }
 
     private String formatConversationPreview(String text, List<String> attachmentTypes) {

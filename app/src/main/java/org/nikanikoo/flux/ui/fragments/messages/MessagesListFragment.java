@@ -100,7 +100,9 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
                         getActivity().runOnUiThread(() -> {
                             org.nikanikoo.flux.data.models.Message lastMsg = messagesList.get(0);
                             
-                            handleNewMessageLocally(peerIdToUpdate, lastMsg.getText(), lastMsg.getDate(), lastMsg.isOut());
+                            handleNewMessageLocally(peerIdToUpdate,
+                                    messagesManager.createConversationPreview(lastMsg),
+                                    lastMsg.getDate(), lastMsg.isOut());
                             
                             for (int i = 0; i < conversations.size(); i++) {
                                 Conversation c = conversations.get(i);
