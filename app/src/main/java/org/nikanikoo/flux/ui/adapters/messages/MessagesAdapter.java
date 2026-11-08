@@ -145,7 +145,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         bindSenderName(holder.senderName, message);
         bindMessageOptions(holder.bubble, holder.messageText, message);
         bindReferences(holder.replyPreview, message);
-        bindAttachments(holder.attachments, message.getAttachments());
+        bindAttachments(holder.attachments, message.getAttachments(), holder.messageText.getCurrentTextColor());
         
         // Форматирование времени
         Date date = new Date(message.getDate() * 1000);
@@ -175,7 +175,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         bindSenderName(holder.senderName, message);
         bindMessageOptions(holder.bubble, holder.messageText, message);
         bindReferences(holder.replyPreview, message);
-        bindAttachments(holder.attachments, message.getAttachments());
+        bindAttachments(holder.attachments, message.getAttachments(), holder.messageText.getCurrentTextColor());
         
         // Форматирование времени
         Date date = new Date(message.getDate() * 1000);
@@ -316,7 +316,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         if (selectedMessageText != null) clearTextSelection(selectedMessageText);
     }
 
-    private void bindAttachments(LinearLayout container, List<MessageAttachment> attachments) {
+    private void bindAttachments(LinearLayout container, List<MessageAttachment> attachments, int messageTextColor) {
         container.removeAllViews();
         if (attachments == null) return;
         for (MessageAttachment attachment : attachments) {
@@ -334,7 +334,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 AudioAttachmentView.addAudioAttachments(context, audioContainer,
                         Collections.singletonList(attachment.getAudio()), null);
             } else if ("gift".equals(attachment.getType())) {
-                addGiftPreview(container, attachment);
+                addGiftPreview(container, attachment, messageTextColor);
             } else if ("sticker".equals(attachment.getType())) {
                 addStickerImage(container, attachment.getImageUrl());
             } else if (attachment.getImageUrl() != null && !attachment.getImageUrl().isEmpty()) {
@@ -383,7 +383,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
      * @param container контейнер сообщения
      * @param attachment подарок
      */
-    private void addGiftPreview(LinearLayout container, MessageAttachment attachment) {
+    private void addGiftPreview(LinearLayout container, MessageAttachment attachment, int messageTextColor) {
         LinearLayout giftContent = new LinearLayout(context);
         giftContent.setOrientation(LinearLayout.VERTICAL);
         giftContent.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
@@ -403,6 +403,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         if (attachment.getTitle() != null && !attachment.getTitle().trim().isEmpty()) {
             TextView comment = new TextView(context);
             comment.setText(ValidationUtils.SanitizeText(attachment.getTitle().trim()));
+            comment.setTextColor(messageTextColor);
             comment.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
             comment.setGravity(android.view.Gravity.CENTER);
             LinearLayout.LayoutParams commentParams = new LinearLayout.LayoutParams(
