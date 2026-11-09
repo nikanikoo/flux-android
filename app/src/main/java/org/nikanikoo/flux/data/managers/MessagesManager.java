@@ -656,7 +656,7 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                 String lastMessageText = "";
                 long lastMessageDate = 0;
                 if (lastMessage != null) {
-                    lastMessageText = createConversationPreview(lastMessage);
+                    lastMessageText = createConversationPreview(lastMessage, peerType == 2, profiles);
                     lastMessageDate = lastMessage.optLong("date", 0);
                 }
 
@@ -690,7 +690,18 @@ public class MessagesManager extends BaseManager<MessagesManager> {
 	* Если это обычный текст - пишется его содержимое, если вложение, то пишется что за вложение
 	* message сообщение, для которого создаётся превью
 	*/
-    private String createConversationPreview(JSONObject message) {
+    private String createConversationPreview(JSONObject message, boolean groupChat, JSONArray profiles) {
+        String preview = createConversationPreviewContent(message);
+        String senderName = groupChat
+                ? message.optString("sender_name", message.optString("author_name", "")) : "";
+        if (groupChat && senderName.isEmpty()) {
+            senderName = findProfileName(profiles,
+                    message.optInt("from_id", message.optInt("user_id", message.optInt("uid", 0))));
+        }
+        return addConversationSenderPrefix(preview, message.optInt("out", 0) == 1, groupChat, senderName);
+    }
+
+    private String createConversationPreviewContent(JSONObject message) {
         JSONObject action = message.optJSONObject("action");
         String actionType = action != null
                 ? action.optString("type", "")
@@ -728,14 +739,42 @@ public class MessagesManager extends BaseManager<MessagesManager> {
 
     public String createConversationPreview(Message message) {
         if (message == null) return "";
+        String preview;
         if ("coins_transfer".equals(message.getActionType()) && message.isOut() && message.getActionMid() > 0) {
-            return createOutgoingCoinsTransferPreview(message.getActionMid());
+            preview = createOutgoingCoinsTransferPreview(message.getActionMid());
+        } else {
+            List<String> attachmentTypes = new ArrayList<>();
+            for (MessageAttachment attachment : message.getAttachments()) {
+                if (attachment != null) attachmentTypes.add(attachment.getType());
+            }
+            preview = formatConversationPreview(message.getText(), attachmentTypes);
         }
-        List<String> attachmentTypes = new ArrayList<>();
-        for (MessageAttachment attachment : message.getAttachments()) {
-            if (attachment != null) attachmentTypes.add(attachment.getType());
+        boolean groupChat = message.getUserId() > 2000000000;
+        return addConversationSenderPrefix(preview, message.isOut(), groupChat, message.getUserName());
+    }
+
+    private String addConversationSenderPrefix(String preview, boolean outgoing, boolean groupChat, String senderName) {
+        if (preview == null || preview.trim().isEmpty()) return preview == null ? "" : preview;
+        if (groupChat) {
+            if (senderName == null || senderName.trim().isEmpty()) return preview;
+            return context.getString(R.string.conversation_preview_sender, senderName.trim(), preview);
         }
-        return formatConversationPreview(message.getText(), attachmentTypes);
+        // System previews such as coin transfers already include their own "Вы" wording.
+        if (outgoing && !preview.startsWith("Вы ")) {
+            return context.getString(R.string.conversation_preview_sender, context.getString(R.string.conversation_preview_you), preview);
+        }
+        return preview;
+    }
+
+    private String findProfileName(JSONArray profiles, int userId) {
+        if (profiles == null || userId == 0) return "";
+        for (int i = 0; i < profiles.length(); i++) {
+            JSONObject profile = profiles.optJSONObject(i);
+            if (profile != null && profile.optInt("id", 0) == Math.abs(userId)) {
+                return (profile.optString("first_name", "") + " " + profile.optString("last_name", "")).trim();
+            }
+        }
+        return "";
     }
 
     private String createOutgoingCoinsTransferPreview(int amount) {
