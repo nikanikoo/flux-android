@@ -51,6 +51,8 @@ public class Message {
         return "chat_kick_user".equals(actionType)
                 || "chat_invite_user".equals(actionType)
                 || "chat_invite_user_by_link".equals(actionType)
+                || "chat_pin_message".equals(actionType)
+                || "chat_unpin_message".equals(actionType)
                 || "coins_transfer".equals(actionType);
     }
     public List<MessageAttachment> getAttachments() { return attachments; }
