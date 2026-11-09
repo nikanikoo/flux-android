@@ -93,24 +93,27 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
             final int peerIdToUpdate = activePeerId;
             activePeerId = -1;
             
-            messagesManager.getHistory(peerIdToUpdate, 1, 0, new MessagesManager.MessagesCallback() {
+            // Use the conversation's last_message, just like the regular list refresh.
+            // The history endpoint can return a message without the full attachment
+            // payload, which leaves the quick preview stale after returning from chat.
+            messagesManager.getConversations(20, 0, new MessagesManager.ConversationsCallback() {
                 @Override
-                public void onSuccess(List<org.nikanikoo.flux.data.models.Message> messagesList) {
-                    if (getActivity() != null && isViewCreated && messagesList != null && !messagesList.isEmpty()) {
+                public void onSuccess(List<Conversation> refreshedConversations) {
+                    if (getActivity() != null && isViewCreated && refreshedConversations != null) {
                         getActivity().runOnUiThread(() -> {
-                            org.nikanikoo.flux.data.models.Message lastMsg = messagesList.get(0);
-                            
-                            handleNewMessageLocally(peerIdToUpdate,
-                                    messagesManager.createConversationPreview(lastMsg),
-                                    lastMsg.getDate(), lastMsg.isOut());
-                            
+                            for (Conversation refreshed : refreshedConversations) {
+                                if (refreshed.getPeerId() != peerIdToUpdate) continue;
+
+                                updateConversationPreview(peerIdToUpdate,
+                                        refreshed.getLastMessage(), refreshed.getLastMessageDate());
+                                break;
+                            }
+
                             for (int i = 0; i < conversations.size(); i++) {
-                                Conversation c = conversations.get(i);
-                                if (c.getPeerId() == peerIdToUpdate) {
-                                    c.setUnreadCount(0);
-                                    if (adapter != null) {
-                                        adapter.notifyItemChanged(i);
-                                    }
+                                if (conversations.get(i).getPeerId() == peerIdToUpdate) {
+                                    conversations.get(i).setUnreadCount(0);
+                                    if (adapter != null) adapter.notifyItemChanged(i);
+                                    cacheConversations();
                                     break;
                                 }
                             }
@@ -251,6 +254,7 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
             int myId = myProfile != null ? myProfile.getId() : 0;
             
             if (peerId == myId) {
+                cacheConversations();
                 if (adapter != null) {
                     adapter.notifyItemChanged(foundIndex);
                 }
@@ -278,9 +282,29 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
                     adapter.notifyItemChanged(insertIndex);
                 }
             }
+            cacheConversations();
         } else {
             refreshConversations();
         }
+    }
+
+    private void updateConversationPreview(int peerId, String preview, long timestamp) {
+        for (int i = 0; i < conversations.size(); i++) {
+            Conversation conversation = conversations.get(i);
+            if (conversation.getPeerId() != peerId) continue;
+
+            conversation.setLastMessage(preview);
+            conversation.setLastMessageDate(timestamp);
+            conversation.setUnreadCount(0);
+            if (adapter != null) adapter.notifyItemChanged(i);
+            cacheConversations();
+            return;
+        }
+    }
+
+    private void cacheConversations() {
+        sCachedConversations = new ArrayList<>(conversations);
+        sIsConversationsLoaded = true;
     }
     
     private void setupToolbarTitle() {
