@@ -98,6 +98,9 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     private ImageView stickerButton;
     private View pendingAttachmentPreview;
     private android.widget.LinearLayout pendingAttachmentList;
+    private View pinnedMessageCard;
+    private TextView pinnedMessagePreview;
+    private int pinnedMessageId;
     private View pendingReplyPreview;
     private TextView pendingReplyAuthor;
     private TextView pendingReplyText;
@@ -109,6 +112,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     private final List<String> pendingMediaPreviews = new ArrayList<>();
     private boolean photoUploadInProgress;
     private int recyclerBaseBottomPadding;
+    private int recyclerBaseTopPadding;
     private int pendingReplyMessageId;
     private int replyingToMessageId;
     private int lastMarkedReadMessageId;
@@ -260,6 +264,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
 
     private void initViews(View view) {
         recyclerView = view.findViewById(R.id.recycler_view);
+        recyclerBaseTopPadding = recyclerView.getPaddingTop();
         recyclerBaseBottomPadding = recyclerView.getPaddingBottom();
         swipeRefreshLayout = view.findViewById(R.id.swipe_refresh);
         messageInput = view.findViewById(R.id.message_input);
@@ -268,6 +273,9 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         stickerButton = view.findViewById(R.id.sticker_button);
         pendingAttachmentPreview = view.findViewById(R.id.pending_attachment_preview);
         pendingAttachmentList = view.findViewById(R.id.pending_attachment_list);
+        pinnedMessageCard = view.findViewById(R.id.pinned_message_card);
+        pinnedMessagePreview = view.findViewById(R.id.pinned_message_preview);
+        pinnedMessageCard.setOnClickListener(v -> scrollToPinnedMessage());
         pendingReplyPreview = view.findViewById(R.id.pending_reply_preview);
         pendingReplyAuthor = view.findViewById(R.id.pending_reply_author);
         pendingReplyText = view.findViewById(R.id.pending_reply_text);
@@ -1522,6 +1530,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     @Override
     public void onResume() {
         super.onResume();
+        loadPinnedMessage();
         if (longPollManager != null) {
             longPollManager.addMessageEventListener(this);
             longPollManager.setTypingEventListener(this);
@@ -1566,6 +1575,10 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                     int lastIncomingMessageId = 0;
                     for (Message message : newMessages) {
                         adapter.addMessage(message);
+                        if ("chat_pin_message".equals(message.getActionType())
+                                || "chat_unpin_message".equals(message.getActionType())) {
+                            loadPinnedMessage();
+                        }
                         if (!message.isOut()) {
                             lastIncomingMessageId = Math.max(lastIncomingMessageId, message.getId());
                         }
@@ -1584,6 +1597,89 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                 refreshMessagesIfSamePeer(peerId);
             }
         });
+    }
+
+    private void loadPinnedMessage() {
+        if (messagesManager == null || !isAdded()) return;
+        messagesManager.getPinnedMessage(peerId, new MessagesManager.PinnedMessageCallback() {
+            @Override
+            public void onSuccess(int messageId, String preview) {
+                if (getActivity() == null || pinnedMessageCard == null) return;
+                getActivity().runOnUiThread(() -> {
+                    if (pinnedMessageCard == null || getView() == null) return;
+                    pinnedMessageId = messageId;
+                    if (messageId <= 0) {
+                        pinnedMessageCard.setVisibility(View.GONE);
+                        setDateHeaderBelowPinnedMessage(false);
+                        return;
+                    }
+                    pinnedMessagePreview.setText(preview == null || preview.trim().isEmpty()
+                            ? getString(R.string.pinned_message) : preview);
+                    pinnedMessageCard.setVisibility(View.VISIBLE);
+                    setDateHeaderBelowPinnedMessage(true);
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                Log.w("ChatFragment", "Unable to load pinned message: " + error);
+            }
+        });
+    }
+
+    private void scrollToPinnedMessage() {
+        if (pinnedMessageId <= 0 || adapter == null || recyclerView == null) return;
+        int position = adapter.findMessagePosition(pinnedMessageId);
+        if (position != RecyclerView.NO_POSITION) {
+            recyclerView.smoothScrollToPosition(position);
+            return;
+        }
+
+        int targetMessageId = pinnedMessageId;
+        messagesManager.getHistory(peerId, 41, -20, targetMessageId, new MessagesManager.MessagesCallback() {
+            @Override
+            public void onSuccess(List<Message> loadedMessages) {
+                if (getActivity() == null) return;
+                getActivity().runOnUiThread(() -> {
+                    if (adapter == null || recyclerView == null || targetMessageId != pinnedMessageId
+                            || loadedMessages == null || loadedMessages.isEmpty()) return;
+
+                    Collections.reverse(loadedMessages);
+                    adapter.setMessages(loadedMessages);
+                    if (scrollListener != null) scrollListener.resetState();
+                    paginationHelper.reset();
+                    paginationHelper.onDataLoaded(loadedMessages.size());
+
+                    int anchoredPosition = adapter.findMessagePosition(targetMessageId);
+                    if (anchoredPosition != RecyclerView.NO_POSITION) {
+                        recyclerView.post(() -> recyclerView.smoothScrollToPosition(anchoredPosition));
+                    }
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                Log.w("ChatFragment", "Unable to load pinned message from history: " + error);
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> Toast.makeText(requireContext(),
+                            R.string.pinned_message_load_error, Toast.LENGTH_SHORT).show());
+                }
+            }
+        });
+    }
+
+    private void setDateHeaderBelowPinnedMessage(boolean pinnedVisible) {
+        if (recyclerView != null) {
+            recyclerView.setPadding(recyclerView.getPaddingLeft(),
+                    recyclerBaseTopPadding + (pinnedVisible ? dp(68) : 0),
+                    recyclerView.getPaddingRight(), recyclerView.getPaddingBottom());
+        }
+        if (dateHeaderCard == null) return;
+        ViewGroup.LayoutParams rawParams = dateHeaderCard.getLayoutParams();
+        if (!(rawParams instanceof ViewGroup.MarginLayoutParams)) return;
+        ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) rawParams;
+        params.topMargin = dp(pinnedVisible ? 68 : 8);
+        dateHeaderCard.setLayoutParams(params);
     }
 
     @Override

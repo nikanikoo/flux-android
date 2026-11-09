@@ -836,6 +836,8 @@
     <string name="conversation_preview_with_text">%1$s · %2$s</string>
     <string name="conversation_preview_you">Вы</string>
     <string name="conversation_preview_sender">%1$s: %2$s</string>
+    <string name="pinned_message">Закреплённое сообщение</string>
+    <string name="pinned_message_load_error">Не удалось загрузить закреплённое сообщение</string>
     <string name="message_sticker_image">Стикер</string>
     <string name="comment_sticker_image">Стикер в комментарии</string>
     <string name="attach_sticker_action">Стикер</string>

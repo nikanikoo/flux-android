@@ -51,6 +51,11 @@ public class MessagesManager extends BaseManager<MessagesManager> {
         void onSuccess();
         void onError(String error);
     }
+
+    public interface PinnedMessageCallback {
+        void onSuccess(int messageId, String preview);
+        void onError(String error);
+    }
     
     public interface UserInfoCallback {
         void onSuccess(String userName, String userPhoto);
@@ -95,10 +100,15 @@ public class MessagesManager extends BaseManager<MessagesManager> {
 
     // Получение истории сообщений
     public void getHistory(int peerId, int count, int offset, MessagesCallback callback) {
+        getHistory(peerId, count, offset, 0, callback);
+    }
+
+    public void getHistory(int peerId, int count, int offset, int startMessageId, MessagesCallback callback) {
         Map<String, String> params = new HashMap<>();
         params.put("peer_id", String.valueOf(peerId));
         params.put("count", String.valueOf(count));
         params.put("offset", String.valueOf(offset));
+        if (startMessageId > 0) params.put("start_message_id", String.valueOf(startMessageId));
         params.put("extended", "1");
         params.put("fields", "photo_50,verified");
 
@@ -129,6 +139,63 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                 callback.onError("Не удалось загрузить сообщения");
             }
         });
+    }
+
+    public void getPinnedMessage(int peerId, PinnedMessageCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_ids", String.valueOf(peerId));
+        params.put("extended", "1");
+
+        api.callMethod("messages.getConversationsById", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                AsyncTaskHelper.executeAsync(() -> {
+                    JSONObject responseData = response.optJSONObject("response");
+                    JSONArray items = responseData != null ? responseData.optJSONArray("items") : null;
+                    JSONObject item = items != null && items.length() > 0 ? items.optJSONObject(0) : null;
+                    if (item == null) return new PinnedMessageData(0, "");
+
+                    JSONObject conversation = item.optJSONObject("conversation");
+                    if (conversation == null) conversation = item;
+                    JSONObject chatSettings = conversation.optJSONObject("chat_settings");
+                    JSONObject pinned = chatSettings != null ? chatSettings.optJSONObject("pinned_message") : null;
+                    if (pinned == null) pinned = conversation.optJSONObject("pinned_message");
+                    if (pinned == null) pinned = conversation.optJSONObject("current_pinned_message");
+                    if (pinned == null) return new PinnedMessageData(0, "");
+
+                    int messageId = pinned.optInt("id", pinned.optInt("mid",
+                            pinned.optInt("conversation_message_id", pinned.optInt("local_id", 0))));
+                    String preview = createConversationPreviewContent(pinned);
+                    if (preview.isEmpty()) preview = pinned.optString("text", pinned.optString("body", ""));
+                    return new PinnedMessageData(messageId, preview);
+                }, new AsyncTaskHelper.AsyncCallback<PinnedMessageData>() {
+                    @Override
+                    public void onSuccess(PinnedMessageData data) {
+                        callback.onSuccess(data.messageId, data.preview);
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        callback.onError(error);
+                    }
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    private static class PinnedMessageData {
+        final int messageId;
+        final String preview;
+
+        PinnedMessageData(int messageId, String preview) {
+            this.messageId = messageId;
+            this.preview = preview;
+        }
     }
 
     public void getMessageById(int messageId, int peerId, MessagesCallback callback) {
