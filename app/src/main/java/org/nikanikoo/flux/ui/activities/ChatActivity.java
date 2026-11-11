@@ -2,6 +2,12 @@ package org.nikanikoo.flux.ui.activities;
 
 import android.content.Context;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.graphics.drawable.Drawable;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
+import android.text.style.ImageSpan;
 import android.view.MenuItem;
 import android.view.Menu;
 import android.widget.EditText;
@@ -11,6 +17,8 @@ import android.net.Uri;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.ContextCompat;
+import androidx.core.graphics.drawable.DrawableCompat;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
@@ -43,8 +51,16 @@ public class ChatActivity extends AppCompatActivity {
     private int peerId;
     private int chatId;
     private String peerName;
+    private String toolbarTitle;
+    private boolean chatNotificationsMuted;
+    private final Handler notificationStateHandler = new Handler(Looper.getMainLooper());
+    private Runnable notificationExpiryRunnable;
     private ActivityResultLauncher<String> chatPhotoPicker;
     private MiniPlayerController miniPlayerController;
+    private final MessagesManager.PushSettingsChangeListener pushSettingsChangeListener = (changedPeerId, settings) -> {
+        if (changedPeerId != peerId) return;
+        runOnUiThread(() -> updateNotificationMuteIndicator(settings));
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -82,6 +98,34 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onStart() {
+        super.onStart();
+        MessagesManager messagesManager = MessagesManager.getInstance(this);
+        messagesManager.addPushSettingsChangeListener(pushSettingsChangeListener);
+        messagesManager.refreshPushSettings(peerId, new MessagesManager.PushSettingsCallback() {
+            @Override
+            public void onSuccess(MessagesManager.PushSettings settings) {
+                updateNotificationMuteIndicator(settings);
+            }
+
+            @Override
+            public void onError(String error) {
+                // Keep the current indicator when a refresh fails.
+            }
+        });
+    }
+
+    @Override
+    protected void onStop() {
+        MessagesManager.getInstance(this).removePushSettingsChangeListener(pushSettingsChangeListener);
+        if (notificationExpiryRunnable != null) {
+            notificationStateHandler.removeCallbacks(notificationExpiryRunnable);
+            notificationExpiryRunnable = null;
+        }
+        super.onStop();
+    }
+
+    @Override
     protected void onPause() {
         if (miniPlayerController != null) miniPlayerController.unbindService();
         super.onPause();
@@ -89,10 +133,10 @@ public class ChatActivity extends AppCompatActivity {
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        if (chatId > 0) {
-            getMenuInflater().inflate(R.menu.menu_chat, menu);
-        }
-        return super.onCreateOptionsMenu(menu);
+        getMenuInflater().inflate(R.menu.menu_chat, menu);
+        MenuItem groupOptions = menu.findItem(R.id.action_chat_options);
+        if (groupOptions != null) groupOptions.setVisible(chatId > 0);
+        return true;
     }
 
     private void openGroupOptions() {
@@ -111,6 +155,62 @@ public class ChatActivity extends AppCompatActivity {
                     else chatPhotoPicker.launch("image/*");
                 })
                 .show();
+    }
+
+    private void openNotificationOptions() {
+        MessagesManager.getInstance(this).refreshPushSettings(peerId, new MessagesManager.PushSettingsCallback() {
+            @Override
+            public void onSuccess(MessagesManager.PushSettings settings) {
+                boolean enabled = settings.areNotificationsEnabled();
+                String[] options;
+                int[] durations;
+                if (enabled) {
+                    options = new String[] {
+                            getString(R.string.chat_notifications_mute_1_hour),
+                            getString(R.string.chat_notifications_mute_8_hours),
+                            getString(R.string.chat_notifications_mute_forever)
+                    };
+                    durations = new int[] { 3600, 28800, -1 };
+                } else {
+                    options = new String[] {
+                            getString(R.string.chat_notifications_enable),
+                            getString(R.string.chat_notifications_mute_1_hour),
+                            getString(R.string.chat_notifications_mute_8_hours),
+                            getString(R.string.chat_notifications_mute_forever)
+                    };
+                    durations = new int[] { 0, 3600, 28800, -1 };
+                }
+
+                new MaterialAlertDialogBuilder(ChatActivity.this)
+                        .setTitle(enabled ? R.string.chat_notifications_enabled : R.string.chat_notifications_muted)
+                        .setItems(options, (dialog, which) -> applySilenceMode(durations[which]))
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .show();
+            }
+
+            @Override
+            public void onError(String error) {
+                showChatActionError(getString(R.string.chat_notifications_update_error, error));
+            }
+        });
+    }
+
+    private void applySilenceMode(int durationSeconds) {
+        MessagesManager.getInstance(this).setSilenceMode(peerId, durationSeconds,
+                new MessagesManager.SilenceModeCallback() {
+                    @Override
+                    public void onSuccess() {
+                        int message = durationSeconds == 0
+                                ? R.string.chat_notifications_enabled
+                                : R.string.chat_notifications_muted;
+                        Toast.makeText(ChatActivity.this, message, Toast.LENGTH_SHORT).show();
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        showChatActionError(getString(R.string.chat_notifications_update_error, error));
+                    }
+                });
     }
 
     private void loadChatMembers() {
@@ -227,26 +327,72 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     private void setupToolbar(String title) {
+        toolbarTitle = title != null ? title : getString(R.string.chat_title);
         toolbar = findViewById(R.id.toolbar);
         if (toolbar != null) {
             setSupportActionBar(toolbar);
             if (getSupportActionBar() != null) {
-                getSupportActionBar().setTitle(title != null ? title : getString(R.string.chat_title));
+                updateToolbarTitle();
                 getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             }
         }
     }
 
     public void setToolbarTitle(String title) {
+        if (title != null) toolbarTitle = title;
+        updateToolbarTitle();
+    }
+
+    private void updateNotificationMuteIndicator(MessagesManager.PushSettings settings) {
+        chatNotificationsMuted = !settings.areNotificationsEnabled();
+        if (notificationExpiryRunnable != null) {
+            notificationStateHandler.removeCallbacks(notificationExpiryRunnable);
+            notificationExpiryRunnable = null;
+        }
+
+        long disabledUntil = settings.getDisabledUntil();
+        long remainingSeconds = disabledUntil - System.currentTimeMillis() / 1000L;
+        if (chatNotificationsMuted && disabledUntil > 0 && remainingSeconds > 0) {
+            notificationExpiryRunnable = () -> {
+                chatNotificationsMuted = false;
+                updateToolbarTitle();
+            };
+            notificationStateHandler.postDelayed(notificationExpiryRunnable, remainingSeconds * 1000L);
+        }
+        updateToolbarTitle();
+    }
+
+    private void updateToolbarTitle() {
+        if (toolbarTitle == null) return;
+        CharSequence displayTitle = toolbarTitle;
+        if (chatNotificationsMuted) {
+            Drawable icon = ContextCompat.getDrawable(this, R.drawable.ic_notifications_off);
+            if (icon != null) {
+                icon = DrawableCompat.wrap(icon.mutate());
+                int size = (int) (18 * getResources().getDisplayMetrics().density + 0.5f);
+                icon.setBounds(0, 0, size, size);
+                SpannableStringBuilder decoratedTitle = new SpannableStringBuilder(toolbarTitle).append("  ");
+                int iconStart = decoratedTitle.length();
+                decoratedTitle.append("\uFFFC");
+                decoratedTitle.setSpan(new ImageSpan(icon, ImageSpan.ALIGN_BOTTOM), iconStart,
+                        decoratedTitle.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                displayTitle = decoratedTitle;
+            }
+        }
+
         if (getSupportActionBar() != null) {
-            getSupportActionBar().setTitle(title);
+            getSupportActionBar().setTitle(displayTitle);
         } else if (toolbar != null) {
-            toolbar.setTitle(title);
+            toolbar.setTitle(displayTitle);
         }
     }
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
+        if (item.getItemId() == R.id.action_chat_notifications) {
+            openNotificationOptions();
+            return true;
+        }
         if (item.getItemId() == R.id.action_chat_options && chatId > 0) {
             openGroupOptions();
             return true;

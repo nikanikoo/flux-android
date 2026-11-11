@@ -16,13 +16,21 @@ import org.nikanikoo.flux.utils.Logger;
 import org.nikanikoo.flux.utils.AttachmentProcessor;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class MessagesManager extends BaseManager<MessagesManager> {
     private static final String TAG = "MessagesManager";
+    private static final long PUSH_SETTINGS_CACHE_TTL_MS = 30_000L;
+    private final Map<Integer, CachedPushSettings> pushSettingsCache = new ConcurrentHashMap<>();
+    private final Map<Integer, List<PushSettingsCallback>> pendingPushSettings = new HashMap<>();
+    private final Object pushSettingsLock = new Object();
+    private final List<PushSettingsChangeListener> pushSettingsChangeListeners =
+            Collections.synchronizedList(new ArrayList<>());
 
     private MessagesManager(Context context) {
         super(context);
@@ -55,6 +63,203 @@ public class MessagesManager extends BaseManager<MessagesManager> {
     public interface PinnedMessageCallback {
         void onSuccess(int messageId, String preview);
         void onError(String error);
+    }
+
+    public static final class PushSettings {
+        private final long disabledUntil;
+        private final boolean disabledForever;
+        private final boolean soundEnabled;
+
+        public PushSettings(long disabledUntil, boolean disabledForever, boolean soundEnabled) {
+            this.disabledUntil = disabledUntil;
+            this.disabledForever = disabledForever;
+            this.soundEnabled = soundEnabled;
+        }
+
+        public long getDisabledUntil() { return disabledUntil; }
+        public boolean isSoundEnabled() { return soundEnabled; }
+
+        public boolean areNotificationsEnabled() {
+            if (disabledForever || disabledUntil == -1) return false;
+            if (disabledUntil > 0) {
+                return disabledUntil <= System.currentTimeMillis() / 1000L;
+            }
+            return soundEnabled;
+        }
+    }
+
+    public interface PushSettingsCallback {
+        void onSuccess(PushSettings settings);
+        void onError(String error);
+    }
+
+    public interface PushSettingsChangeListener {
+        void onPushSettingsChanged(int peerId, PushSettings settings);
+    }
+
+    public interface SilenceModeCallback {
+        void onSuccess();
+        void onError(String error);
+    }
+
+    private static final class CachedPushSettings {
+        final PushSettings settings;
+        final long cachedAt;
+
+        CachedPushSettings(PushSettings settings, long cachedAt) {
+            this.settings = settings;
+            this.cachedAt = cachedAt;
+        }
+    }
+
+    public void getPushSettings(int peerId, PushSettingsCallback callback) {
+        requestPushSettings(peerId, false, callback);
+    }
+
+    public void addPushSettingsChangeListener(PushSettingsChangeListener listener) {
+        if (listener == null) return;
+        synchronized (pushSettingsChangeListeners) {
+            if (!pushSettingsChangeListeners.contains(listener)) {
+                pushSettingsChangeListeners.add(listener);
+            }
+        }
+    }
+
+    public void removePushSettingsChangeListener(PushSettingsChangeListener listener) {
+        if (listener == null) return;
+        synchronized (pushSettingsChangeListeners) {
+            pushSettingsChangeListeners.remove(listener);
+        }
+    }
+
+    private void notifyPushSettingsChanged(int peerId, PushSettings settings) {
+        List<PushSettingsChangeListener> listeners;
+        synchronized (pushSettingsChangeListeners) {
+            listeners = new ArrayList<>(pushSettingsChangeListeners);
+        }
+        for (PushSettingsChangeListener listener : listeners) {
+            listener.onPushSettingsChanged(peerId, settings);
+        }
+    }
+
+    public void refreshPushSettings(int peerId, PushSettingsCallback callback) {
+        requestPushSettings(peerId, true, callback);
+    }
+
+    private void requestPushSettings(int peerId, boolean forceRefresh, PushSettingsCallback callback) {
+        if (peerId == 0) {
+            if (callback != null) callback.onError("Не указан чат");
+            return;
+        }
+
+        final long requestStartedAt = System.currentTimeMillis();
+        synchronized (pushSettingsLock) {
+            CachedPushSettings cached = pushSettingsCache.get(peerId);
+            if (!forceRefresh && cached != null
+                    && System.currentTimeMillis() - cached.cachedAt < PUSH_SETTINGS_CACHE_TTL_MS) {
+                if (callback != null) callback.onSuccess(cached.settings);
+                return;
+            }
+
+            List<PushSettingsCallback> waiting = pendingPushSettings.get(peerId);
+            if (waiting != null) {
+                if (callback != null) waiting.add(callback);
+                return;
+            }
+            waiting = new ArrayList<>();
+            if (callback != null) waiting.add(callback);
+            pendingPushSettings.put(peerId, waiting);
+        }
+
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_id", String.valueOf(peerId));
+        api.callMethod("account.getPushSettings", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                JSONObject data = response.optJSONObject("response");
+                if (data == null) {
+                    finishPushSettingsRequest(peerId, null, "Не удалось прочитать настройки уведомлений");
+                    return;
+                }
+
+                long disabledUntil = data.optLong("disabled_until", 0L);
+                boolean soundEnabled = readBooleanSetting(data.opt("sound"), true);
+                boolean disabledForever = readBooleanSetting(data.opt("disabled_forever"), false);
+                PushSettings settings = new PushSettings(disabledUntil, disabledForever, soundEnabled);
+                synchronized (pushSettingsLock) {
+                    CachedPushSettings newer = pushSettingsCache.get(peerId);
+                    if (newer != null && newer.cachedAt > requestStartedAt) {
+                        settings = newer.settings;
+                    } else {
+                        pushSettingsCache.put(peerId,
+                                new CachedPushSettings(settings, System.currentTimeMillis()));
+                    }
+                }
+                notifyPushSettingsChanged(peerId, settings);
+                finishPushSettingsRequest(peerId, settings, null);
+            }
+
+            @Override
+            public void onError(String error) {
+                finishPushSettingsRequest(peerId, null, error);
+            }
+        });
+    }
+
+    private void finishPushSettingsRequest(int peerId, PushSettings settings, String error) {
+        List<PushSettingsCallback> callbacks;
+        synchronized (pushSettingsLock) {
+            callbacks = pendingPushSettings.remove(peerId);
+        }
+        if (callbacks == null) return;
+        for (PushSettingsCallback callback : callbacks) {
+            if (settings != null) callback.onSuccess(settings);
+            else callback.onError(error != null ? error : "Не удалось загрузить настройки уведомлений");
+        }
+    }
+
+    public void setSilenceMode(int peerId, int durationSeconds, SilenceModeCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_id", String.valueOf(peerId));
+        params.put("time", String.valueOf(durationSeconds));
+        params.put("sound", durationSeconds == 0 ? "1" : "0");
+
+        api.callMethod("account.setSilenceMode", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                long disabledUntil = durationSeconds == -1 ? -1L
+                        : durationSeconds == 0 ? 0L
+                        : System.currentTimeMillis() / 1000L + durationSeconds;
+                PushSettings settings = new PushSettings(disabledUntil, durationSeconds == -1,
+                        durationSeconds == 0);
+                pushSettingsCache.put(peerId, new CachedPushSettings(settings, System.currentTimeMillis()));
+                notifyPushSettingsChanged(peerId, settings);
+                if (callback != null) callback.onSuccess();
+            }
+
+            @Override
+            public void onError(String error) {
+                if (callback != null) callback.onError(error);
+            }
+        });
+    }
+
+    public void updatePushSettingsFromLongPoll(int peerId, int sound, long disabledUntil) {
+        if (peerId == 0) return;
+        PushSettings settings = new PushSettings(disabledUntil, disabledUntil == -1, sound != 0);
+        pushSettingsCache.put(peerId, new CachedPushSettings(settings, System.currentTimeMillis()));
+        notifyPushSettingsChanged(peerId, settings);
+    }
+
+    private static boolean readBooleanSetting(Object value, boolean fallback) {
+        if (value instanceof Boolean) return (Boolean) value;
+        if (value instanceof Number) return ((Number) value).intValue() != 0;
+        if (value instanceof String) {
+            String stringValue = ((String) value).trim();
+            if ("0".equals(stringValue) || "false".equalsIgnoreCase(stringValue)) return false;
+            if ("1".equals(stringValue) || "true".equalsIgnoreCase(stringValue)) return true;
+        }
+        return fallback;
     }
     
     public interface UserInfoCallback {

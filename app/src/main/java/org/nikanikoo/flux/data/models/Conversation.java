@@ -10,6 +10,7 @@ public class Conversation {
     private String peerPhoto;
     private boolean isOnline;
     private boolean peerVerified;
+    private Boolean notificationsEnabled;
 
     public Conversation(int id, int peerId, String title, String lastMessage,
                        long lastMessageDate, int unreadCount) {
@@ -31,6 +32,7 @@ public class Conversation {
     public String getPeerPhoto() { return peerPhoto; }
     public boolean isOnline() { return isOnline; }
     public boolean isPeerVerified() { return peerVerified; }
+    public Boolean areNotificationsEnabled() { return notificationsEnabled; }
 
     // Setters
     public void setPeerPhoto(String peerPhoto) { this.peerPhoto = peerPhoto; }
@@ -39,4 +41,7 @@ public class Conversation {
     public void setLastMessage(String lastMessage) { this.lastMessage = lastMessage; }
     public void setLastMessageDate(long lastMessageDate) { this.lastMessageDate = lastMessageDate; }
     public void setPeerVerified(boolean peerVerified) { this.peerVerified = peerVerified; }
+    public void setNotificationsEnabled(boolean notificationsEnabled) {
+        this.notificationsEnabled = notificationsEnabled;
+    }
 }

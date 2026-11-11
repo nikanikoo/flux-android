@@ -47,6 +47,7 @@ public class LongPollManager {
             java.util.Collections.synchronizedList(new ArrayList<>());
     private volatile OnTypingEventListener typingEventListener;
     private volatile OnOnlineEventListener onlineEventListener;
+    private volatile OnNotificationSettingsEventListener notificationSettingsEventListener;
 
     private final Map<Integer, Long> processedEvents = new ConcurrentHashMap<>();
     private static final int MAX_PROCESSED_EVENTS = 1000;
@@ -93,6 +94,10 @@ public class LongPollManager {
         void onUserOnline(int userId, boolean isOnline);
     }
 
+    public interface OnNotificationSettingsEventListener {
+        void onNotificationSettingsChanged(int peerId, int sound, long disabledUntil);
+    }
+
     public void setMessageEventListener(OnMessageEventListener listener) {
         synchronized (messageEventListeners) {
             messageEventListeners.clear();
@@ -128,12 +133,17 @@ public class LongPollManager {
         this.typingEventListener = listener;
     }
 
+    public void setNotificationSettingsEventListener(OnNotificationSettingsEventListener listener) {
+        this.notificationSettingsEventListener = listener;
+    }
+
     public void clearAllListeners() {
         synchronized (messageEventListeners) {
             messageEventListeners.clear();
         }
         typingEventListener = null;
         onlineEventListener = null;
+        notificationSettingsEventListener = null;
     }
 
     public void clearProcessedEventsCache() {
@@ -489,11 +499,28 @@ public class LongPollManager {
                     case 9: // Пользователь оффлайн
                         processUserOnline(update, eventType == 8);
                         break;
+                    case 114: // Изменение настроек уведомлений чата
+                        processNotificationSettings(update);
+                        break;
                 }
                 
             } catch (Exception e) {
                 Logger.e(TAG, "Error processing update " + i, e);
             }
+        }
+    }
+
+    private void processNotificationSettings(JSONArray update) {
+        try {
+            int peerId = update.getInt(1);
+            int sound = update.getInt(2);
+            long disabledUntil = update.getLong(3);
+            OnNotificationSettingsEventListener listener = notificationSettingsEventListener;
+            if (listener != null) {
+                listener.onNotificationSettingsChanged(peerId, sound, disabledUntil);
+            }
+        } catch (Exception e) {
+            Logger.e(TAG, "Error processing notification settings event", e);
         }
     }
     

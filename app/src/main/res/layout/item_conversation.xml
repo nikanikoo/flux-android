@@ -76,6 +76,16 @@
                         android:ellipsize="end" />
 
                     <ImageView
+                        android:id="@+id/notifications_muted_indicator"
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:layout_marginStart="4dp"
+                        android:layout_gravity="center_vertical"
+                        android:src="@drawable/ic_notifications_off"
+                        android:contentDescription="@string/chat_notifications_muted"
+                        android:visibility="gone" />
+
+                    <ImageView
                         android:id="@+id/peer_verified"
                         android:layout_width="16dp"
                         android:layout_height="16dp"

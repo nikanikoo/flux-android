@@ -181,6 +181,14 @@
     <string name="messages_title">Повідомлення</string>
     <string name="messages_loading_error">Помилка завантаження діалогів:\u0020</string>
     <string name="chat_title">Чат</string>
+    <string name="chat_notifications_menu">Сповіщення чату</string>
+    <string name="chat_notifications_enabled">Сповіщення увімкнено</string>
+    <string name="chat_notifications_muted">Сповіщення вимкнено</string>
+    <string name="chat_notifications_enable">Увімкнути сповіщення</string>
+    <string name="chat_notifications_mute_1_hour">Вимкнути на 1 годину</string>
+    <string name="chat_notifications_mute_8_hours">Вимкнути на 8 годин</string>
+    <string name="chat_notifications_mute_forever">Вимкнути назавжди</string>
+    <string name="chat_notifications_update_error">Не вдалося змінити сповіщення: %1$s</string>
     <string name="chat_message_hint">Введіть повідомлення</string>
     <string name="chat_send">Надіслати</string>
     <string name="chat_loading_error">Помилка завантаження повідомлень:\u0020</string>

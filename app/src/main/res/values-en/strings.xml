@@ -713,6 +713,14 @@
     <string name="navigation_drawer_dialog_description">Select sections for the side menu and drag to reorder them. The \"Settings\" section is mandatory.</string>
 
     <string name="chat_group_options">Chat settings</string>
+    <string name="chat_notifications_menu">Chat notifications</string>
+    <string name="chat_notifications_enabled">Notifications are enabled</string>
+    <string name="chat_notifications_muted">Notifications are muted</string>
+    <string name="chat_notifications_enable">Enable notifications</string>
+    <string name="chat_notifications_mute_1_hour">Mute for 1 hour</string>
+    <string name="chat_notifications_mute_8_hours">Mute for 8 hours</string>
+    <string name="chat_notifications_mute_forever">Mute forever</string>
+    <string name="chat_notifications_update_error">Could not change notifications: %1$s</string>
     <string name="chat_members_action">Members</string>
     <string name="chat_add_member_action">Add member</string>
     <string name="chat_rename_action">Rename chat</string>

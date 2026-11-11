@@ -20,6 +20,7 @@ import com.google.android.material.navigation.NavigationView;
 
 import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.data.managers.NotificationsManager;
+import org.nikanikoo.flux.data.managers.MessagesManager;
 import org.nikanikoo.flux.data.managers.ProfileManager;
 import org.nikanikoo.flux.data.managers.api.OpenVKApi;
 import org.nikanikoo.flux.data.models.Post;
@@ -394,6 +395,10 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
         longPollManager.setOnlineEventListener((userId, isOnline) -> {
             updateUserOnlineStatus(userId, isOnline);
         });
+
+        longPollManager.setNotificationSettingsEventListener((peerId, sound, disabledUntil) ->
+                MessagesManager.getInstance(MainActivity.this)
+                        .updatePushSettingsFromLongPoll(peerId, sound, disabledUntil));
 
         LongPollService.start(this);
     }

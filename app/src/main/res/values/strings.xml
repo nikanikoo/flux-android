@@ -798,6 +798,14 @@
     <string name="navigation_drawer_dialog_description">Выберите разделы для бокового меню. Перетаскивайте их, чтобы настроить порядок. Раздел «Настройки» обязателен.</string>
 
     <string name="chat_group_options">Настройки беседы</string>
+    <string name="chat_notifications_menu">Уведомления чата</string>
+    <string name="chat_notifications_enabled">Уведомления включены</string>
+    <string name="chat_notifications_muted">Уведомления выключены</string>
+    <string name="chat_notifications_enable">Включить уведомления</string>
+    <string name="chat_notifications_mute_1_hour">Выключить на 1 час</string>
+    <string name="chat_notifications_mute_8_hours">Выключить на 8 часов</string>
+    <string name="chat_notifications_mute_forever">Выключить навсегда</string>
+    <string name="chat_notifications_update_error">Не удалось изменить уведомления: %1$s</string>
     <string name="chat_members_action">Участники</string>
     <string name="chat_add_member_action">Добавить участника</string>
     <string name="chat_rename_action">Изменить название</string>
