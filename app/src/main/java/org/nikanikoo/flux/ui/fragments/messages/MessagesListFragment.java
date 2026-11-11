@@ -90,44 +90,10 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
         }
         
         if (activePeerId != -1) {
-            final int peerIdToUpdate = activePeerId;
             activePeerId = -1;
-            
-            // Use the conversation's last_message, just like the regular list refresh.
-            // The history endpoint can return a message without the full attachment
-            // payload, which leaves the quick preview stale after returning from chat.
-            messagesManager.getConversations(20, 0, new MessagesManager.ConversationsCallback() {
-                @Override
-                public void onSuccess(List<Conversation> refreshedConversations) {
-                    if (getActivity() != null && isViewCreated && refreshedConversations != null) {
-                        getActivity().runOnUiThread(() -> {
-                            for (Conversation refreshed : refreshedConversations) {
-                                if (refreshed.getPeerId() != peerIdToUpdate) continue;
-
-                                updateConversationPreview(peerIdToUpdate,
-                                        refreshed.getLastMessage(), refreshed.getLastMessageDate());
-                                break;
-                            }
-
-                            for (int i = 0; i < conversations.size(); i++) {
-                                if (conversations.get(i).getPeerId() == peerIdToUpdate) {
-                                    conversations.get(i).setUnreadCount(0);
-                                    if (adapter != null) adapter.notifyItemChanged(i);
-                                    cacheConversations();
-                                    break;
-                                }
-                            }
-                        });
-                    }
-                }
-
-                @Override
-                public void onError(String error) {
-                    if (adapter != null) {
-                        adapter.notifyDataSetChanged();
-                    }
-                }
-            });
+            // Reload the ordered conversation list so a chat that received a new
+            // message while open returns to its correct position as well as preview.
+            refreshConversations();
         } else {
             if (adapter != null) {
                 adapter.notifyDataSetChanged();
@@ -285,20 +251,6 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
             cacheConversations();
         } else {
             refreshConversations();
-        }
-    }
-
-    private void updateConversationPreview(int peerId, String preview, long timestamp) {
-        for (int i = 0; i < conversations.size(); i++) {
-            Conversation conversation = conversations.get(i);
-            if (conversation.getPeerId() != peerId) continue;
-
-            conversation.setLastMessage(preview);
-            conversation.setLastMessageDate(timestamp);
-            conversation.setUnreadCount(0);
-            if (adapter != null) adapter.notifyItemChanged(i);
-            cacheConversations();
-            return;
         }
     }
 
