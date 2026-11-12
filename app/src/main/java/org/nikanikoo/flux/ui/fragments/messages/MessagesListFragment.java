@@ -7,6 +7,7 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import org.nikanikoo.flux.data.models.Conversation;
+import org.nikanikoo.flux.data.models.Message;
 import org.nikanikoo.flux.ui.adapters.messages.ConversationsAdapter;
 import org.nikanikoo.flux.data.managers.MessagesManager;
 import org.nikanikoo.flux.R;
@@ -89,39 +90,10 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
         }
         
         if (activePeerId != -1) {
-            final int peerIdToUpdate = activePeerId;
             activePeerId = -1;
-            
-            messagesManager.getHistory(peerIdToUpdate, 1, 0, new MessagesManager.MessagesCallback() {
-                @Override
-                public void onSuccess(List<org.nikanikoo.flux.data.models.Message> messagesList) {
-                    if (getActivity() != null && isViewCreated && messagesList != null && !messagesList.isEmpty()) {
-                        getActivity().runOnUiThread(() -> {
-                            org.nikanikoo.flux.data.models.Message lastMsg = messagesList.get(0);
-                            
-                            handleNewMessageLocally(peerIdToUpdate, lastMsg.getText(), lastMsg.getDate(), lastMsg.isOut());
-                            
-                            for (int i = 0; i < conversations.size(); i++) {
-                                Conversation c = conversations.get(i);
-                                if (c.getPeerId() == peerIdToUpdate) {
-                                    c.setUnreadCount(0);
-                                    if (adapter != null) {
-                                        adapter.notifyItemChanged(i);
-                                    }
-                                    break;
-                                }
-                            }
-                        });
-                    }
-                }
-
-                @Override
-                public void onError(String error) {
-                    if (adapter != null) {
-                        adapter.notifyDataSetChanged();
-                    }
-                }
-            });
+            // Reload the ordered conversation list so a chat that received a new
+            // message while open returns to its correct position as well as preview.
+            refreshConversations();
         } else {
             if (adapter != null) {
                 adapter.notifyDataSetChanged();
@@ -155,10 +127,33 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
         }
     }
 
-    public void onNewMessageReceived(int peerId, String text, long timestamp, boolean isOut) {
+    public void onNewMessageReceived(int messageId, int peerId, String text, long timestamp, boolean isOut) {
         if (getActivity() != null && isViewCreated) {
-            getActivity().runOnUiThread(() -> {
+            if (messageId <= 0) {
                 handleNewMessageLocally(peerId, text, timestamp, isOut);
+                return;
+            }
+
+            messagesManager.getMessageById(messageId, peerId, new MessagesManager.MessagesCallback() {
+                @Override
+                public void onSuccess(List<Message> messages) {
+                    if (getActivity() == null || !isViewCreated) return;
+                    if (messages == null || messages.isEmpty()) {
+                        handleNewMessageLocally(peerId, text, timestamp, isOut);
+                        return;
+                    }
+
+                    Message message = messages.get(0);
+                    handleNewMessageLocally(peerId, messagesManager.createConversationPreview(message),
+                            message.getDate(), message.isOut());
+                }
+
+                @Override
+                public void onError(String error) {
+                    if (getActivity() != null && isViewCreated) {
+                        handleNewMessageLocally(peerId, text, timestamp, isOut);
+                    }
+                }
             });
         }
     }
@@ -210,6 +205,7 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
         }
         
         if (targetConversation != null) {
+            if (timestamp < targetConversation.getLastMessageDate()) return;
             targetConversation.setLastMessage(text);
             targetConversation.setLastMessageDate(timestamp);
             if (!isOut) {
@@ -224,6 +220,7 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
             int myId = myProfile != null ? myProfile.getId() : 0;
             
             if (peerId == myId) {
+                cacheConversations();
                 if (adapter != null) {
                     adapter.notifyItemChanged(foundIndex);
                 }
@@ -251,9 +248,15 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
                     adapter.notifyItemChanged(insertIndex);
                 }
             }
+            cacheConversations();
         } else {
             refreshConversations();
         }
+    }
+
+    private void cacheConversations() {
+        sCachedConversations = new ArrayList<>(conversations);
+        sIsConversationsLoaded = true;
     }
     
     private void setupToolbarTitle() {

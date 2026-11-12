@@ -20,13 +20,38 @@
         android:foreground="?attr/selectableItemBackgroundBorderless"/>
 
     <LinearLayout
+        android:id="@+id/message_bubble"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:minWidth="200dp"
         android:layout_marginEnd="64dp"
         android:orientation="vertical"
         android:background="@drawable/message_bubble_incoming"
         android:padding="16dp"
         android:elevation="2dp">
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/sender_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="4dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textColor="?attr/colorPrimary"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/reply_preview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="6dp"
+            android:padding="8dp"
+            android:background="@drawable/message_reply_preview_incoming"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="13sp"
+            android:visibility="gone" />
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/message_text"
@@ -37,6 +62,12 @@
             android:lineSpacingExtra="2dp"
             android:textIsSelectable="true"
             android:textSize="16sp"/>
+
+        <LinearLayout
+            android:id="@+id/message_attachments"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/time_text"

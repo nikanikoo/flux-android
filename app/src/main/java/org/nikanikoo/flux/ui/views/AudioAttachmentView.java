@@ -1,7 +1,6 @@
 package org.nikanikoo.flux.ui.views;
 
 import android.content.Context;
-import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ImageView;
@@ -12,7 +11,6 @@ import com.google.android.material.card.MaterialCardView;
 
 import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.data.models.Audio;
-import org.nikanikoo.flux.services.AudioPlayerService;
 import org.nikanikoo.flux.utils.AlbumArtFetcher;
 
 import java.util.List;
@@ -80,23 +78,12 @@ public class AudioAttachmentView {
                 if (listener != null) {
                     listener.onAudioPlay(audio);
                 } else {
-                    // Start player service with playlist
-                    startAudioPlayer(context, audios, position);
+                    AudioPlayerHelper.playOrToggleTrack(context, audios, position);
                 }
             });
 
             container.addView(audioView);
         }
-    }
-
-    /**
-     * Start audio player with playlist
-     */
-    private static void startAudioPlayer(Context context, List<Audio> playlist, int startPosition) {
-        Intent serviceIntent = new Intent(context, AudioPlayerService.class);
-        context.startService(serviceIntent);
-
-        AudioPlayerHelper.setPlaylist(context, playlist, startPosition);
     }
 
     /**

@@ -22,6 +22,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.squareup.picasso.Picasso;
 
 import org.nikanikoo.flux.data.models.Comment;
+import org.nikanikoo.flux.data.models.Sticker;
 import org.nikanikoo.flux.ui.adapters.comments.CommentsAdapter;
 import org.nikanikoo.flux.ui.adapters.posts.PostImagesCollage;
 import org.nikanikoo.flux.data.managers.CommentsManager;
@@ -32,6 +33,7 @@ import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.ui.activities.MainActivity;
 import org.nikanikoo.flux.ui.activities.PhotoViewerActivity;
 import org.nikanikoo.flux.ui.dialogs.RepostDialog;
+import org.nikanikoo.flux.ui.dialogs.StickerPickerDialog;
 import org.nikanikoo.flux.ui.fragments.profile.ProfileFragment;
 import org.nikanikoo.flux.ui.fragments.profile.GroupProfileFragment;
 import org.nikanikoo.flux.utils.MentionUtils;
@@ -79,6 +81,7 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
     // Views для ввода комментария
     private EditText editComment;
     private ImageView btnAttachImage;
+    private ImageView btnAttachSticker;
     private ImageView btnSendComment;
     private Uri selectedImageUri;
     
@@ -161,6 +164,7 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
         // Ввод комментария
         editComment = view.findViewById(R.id.edit_comment);
         btnAttachImage = view.findViewById(R.id.btn_attach_image);
+        btnAttachSticker = view.findViewById(R.id.btn_attach_sticker);
         btnSendComment = view.findViewById(R.id.btn_send_comment);
         editCommentHeader = view.findViewById(R.id.edit_comment_header);
         headerIcon = view.findViewById(R.id.header_icon);
@@ -482,6 +486,13 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
             intent.setAction(Intent.ACTION_GET_CONTENT);
             startActivityForResult(Intent.createChooser(intent, getString(R.string.choose_image)), PICK_IMAGE_REQUEST);
         });
+
+        btnAttachSticker.setOnClickListener(v -> {
+            if (editingComment != null) return;
+            StickerPickerDialog.show(requireContext(), sticker -> {
+                if (sticker != null) sendComment("", sticker);
+            });
+        });
         
         btnSendComment.setOnClickListener(v -> {
             String commentText = editComment.getText().toString().trim();
@@ -493,7 +504,7 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
             if (editingComment != null) {
                 updateComment(editingComment, commentText);
             } else {
-                sendComment(commentText);
+                sendComment(commentText, null);
             }
         });
         
@@ -629,26 +640,35 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
     }
 
     private void sendComment(String commentText) {
-        final boolean hasAttachment = selectedImageUri != null;
+        sendComment(commentText, null);
+    }
+
+    private void sendComment(String commentText, Sticker sticker) {
+        final boolean hasImageAttachment = selectedImageUri != null;
         final String finalMessage = (replyPrefix != null ? replyPrefix : "") + commentText;
         
         // Используем единый метод для создания комментария (с изображением или без)
         commentsManager.createComment(originalPost.getOwnerId(), originalPost.getPostId(),
-                finalMessage, selectedImageUri, new CommentsManager.CreateCommentCallback() {
+                finalMessage, selectedImageUri,
+                sticker != null ? sticker.getId() : 0,
+                sticker != null ? sticker.getImageUrl() : null,
+                new CommentsManager.CreateCommentCallback() {
             @Override
             public void onSuccess(Comment comment) {
                 if (getActivity() != null) {
                     getActivity().runOnUiThread(() -> {
-                        editComment.setText("");
-                        selectedImageUri = null;
-                        updateImageAttachmentIndicator();
-                        editCommentHeader.setVisibility(View.GONE);
+                        if (sticker == null) {
+                            editComment.setText("");
+                            selectedImageUri = null;
+                            updateImageAttachmentIndicator();
+                            editCommentHeader.setVisibility(View.GONE);
+                        }
                         
                         // Обновляем счетчик комментариев
                         originalPost.setCommentCount(originalPost.getCommentCount() + 1);
                         originalPostCommentCount.setText(String.valueOf(originalPost.getCommentCount()));
                         
-                        if (hasAttachment) {
+                        if (hasImageAttachment) {
                             // Если было изображение, перезагружаем всё, чтобы получить URL картинки
                             loadComments();
                         } else {

@@ -20,6 +20,7 @@ import com.google.android.material.navigation.NavigationView;
 
 import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.data.managers.NotificationsManager;
+import org.nikanikoo.flux.data.managers.MessagesManager;
 import org.nikanikoo.flux.data.managers.ProfileManager;
 import org.nikanikoo.flux.data.managers.api.OpenVKApi;
 import org.nikanikoo.flux.data.models.Post;
@@ -372,14 +373,15 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
                     MessageNotificationManager.getInstance(MainActivity.this)
                             .showMessageNotification(messageId, fromId, peerId, text, timestamp);
                 }
-                updateMessagesListIfVisible(peerId, text, timestamp, isOut);
+                updateMessagesListIfVisible(messageId, peerId, text, timestamp, isOut);
                 onNotificationBadgeUpdate();
             }
 
             @Override
-            public void onMessageRead(int peerId, int localId) {
-                updateChatIfVisible(peerId);
-                updateMessagesListOnRead(peerId);
+            public void onMessageRead(int peerId, int localId, boolean outgoingMessagesRead) {
+                if (!outgoingMessagesRead) {
+                    updateMessagesListOnRead(peerId);
+                }
                 onNotificationBadgeUpdate();
             }
 
@@ -393,6 +395,10 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
         longPollManager.setOnlineEventListener((userId, isOnline) -> {
             updateUserOnlineStatus(userId, isOnline);
         });
+
+        longPollManager.setNotificationSettingsEventListener((peerId, sound, disabledUntil) ->
+                MessagesManager.getInstance(MainActivity.this)
+                        .updatePushSettingsFromLongPoll(peerId, sound, disabledUntil));
 
         LongPollService.start(this);
     }
@@ -942,11 +948,11 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
     
     // ==================== Helper Methods ====================
     
-    private void updateMessagesListIfVisible(int peerId, String text, long timestamp, boolean isOut) {
+    private void updateMessagesListIfVisible(int messageId, int peerId, String text, long timestamp, boolean isOut) {
         androidx.fragment.app.Fragment currentFragment = 
                 getSupportFragmentManager().findFragmentById(R.id.fragment_container);
         if (currentFragment instanceof MessagesListFragment) {
-            ((MessagesListFragment) currentFragment).onNewMessageReceived(peerId, text, timestamp, isOut);
+            ((MessagesListFragment) currentFragment).onNewMessageReceived(messageId, peerId, text, timestamp, isOut);
         }
     }
 

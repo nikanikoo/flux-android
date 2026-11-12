@@ -18,6 +18,7 @@ public class Video implements Serializable {
     private int comments;
     private String player;
     private String platform;
+    private String accessKey;
     private boolean canEdit;
     private boolean canAdd;
     private boolean isPrivate;
@@ -48,6 +49,7 @@ public class Video implements Serializable {
     public int getComments() { return comments; }
     public String getPlayer() { return player; }
     public String getPlatform() { return platform; }
+    public String getAccessKey() { return accessKey; }
     public boolean isCanEdit() { return canEdit; }
     public boolean isCanAdd() { return canAdd; }
     public boolean isPrivate() { return isPrivate; }
@@ -76,6 +78,7 @@ public class Video implements Serializable {
     public void setComments(int comments) { this.comments = comments; }
     public void setPlayer(String player) { this.player = player; }
     public void setPlatform(String platform) { this.platform = platform; }
+    public void setAccessKey(String accessKey) { this.accessKey = accessKey; }
     public void setCanEdit(boolean canEdit) { this.canEdit = canEdit; }
     public void setCanAdd(boolean canAdd) { this.canAdd = canAdd; }
     public void setPrivate(boolean isPrivate) { this.isPrivate = isPrivate; }

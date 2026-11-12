@@ -12,6 +12,8 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.appcompat.app.AppCompatActivity;
+
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 
 import org.nikanikoo.flux.R;
@@ -21,14 +23,14 @@ import org.nikanikoo.flux.utils.AlbumArtFetcher;
 import org.nikanikoo.flux.utils.Logger;
 
 /**
- * Controller для управления Mini Player в MainActivity.
+ * Controller для управления Mini Player в основных экранах приложения.
  * Инкапсулирует логику работы с AudioPlayerService и обновления UI плеера.
  */
 public class MiniPlayerController {
     
     private static final String TAG = "MiniPlayerController";
     
-    private final MainActivity activity;
+    private final AppCompatActivity activity;
     
     // Views
     private LinearLayout miniPlayerContainer;
@@ -45,6 +47,7 @@ public class MiniPlayerController {
     // Service
     private AudioPlayerService playerService;
     private boolean playerServiceBound = false;
+    private boolean serviceBoundToSystem = false;
     
     // Callback для уведомления Activity об изменениях
     private OnPlayerStateChangeListener stateChangeListener;
@@ -116,7 +119,7 @@ public class MiniPlayerController {
         }
     };
     
-    public MiniPlayerController(MainActivity activity) {
+    public MiniPlayerController(AppCompatActivity activity) {
         this.activity = activity;
         this.albumArtFetcher = new AlbumArtFetcher(activity);
     }
@@ -163,8 +166,9 @@ public class MiniPlayerController {
      * Привязка к AudioPlayerService
      */
     public void bindService() {
+        if (serviceBoundToSystem) return;
         Intent intent = new Intent(activity, AudioPlayerService.class);
-        activity.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
+        serviceBoundToSystem = activity.bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE);
     }
     
     /**
@@ -174,9 +178,11 @@ public class MiniPlayerController {
         if (playerServiceBound && playerService != null) {
             playerService.unregisterCallback(playerCallback);
         }
-        if (playerServiceBound) {
+        if (serviceBoundToSystem) {
             activity.unbindService(serviceConnection);
+            serviceBoundToSystem = false;
             playerServiceBound = false;
+            playerService = null;
         }
     }
     

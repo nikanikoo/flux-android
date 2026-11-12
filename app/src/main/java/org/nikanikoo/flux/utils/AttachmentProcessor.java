@@ -147,7 +147,7 @@ public class AttachmentProcessor {
         return new AttachmentResult(imageUrls, imageMaxResUrls, audioAttachments, videoAttachments, pollAttachments, unsupportedElements.toString());
     }
 
-    private static Audio parseAudio(JSONObject json) {
+    public static Audio parseAudio(JSONObject json) {
         try {
             Audio audio = new Audio();
             audio.setUniqueId(json.optString("unique_id", ""));

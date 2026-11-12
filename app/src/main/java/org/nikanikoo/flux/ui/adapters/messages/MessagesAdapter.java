@@ -2,21 +2,35 @@ package org.nikanikoo.flux.ui.adapters.messages;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
+import android.graphics.drawable.GradientDrawable;
 import android.graphics.Color;
 import android.text.util.Linkify;
+import android.text.Layout;
+import android.text.Selection;
+import android.text.Spannable;
+import android.text.style.ClickableSpan;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewConfiguration;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.LinearLayout;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.squareup.picasso.Picasso;
 
 import org.nikanikoo.flux.FluxApplication;
 import org.nikanikoo.flux.data.models.Message;
+import org.nikanikoo.flux.data.models.MessageAttachment;
+import org.nikanikoo.flux.data.models.MessageReference;
+import org.nikanikoo.flux.data.managers.api.OpenVKApi;
 import org.nikanikoo.flux.R;
+import org.nikanikoo.flux.ui.views.AudioAttachmentView;
 import org.nikanikoo.flux.utils.MentionUtils;
 import org.nikanikoo.flux.utils.SafeLinkMovementMethod;
 import org.nikanikoo.flux.utils.ValidationUtils;
@@ -24,6 +38,7 @@ import org.nikanikoo.flux.utils.ValidationUtils;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -33,13 +48,20 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     private static final int TYPE_INCOMING = 0;
     private static final int TYPE_OUTGOING = 1;
     private static final int TYPE_DATE_HEADER = 2;
+    private static final int TYPE_CHAT_EVENT = 3;
 
     private List<Object> items;
     private Context context;
     private OnMessageClickListener listener;
+    private TextView selectedMessageText;
+    private boolean groupChat;
 
     public interface OnMessageClickListener {
         void onAvatarClick(int userId, String userName);
+        void onReplyClick(int messageId);
+        void onMessageOptions(View anchor, Message message);
+        void onReplySwipe(Message message);
+        void onWallPostClick(MessageAttachment attachment);
     }
 
     public MessagesAdapter(Context context, List<Message> messages) {
@@ -54,11 +76,21 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         this.listener = listener;
     }
 
+    public void setGroupChat(boolean groupChat) {
+        this.groupChat = groupChat;
+    }
+
+    public void clearSelectedMessageText() {
+        clearTrackedSelection();
+    }
+
     @Override
     public int getItemViewType(int position) {
         Object item = items.get(position);
         if (item instanceof Message) {
-            return ((Message) item).isOut() ? TYPE_OUTGOING : TYPE_INCOMING;
+            Message message = (Message) item;
+            if (message.isChatSystemEvent()) return TYPE_CHAT_EVENT;
+            return message.isOut() ? TYPE_OUTGOING : TYPE_INCOMING;
         } else if (item instanceof DateHeader) {
             return TYPE_DATE_HEADER;
         }
@@ -74,6 +106,9 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         } else if (viewType == TYPE_INCOMING) {
             View view = LayoutInflater.from(context).inflate(R.layout.item_message_incoming, parent, false);
             return new IncomingMessageViewHolder(view);
+        } else if (viewType == TYPE_CHAT_EVENT) {
+            View view = LayoutInflater.from(context).inflate(R.layout.item_chat_event, parent, false);
+            return new ChatEventViewHolder(view);
         } else {
             View view = LayoutInflater.from(context).inflate(R.layout.item_date_header, parent, false);
             return new DateHeaderViewHolder(view);
@@ -88,6 +123,8 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             bindOutgoingMessage((OutgoingMessageViewHolder) holder, (Message) item);
         } else if (holder instanceof IncomingMessageViewHolder) {
             bindIncomingMessage((IncomingMessageViewHolder) holder, (Message) item);
+        } else if (holder instanceof ChatEventViewHolder) {
+            bindChatEvent((ChatEventViewHolder) holder, (Message) item);
         } else if (holder instanceof DateHeaderViewHolder) {
             bindDateHeader((DateHeaderViewHolder) holder, (DateHeader) item);
         }
@@ -105,6 +142,10 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         
         // Устанавливаем цвет ссылок таким же, как у обычного текста
         holder.messageText.setLinkTextColor(holder.messageText.getCurrentTextColor());
+        bindSenderName(holder.senderName, message);
+        bindMessageOptions(holder.bubble, holder.messageText, message);
+        bindReferences(holder.replyPreview, message);
+        bindAttachments(holder.attachments, message.getAttachments(), holder.messageText.getCurrentTextColor());
         
         // Форматирование времени
         Date date = new Date(message.getDate() * 1000);
@@ -131,6 +172,10 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         
         // Устанавливаем цвет ссылок таким же, как у обычного текста
         holder.messageText.setLinkTextColor(holder.messageText.getCurrentTextColor());
+        bindSenderName(holder.senderName, message);
+        bindMessageOptions(holder.bubble, holder.messageText, message);
+        bindReferences(holder.replyPreview, message);
+        bindAttachments(holder.attachments, message.getAttachments(), holder.messageText.getCurrentTextColor());
         
         // Форматирование времени
         Date date = new Date(message.getDate() * 1000);
@@ -156,13 +201,445 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         });
     }
 
+    // Обработчик клика на опции сообщения
+    private void bindSenderName(TextView senderNameView, Message message) {
+        if (!groupChat) {
+            senderNameView.setVisibility(View.GONE);
+            return;
+        }
+
+        String senderName = message.getUserName();
+        if (senderName == null || senderName.trim().isEmpty()) {
+            senderName = context.getString(message.isOut() ? R.string.you : R.string.chat_unknown_user);
+        }
+        senderNameView.setText(senderName);
+        senderNameView.setVisibility(View.VISIBLE);
+    }
+
+    private void bindMessageOptions(View bubble, TextView messageText, Message message) {
+        bubble.setTag(message);
+        View.OnClickListener openOptions = v -> {
+            clearTrackedSelection();
+            clearTextSelection(messageText);
+            if (listener != null) {
+                listener.onMessageOptions(bubble, message);
+            }
+        };
+        bubble.setOnClickListener(openOptions);
+        messageText.setOnClickListener(openOptions);
+        messageText.setOnTouchListener(new View.OnTouchListener() {
+            private float downX;
+            private float downY;
+            private long downTime;
+
+            @Override
+            public boolean onTouch(View view, MotionEvent event) {
+                // Track selection as it changes, rather than waiting until ACTION_UP.
+                // RecyclerView's touch listener may clear it as soon as the next tap starts.
+                if ((event.getActionMasked() == MotionEvent.ACTION_MOVE
+                        || event.getActionMasked() == MotionEvent.ACTION_UP)
+                        && hasTextSelection(messageText)) {
+                    selectedMessageText = messageText;
+                }
+
+                if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                    downX = event.getX();
+                    downY = event.getY();
+                    downTime = event.getEventTime();
+                    return false;
+                }
+
+                if (event.getActionMasked() == MotionEvent.ACTION_UP) {
+                    float dx = event.getX() - downX;
+                    float dy = event.getY() - downY;
+                    int touchSlop = ViewConfiguration.get(view.getContext()).getScaledTouchSlop();
+                    boolean shortTap = event.getEventTime() - downTime
+                            < ViewConfiguration.getLongPressTimeout()
+                            && dx * dx + dy * dy < touchSlop * touchSlop;
+
+                    if (shortTap) {
+                        boolean hadSelection = hasTextSelection(messageText);
+                        if (!hadSelection && hasClickableSpanAt(messageText, event.getX(), event.getY())) {
+                            return false;
+                        }
+                        clearTrackedSelection();
+                        clearTextSelection(messageText);
+                        view.setPressed(false);
+                        view.cancelLongPress();
+                        view.performClick();
+                        return true;
+                    }
+
+                    // Let the TextView finish its long-press selection before remembering it.
+                    messageText.post(() -> {
+                        if (hasTextSelection(messageText)) selectedMessageText = messageText;
+                    });
+                }
+                return false;
+            }
+        });
+    }
+
+    private boolean hasClickableSpanAt(TextView textView, float touchX, float touchY) {
+        if (!(textView.getText() instanceof Spannable)) return false;
+        Layout layout = textView.getLayout();
+        if (layout == null) return false;
+
+        int x = (int) (touchX - textView.getTotalPaddingLeft() + textView.getScrollX());
+        int y = (int) (touchY - textView.getTotalPaddingTop() + textView.getScrollY());
+        if (x < 0 || y < 0 || y > layout.getHeight()) return false;
+        int line = layout.getLineForVertical(y);
+        int offset = layout.getOffsetForHorizontal(line, x);
+        ClickableSpan[] spans = ((Spannable) textView.getText())
+                .getSpans(offset, offset, ClickableSpan.class);
+        return spans.length > 0;
+    }
+
+    private boolean hasTextSelection(TextView textView) {
+        if (!(textView.getText() instanceof Spannable)) return false;
+        Spannable text = (Spannable) textView.getText();
+        int start = Selection.getSelectionStart(text);
+        int end = Selection.getSelectionEnd(text);
+        return start >= 0 && end >= 0 && start != end;
+    }
+
+    private void clearTextSelection(TextView textView) {
+        if (textView != null && textView.getText() instanceof Spannable) {
+            Selection.removeSelection((Spannable) textView.getText());
+            textView.clearFocus();
+            textView.invalidate();
+        }
+        if (selectedMessageText == textView) selectedMessageText = null;
+    }
+
+    private void clearTrackedSelection() {
+        if (selectedMessageText != null) clearTextSelection(selectedMessageText);
+    }
+
+    private void bindAttachments(LinearLayout container, List<MessageAttachment> attachments, int messageTextColor) {
+        container.removeAllViews();
+        if (attachments == null) return;
+        for (MessageAttachment attachment : attachments) {
+            if ("wall".equals(attachment.getType())) {
+                addWallCard(container, attachment);
+            } else if ("doc".equals(attachment.getType())) {
+                addDocumentCard(container, attachment);
+            } else if ("audio".equals(attachment.getType()) && attachment.getAudio() != null) {
+                LinearLayout audioContainer = new LinearLayout(context);
+                audioContainer.setOrientation(LinearLayout.VERTICAL);
+                LinearLayout.LayoutParams audioParams = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                audioParams.topMargin = dp(8);
+                container.addView(audioContainer, audioParams);
+                AudioAttachmentView.addAudioAttachments(context, audioContainer,
+                        Collections.singletonList(attachment.getAudio()), null);
+            } else if ("gift".equals(attachment.getType())) {
+                addGiftPreview(container, attachment, messageTextColor);
+            } else if ("sticker".equals(attachment.getType())) {
+                addStickerImage(container, attachment.getImageUrl());
+            } else if (attachment.getImageUrl() != null && !attachment.getImageUrl().isEmpty()) {
+                ImageView image = new ImageView(context);
+                LinearLayout.LayoutParams imageParams = new LinearLayout.LayoutParams(dp(220), dp(160));
+                imageParams.topMargin = dp(8);
+                image.setLayoutParams(imageParams);
+                image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                image.setContentDescription(attachment.getTitle());
+                Picasso.get().load(attachment.getImageUrl())
+                        .placeholder(android.R.drawable.ic_menu_gallery)
+                        .error(android.R.drawable.ic_menu_gallery)
+                        .fit().centerInside().into(image);
+                image.setOnClickListener(v -> {
+                    if ("photo".equals(attachment.getType())) {
+                        org.nikanikoo.flux.ui.activities.PhotoViewerActivity.start(
+                                context, java.util.Collections.singletonList(attachment.getImageUrl()), 0, "");
+                    } else if ("video".equals(attachment.getType()) && attachment.getVideo() != null
+                            && attachment.getVideo().getPlayer() != null
+                            && !attachment.getVideo().getPlayer().isEmpty()) {
+                        org.nikanikoo.flux.ui.activities.VideoPlayerActivity.start(context, attachment.getVideo());
+                    }
+                });
+                container.addView(image);
+            } else {
+                TextView label = new TextView(context);
+                String text = attachment.getTitle();
+                if (attachment.getSubtitle() != null && !attachment.getSubtitle().isEmpty()) {
+                    text += "\n" + attachment.getSubtitle();
+                }
+                label.setText(text);
+                label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+                label.setPadding(dp(10), dp(8), dp(10), dp(8));
+                LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                labelParams.topMargin = dp(8);
+                label.setLayoutParams(labelParams);
+                label.setBackgroundResource(android.R.drawable.dialog_holo_light_frame);
+                container.addView(label);
+            }
+        }
+    }
+
+    /**
+     * Добавление подарка в сообщение
+     * @param container контейнер сообщения
+     * @param attachment подарок
+     */
+    private void addGiftPreview(LinearLayout container, MessageAttachment attachment, int messageTextColor) {
+        LinearLayout giftContent = new LinearLayout(context);
+        giftContent.setOrientation(LinearLayout.VERTICAL);
+        giftContent.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
+
+        if (attachment.getImageUrl() != null && !attachment.getImageUrl().isEmpty()) {
+            ImageView image = new ImageView(context);
+            image.setLayoutParams(new LinearLayout.LayoutParams(dp(144), dp(144)));
+            image.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            image.setContentDescription(context.getString(R.string.message_gift_image));
+            Picasso.get().load(attachment.getImageUrl())
+                    .placeholder(android.R.drawable.ic_menu_gallery)
+                    .error(android.R.drawable.ic_menu_gallery)
+                    .fit().centerInside().into(image);
+            giftContent.addView(image);
+        }
+
+        if (attachment.getTitle() != null && !attachment.getTitle().trim().isEmpty()) {
+            TextView comment = new TextView(context);
+            comment.setText(ValidationUtils.SanitizeText(attachment.getTitle().trim()));
+            comment.setTextColor(messageTextColor);
+            comment.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+            comment.setGravity(android.view.Gravity.CENTER);
+            LinearLayout.LayoutParams commentParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            commentParams.topMargin = dp(4);
+            giftContent.addView(comment, commentParams);
+        }
+
+        LinearLayout.LayoutParams contentParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        contentParams.topMargin = dp(6);
+        container.addView(giftContent, contentParams);
+    }
+
+    /**
+     * добавление стикера в сообщение
+     * @param container контейнер сообщения
+     * @param imageUrl ссылка на стикер
+     */
+    private void addStickerImage(LinearLayout container, String imageUrl) {
+        if (imageUrl == null || imageUrl.isEmpty()) return;
+
+        ImageView image = new ImageView(context);
+        image.setLayoutParams(new LinearLayout.LayoutParams(dp(128), dp(128)));
+        image.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        image.setContentDescription(context.getString(R.string.message_sticker_image));
+        Picasso.get().load(imageUrl)
+                .placeholder(R.drawable.ic_image_placeholder)
+                .error(R.drawable.ic_image_error)
+                .fit().centerInside().into(image);
+        LinearLayout.LayoutParams imageParams = (LinearLayout.LayoutParams) image.getLayoutParams();
+        imageParams.topMargin = dp(6);
+        container.addView(image, imageParams);
+    }
+
+    private void addDocumentCard(LinearLayout container, MessageAttachment attachment) {
+        LinearLayout card = new LinearLayout(context);
+        card.setOrientation(LinearLayout.VERTICAL);
+        int padding = dp(10);
+        card.setPadding(padding, padding, padding, padding);
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(0x1F000000);
+        background.setCornerRadius(dp(10));
+        card.setBackground(background);
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        cardParams.topMargin = dp(8);
+        card.setLayoutParams(cardParams);
+
+        TextView name = new TextView(context);
+        name.setText(attachment.getTitle().isEmpty() ? "Документ" : attachment.getTitle());
+        name.setTypeface(null, android.graphics.Typeface.BOLD);
+        name.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        card.addView(name);
+
+        if (attachment.getImageUrl() != null && !attachment.getImageUrl().isEmpty()) {
+            ImageView preview = new ImageView(context);
+            preview.setLayoutParams(new LinearLayout.LayoutParams(dp(220), dp(130)));
+            preview.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            Picasso.get().load(attachment.getImageUrl()).fit().centerCrop()
+                    .placeholder(android.R.drawable.ic_menu_gallery)
+                    .error(android.R.drawable.ic_menu_gallery).into(preview);
+            LinearLayout.LayoutParams previewParams = (LinearLayout.LayoutParams) preview.getLayoutParams();
+            previewParams.topMargin = dp(6);
+            card.addView(preview, previewParams);
+        }
+
+        TextView details = new TextView(context);
+        details.setText(attachment.getSubtitle().isEmpty() ? "Открыть документ" : attachment.getSubtitle().toUpperCase(Locale.getDefault()) + " · Открыть документ");
+        details.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        LinearLayout.LayoutParams detailsParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        detailsParams.topMargin = dp(4);
+        card.addView(details, detailsParams);
+        card.setOnClickListener(v -> {
+            if (attachment.isGifDocument()) {
+                org.nikanikoo.flux.ui.activities.PhotoViewerActivity.startGif(
+                        context, attachment.getUrl(), attachment.getTitle(),
+                        attachment.getOwnerId(), attachment.getId(), attachment.getAccessKey());
+            } else {
+                openUrl(attachment.getUrl());
+            }
+        });
+        container.addView(card);
+    }
+
+    private void bindReferences(TextView view, Message message) {
+        StringBuilder text = new StringBuilder();
+        MessageReference reply = message.getReply();
+        if (reply != null) {
+            appendReference(text, "Ответ", reply);
+        }
+        for (MessageReference forwarded : message.getForwardedMessages()) {
+            appendReference(text, "Переслано", forwarded);
+        }
+        if (text.length() == 0) {
+            view.setVisibility(View.GONE);
+            view.setOnClickListener(null);
+        } else {
+            view.setText(text.toString().trim());
+            view.setVisibility(View.VISIBLE);
+            if (reply != null && reply.getId() > 0) {
+                view.setOnClickListener(v -> {
+                    if (listener != null) listener.onReplyClick(reply.getId());
+                });
+            } else {
+                view.setOnClickListener(null);
+            }
+        }
+    }
+
+    private void appendReference(StringBuilder text, String kind, MessageReference reference) {
+        text.append(kind);
+        if (reference.getSender() != null && !reference.getSender().isEmpty()) {
+            text.append(" · ").append(reference.getSender());
+        }
+        text.append('\n');
+        String snippet = reference.getText();
+        text.append(snippet == null || snippet.isEmpty() ? "Сообщение" : snippet).append('\n');
+    }
+
+    /**
+     * Добавление карточки с постом в сообщение
+     * @param container контейнер вложений в сообщении
+     * @param attachment пост
+     */
+    private void addWallCard(LinearLayout container, MessageAttachment attachment) {
+        LinearLayout card = new LinearLayout(context);
+        card.setOrientation(LinearLayout.VERTICAL);
+        int padding = dp(10);
+        card.setPadding(padding, padding, padding, padding);
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(0x1F000000);
+        background.setCornerRadius(dp(10));
+        card.setBackground(background);
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        cardParams.topMargin = dp(8);
+        card.setLayoutParams(cardParams);
+
+        TextView author = new TextView(context);
+        author.setText(attachment.getTitle().isEmpty() ? "Запись" : attachment.getTitle());
+        author.setTypeface(null, android.graphics.Typeface.BOLD);
+        author.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        card.addView(author);
+
+        if (attachment.getSubtitle() != null && !attachment.getSubtitle().isEmpty()) {
+            TextView body = new TextView(context);
+            body.setText(attachment.getSubtitle());
+            body.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+            body.setMaxLines(5);
+            body.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            LinearLayout.LayoutParams bodyParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            bodyParams.topMargin = dp(4);
+            card.addView(body, bodyParams);
+        }
+
+        if (attachment.getImageUrl() != null && !attachment.getImageUrl().isEmpty()) {
+            ImageView preview = new ImageView(context);
+            preview.setLayoutParams(new LinearLayout.LayoutParams(dp(220), dp(130)));
+            preview.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            Picasso.get().load(attachment.getImageUrl()).fit().centerCrop()
+                    .placeholder(android.R.drawable.ic_menu_gallery)
+                    .error(android.R.drawable.ic_menu_gallery).into(preview);
+            LinearLayout.LayoutParams previewParams = (LinearLayout.LayoutParams) preview.getLayoutParams();
+            previewParams.topMargin = dp(6);
+            card.addView(preview, previewParams);
+        }
+        card.setOnClickListener(v -> {
+            if (listener != null) listener.onWallPostClick(attachment);
+        });
+        container.addView(card);
+    }
+
+    private void openUrl(String pathOrUrl) {
+        if (pathOrUrl == null || pathOrUrl.isEmpty()) return;
+        String url = pathOrUrl;
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+            String baseUrl = OpenVKApi.getInstance(context).getBaseUrl();
+            url = baseUrl + (url.startsWith("/") ? url : "/" + url);
+        }
+        try {
+            context.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+        } catch (Exception ignored) {
+        }
+    }
+
+    private int dp(int value) {
+        return (int) (value * context.getResources().getDisplayMetrics().density + 0.5f);
+    }
+
+    /**
+     * Показывает заголовок даты
+     * @param holder держатель представления заголовка
+     * @param dateHeader заголовок даты
+     */
     private void bindDateHeader(DateHeaderViewHolder holder, DateHeader dateHeader) {
         holder.dateText.setText(dateHeader.getText());
+    }
+
+    /**
+     * Показывает событие беседы отдельной строкой с именем инициатора и текстом действия.
+     * @param holder держатель представления события
+     * @param message сообщение с данными системного события
+     */
+    private void bindChatEvent(ChatEventViewHolder holder, Message message) {
+        String eventText = message.getText() != null ? message.getText().trim() : "";
+        String actorName = message.getUserName();
+        boolean coinsTransfer = "coins_transfer".equals(message.getActionType());
+        if (coinsTransfer && message.isOut()) {
+            int amount = message.getActionMid();
+            String voteWord = context.getResources().getQuantityString(R.plurals.vote_count, amount);
+            eventText = context.getString(R.string.coins_transfer_outgoing, amount, voteWord);
+        } else if (!coinsTransfer && actorName != null && !actorName.trim().isEmpty()) {
+            eventText = actorName.trim() + (eventText.isEmpty() ? "" : " " + eventText);
+        }
+        if (eventText.isEmpty()) eventText = context.getString(R.string.chat_event_generic);
+        if (coinsTransfer) {
+            String sentMessage = message.getActionText();
+            if (sentMessage != null && !sentMessage.trim().isEmpty()) {
+                eventText += "\n«" + sentMessage.trim() + "»";
+            }
+        }
+        holder.eventText.setText(ValidationUtils.SanitizeText(eventText));
     }
 
     @Override
     public int getItemCount() {
         return items.size();
+    }
+
+    public Message getMessageAtPosition(int position) {
+        if (position < 0 || position >= items.size()) return null;
+        Object item = items.get(position);
+        return item instanceof Message ? (Message) item : null;
     }
 
     public void setMessages(List<Message> newMessages) {
@@ -312,13 +789,21 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     }
 
     static class OutgoingMessageViewHolder extends RecyclerView.ViewHolder {
+        LinearLayout bubble;
+        TextView senderName;
         TextView messageText;
+        TextView replyPreview;
+        LinearLayout attachments;
         TextView timeText;
         ImageView readStatus;
 
         OutgoingMessageViewHolder(@NonNull View itemView) {
             super(itemView);
+            bubble = itemView.findViewById(R.id.message_bubble);
+            senderName = itemView.findViewById(R.id.sender_name);
             messageText = itemView.findViewById(R.id.message_text);
+            replyPreview = itemView.findViewById(R.id.reply_preview);
+            attachments = itemView.findViewById(R.id.message_attachments);
             timeText = itemView.findViewById(R.id.time_text);
             readStatus = itemView.findViewById(R.id.read_status);
         }
@@ -326,13 +811,21 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
     static class IncomingMessageViewHolder extends RecyclerView.ViewHolder {
         ImageView avatarImage;
+        LinearLayout bubble;
+        TextView senderName;
         TextView messageText;
+        TextView replyPreview;
+        LinearLayout attachments;
         TextView timeText;
 
         IncomingMessageViewHolder(@NonNull View itemView) {
             super(itemView);
             avatarImage = itemView.findViewById(R.id.avatar_image);
+            bubble = itemView.findViewById(R.id.message_bubble);
+            senderName = itemView.findViewById(R.id.sender_name);
             messageText = itemView.findViewById(R.id.message_text);
+            replyPreview = itemView.findViewById(R.id.reply_preview);
+            attachments = itemView.findViewById(R.id.message_attachments);
             timeText = itemView.findViewById(R.id.time_text);
         }
     }
@@ -343,6 +836,15 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         DateHeaderViewHolder(@NonNull View itemView) {
             super(itemView);
             dateText = itemView.findViewById(R.id.date_text);
+        }
+    }
+
+    static class ChatEventViewHolder extends RecyclerView.ViewHolder {
+        TextView eventText;
+
+        ChatEventViewHolder(@NonNull View itemView) {
+            super(itemView);
+            eventText = itemView.findViewById(R.id.chat_event_text);
         }
     }
 
@@ -382,6 +884,34 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         if (position >= 0) {
             notifyItemChanged(position);
         }
+    }
+
+    public int findMessagePosition(int messageId) {
+        for (int position = 0; position < items.size(); position++) {
+            Object item = items.get(position);
+            if (item instanceof Message && ((Message) item).getId() == messageId) {
+                return position;
+            }
+        }
+        return RecyclerView.NO_POSITION;
+    }
+
+    public int markOutgoingMessagesReadThrough(int conversationMessageId) {
+        if (conversationMessageId <= 0) return 0;
+        int updated = 0;
+        for (int position = 0; position < items.size(); position++) {
+            Object item = items.get(position);
+            if (item instanceof Message) {
+                Message message = (Message) item;
+                int localId = message.getConversationMessageId();
+                if (message.isOut() && localId > 0 && localId <= conversationMessageId && !message.isReadState()) {
+                    message.setReadState(true);
+                    notifyItemChanged(position);
+                    updated++;
+                }
+            }
+        }
+        return updated;
     }
 
     @Override
