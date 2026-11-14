@@ -83,6 +83,14 @@ public class ChatActivity extends AppCompatActivity {
 
         setupToolbar(peerName);
 
+        getSupportFragmentManager().addOnBackStackChangedListener(() -> {
+            if (isChatScreenVisible()) {
+                toolbarTitle = peerName != null ? peerName : getString(R.string.chat_title);
+                updateToolbarTitle();
+            }
+            invalidateOptionsMenu();
+        });
+
         if (savedInstanceState == null) {
             ChatFragment chatFragment = ChatFragment.newInstance(peerId, peerName, fromId);
             getSupportFragmentManager().beginTransaction()
@@ -133,10 +141,26 @@ public class ChatActivity extends AppCompatActivity {
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_chat, menu);
+        if (isChatScreenVisible()) {
+            getMenuInflater().inflate(R.menu.menu_chat, menu);
+        }
         MenuItem groupOptions = menu.findItem(R.id.action_chat_options);
         if (groupOptions != null) groupOptions.setVisible(chatId > 0);
         return true;
+    }
+
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        boolean showChatMenu = isChatScreenVisible();
+        MenuItem notifications = menu.findItem(R.id.action_chat_notifications);
+        if (notifications != null) notifications.setVisible(showChatMenu);
+        MenuItem groupOptions = menu.findItem(R.id.action_chat_options);
+        if (groupOptions != null) groupOptions.setVisible(showChatMenu && chatId > 0);
+        return super.onPrepareOptionsMenu(menu);
+    }
+
+    private boolean isChatScreenVisible() {
+        return getSupportFragmentManager().findFragmentById(R.id.chat_container) instanceof ChatFragment;
     }
 
     private void openGroupOptions() {
@@ -365,7 +389,7 @@ public class ChatActivity extends AppCompatActivity {
     private void updateToolbarTitle() {
         if (toolbarTitle == null) return;
         CharSequence displayTitle = toolbarTitle;
-        if (chatNotificationsMuted) {
+        if (chatNotificationsMuted && isChatScreenVisible()) {
             Drawable icon = ContextCompat.getDrawable(this, R.drawable.ic_notifications_off);
             if (icon != null) {
                 icon = DrawableCompat.wrap(icon.mutate());
@@ -389,16 +413,20 @@ public class ChatActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        if (item.getItemId() == R.id.action_chat_notifications) {
+        if (isChatScreenVisible() && item.getItemId() == R.id.action_chat_notifications) {
             openNotificationOptions();
             return true;
         }
-        if (item.getItemId() == R.id.action_chat_options && chatId > 0) {
+        if (isChatScreenVisible() && item.getItemId() == R.id.action_chat_options && chatId > 0) {
             openGroupOptions();
             return true;
         }
         if (item.getItemId() == android.R.id.home) {
-            finish();
+            if (getSupportFragmentManager().getBackStackEntryCount() > 0) {
+                getSupportFragmentManager().popBackStack();
+            } else {
+                finish();
+            }
             return true;
         }
         return super.onOptionsItemSelected(item);
