@@ -280,15 +280,23 @@ public class AboutInstanceFragment extends Fragment {
             avatarView.setImageResource(R.drawable.ic_account_circle);
         }
         
-        view.setOnClickListener(v -> openUserProfile(userId));
+        view.setOnClickListener(v -> openUserProfile(userId, name));
         
         return view;
     }
     
-    private void openUserProfile(int userId) {
-        // Navigate to user profile
-        // TODO: Implement profile navigation when ProfileFragment is available
-        Toast.makeText(requireContext(), getString(R.string.about_instance_error) + userId, Toast.LENGTH_SHORT).show();
+    private void openUserProfile(int userId, String userName) {
+        if (userId <= 0 || !isAdded()) return;
+
+        android.content.Intent intent = new android.content.Intent(requireContext(),
+                org.nikanikoo.flux.ui.activities.MainActivity.class);
+        intent.putExtra("open_profile", true);
+        intent.putExtra("user_id", userId);
+        intent.putExtra("user_name", userName);
+        intent.putExtra("is_group", false);
+        intent.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP |
+                android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        startActivity(intent);
     }
     
     private void setupInfoItems() {
