@@ -794,7 +794,6 @@ public class MessagesManager extends BaseManager<MessagesManager> {
     public void sendTypingActivity(int peerId, OpenVKApi.ApiCallback callback) {
         Map<String, String> params = new HashMap<>();
         params.put("peer_id", String.valueOf(peerId));
-        params.put("user_id", String.valueOf(peerId));
         params.put("type", "typing");
 
         api.callMethod("messages.setActivity", params, callback);

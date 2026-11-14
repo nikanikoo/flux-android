@@ -492,8 +492,11 @@ public class LongPollManager {
                     case 5: // Редактирование сообщения
                         processMessageEdit(update);
                         break;
-                    case 61: // Пользователь печатает
-                        processUserTyping(update);
+                    case 61: // Пользователь печатает в личном чате
+                    case 62: // Пользователь печатает в беседе
+                    case 63: // Обновление списка печатающих пользователей
+                    case 64: // Обновление списка записывающих аудиосообщение
+                        processUserTyping(update, eventType);
                         break;
                     case 8: // Пользователь онлайн
                     case 9: // Пользователь оффлайн
@@ -680,22 +683,52 @@ public class LongPollManager {
     }
     
     // Обработка печатания
-    private void processUserTyping(JSONArray update) {
+    private void processUserTyping(JSONArray update, int eventType) {
         try {
-            int peerId = update.getInt(1);
-            int userId = peerId; // В личных сообщениях peerId и userId совпадают
-            
-            Log.d(TAG, "User typing: " + userId + " in " + peerId);
-            
-            if (typingEventListener != null) {
+            int peerId;
+            List<Integer> userIds = new ArrayList<>();
+
+            if (eventType == 61) {
+                int userId = update.getInt(1);
+                peerId = userId;
+                userIds.add(userId);
+            } else if (eventType == 62) {
+                int userId = update.getInt(1);
+                int chatId = update.getInt(2);
+                peerId = chatId < 2_000_000_000 ? 2_000_000_000 + chatId : chatId;
+                userIds.add(userId);
+            } else {
+                JSONArray users;
+                if (update.opt(1) instanceof JSONArray) {
+                    users = update.optJSONArray(1);
+                    peerId = update.getInt(2);
+                } else {
+                    peerId = update.getInt(1);
+                    users = update.optJSONArray(2);
+                    if (users == null) {
+                        users = new JSONArray();
+                        int userId = update.optInt(2, 0);
+                        if (userId > 0) users.put(userId);
+                    }
+                }
+
+                if (update.optInt(3, users.length()) == 0) return;
+                for (int i = 0; i < users.length(); i++) {
+                    int userId = users.optInt(i, 0);
+                    if (userId > 0) userIds.add(userId);
+                }
+            }
+
+            if (typingEventListener == null) return;
+            for (int userId : userIds) {
+                Log.d(TAG, "User typing: " + userId + " in " + peerId + " (event " + eventType + ")");
                 final int finalPeerId = peerId;
                 final int finalUserId = userId;
-                
-                mainHandler.post(() -> 
-                    typingEventListener.onUserTyping(finalPeerId, finalUserId)
-                );
+                mainHandler.post(() -> {
+                    OnTypingEventListener listener = typingEventListener;
+                    if (listener != null) listener.onUserTyping(finalPeerId, finalUserId);
+                });
             }
-            
         } catch (Exception e) {
             Logger.e(TAG, "Error processing user typing", e);
         }
