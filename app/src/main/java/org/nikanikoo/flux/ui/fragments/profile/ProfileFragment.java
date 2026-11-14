@@ -23,6 +23,7 @@ import org.nikanikoo.flux.data.models.Post;
 import org.nikanikoo.flux.data.models.UserProfile;
 import org.nikanikoo.flux.ui.activities.CreatePostActivity;
 import org.nikanikoo.flux.ui.activities.MainActivity;
+import org.nikanikoo.flux.ui.activities.ChatActivity;
 import org.nikanikoo.flux.ui.activities.PhotoViewerActivity;
 import org.nikanikoo.flux.ui.dialogs.RepostDialog;
 import org.nikanikoo.flux.ui.fragments.comments.CommentsFragment;
@@ -328,7 +329,7 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
         
         UserFriendsFragment friendsFragment = UserFriendsFragment.newInstance(userId, userName);
         getActivity().getSupportFragmentManager().beginTransaction()
-                .replace(R.id.fragment_container, friendsFragment)
+                .replace(getHostContainerId(), friendsFragment)
                 .addToBackStack("friends_" + userId)
                 .commit();
     }
@@ -341,7 +342,7 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
 
         PhotosFragment photosFragment = PhotosFragment.newInstance(userId, userName);
         getActivity().getSupportFragmentManager().beginTransaction()
-                .replace(R.id.fragment_container, photosFragment)
+                .replace(getHostContainerId(), photosFragment)
                 .addToBackStack("photos_" + userId)
                 .commit();
     }
@@ -374,7 +375,7 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
         }
         ChatFragment chatFragment = ChatFragment.newInstance(userId, userName);
         getActivity().getSupportFragmentManager().beginTransaction()
-                .replace(R.id.fragment_container, chatFragment)
+                .replace(getHostContainerId(), chatFragment)
                 .addToBackStack("chat_" + userId)
                 .commit();
     }
@@ -553,10 +554,14 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
         CommentsFragment commentsFragment = CommentsFragment.newInstance(post);
         if (getActivity() != null) {
             getActivity().getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.fragment_container, commentsFragment)
+                    .replace(getHostContainerId(), commentsFragment)
                     .addToBackStack("comments_" + post.getPostId())
                     .commit();
         }
+    }
+
+    private int getHostContainerId() {
+        return getActivity() instanceof ChatActivity ? R.id.chat_container : R.id.fragment_container;
     }
 
     @Override

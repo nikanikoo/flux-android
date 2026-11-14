@@ -21,6 +21,7 @@ import org.nikanikoo.flux.data.models.Group;
 import org.nikanikoo.flux.data.models.Post;
 import org.nikanikoo.flux.ui.activities.CreatePostActivity;
 import org.nikanikoo.flux.ui.activities.MainActivity;
+import org.nikanikoo.flux.ui.activities.ChatActivity;
 import org.nikanikoo.flux.ui.activities.PhotoViewerActivity;
 import org.nikanikoo.flux.ui.dialogs.RepostDialog;
 import org.nikanikoo.flux.ui.fragments.comments.CommentsFragment;
@@ -468,22 +469,22 @@ public class GroupProfileFragment extends BaseProfileFragment {
     }
     
     private void openGroupMembers() {
-        if (currentGroup != null && getActivity() instanceof MainActivity) {
+        if (currentGroup != null && getActivity() != null) {
             GroupMembersFragment membersFragment = GroupMembersFragment.newInstance(groupId, currentGroup.getName());
             getActivity().getSupportFragmentManager()
                     .beginTransaction()
-                    .replace(R.id.fragment_container, membersFragment)
+                    .replace(getHostContainerId(), membersFragment)
                     .addToBackStack(null)
                     .commit();
         }
     }
 
     private void openGroupPhotos() {
-        if (currentGroup != null && getActivity() instanceof MainActivity) {
+        if (currentGroup != null && getActivity() != null) {
             PhotosFragment photosFragment = PhotosFragment.newInstance(-currentGroup.getId(), currentGroup.getName());
             getActivity().getSupportFragmentManager()
                     .beginTransaction()
-                    .replace(R.id.fragment_container, photosFragment)
+                    .replace(getHostContainerId(), photosFragment)
                     .addToBackStack("photos_group_" + currentGroup.getId())
                     .commit();
         }
@@ -506,14 +507,14 @@ public class GroupProfileFragment extends BaseProfileFragment {
                 GroupProfileFragment groupProfileFragment = GroupProfileFragment.newInstance(groupId, authorName);
                 getActivity().getSupportFragmentManager()
                         .beginTransaction()
-                        .replace(R.id.fragment_container, groupProfileFragment)
+                        .replace(getHostContainerId(), groupProfileFragment)
                         .addToBackStack(null)
                         .commit();
             } else {
                 ProfileFragment profileFragment = ProfileFragment.newInstanceWithId(authorId, authorName);
                 getActivity().getSupportFragmentManager()
                         .beginTransaction()
-                        .replace(R.id.fragment_container, profileFragment)
+                        .replace(getHostContainerId(), profileFragment)
                         .addToBackStack(null)
                         .commit();
             }
@@ -532,10 +533,14 @@ public class GroupProfileFragment extends BaseProfileFragment {
         CommentsFragment commentsFragment = CommentsFragment.newInstance(post);
         if (getActivity() != null) {
             getActivity().getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.fragment_container, commentsFragment)
+                    .replace(getHostContainerId(), commentsFragment)
                     .addToBackStack("comments_" + post.getPostId())
                     .commit();
         }
+    }
+
+    private int getHostContainerId() {
+        return getActivity() instanceof ChatActivity ? R.id.chat_container : R.id.fragment_container;
     }
 
 }

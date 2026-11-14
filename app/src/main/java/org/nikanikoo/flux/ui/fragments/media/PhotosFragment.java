@@ -10,6 +10,7 @@ import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.fragment.app.FragmentActivity;
 import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
@@ -23,6 +24,7 @@ import org.nikanikoo.flux.data.managers.ProfileManager;
 import org.nikanikoo.flux.data.models.Album;
 import org.nikanikoo.flux.data.models.UserProfile;
 import org.nikanikoo.flux.ui.activities.MainActivity;
+import org.nikanikoo.flux.ui.activities.ChatActivity;
 import org.nikanikoo.flux.ui.adapters.photos.AlbumsAdapter;
 import org.nikanikoo.flux.ui.custom.EndlessScrollListener;
 import org.nikanikoo.flux.ui.custom.PaginationHelper;
@@ -111,6 +113,9 @@ public class PhotosFragment extends BaseFragment implements AlbumsAdapter.OnAlbu
             } else {
                 ((MainActivity) getActivity()).setToolbarTitle(getString(R.string.nav_photos));
             }
+        } else if (getActivity() instanceof ChatActivity) {
+            ((ChatActivity) getActivity()).setToolbarTitle(
+                    ownerTitle != null && !ownerTitle.isEmpty() ? ownerTitle : getString(R.string.nav_photos));
         }
     }
 
@@ -402,8 +407,8 @@ public class PhotosFragment extends BaseFragment implements AlbumsAdapter.OnAlbu
 
     @Override
     public void onAlbumClick(Album album) {
-        if (getActivity() instanceof MainActivity) {
-            MainActivity activity = (MainActivity) getActivity();
+        if (getActivity() instanceof FragmentActivity) {
+            FragmentActivity activity = (FragmentActivity) getActivity();
             AlbumPhotosFragment fragment = AlbumPhotosFragment.newInstance(
                     album.getId(),
                     album.getOwnerId(),
@@ -412,10 +417,18 @@ public class PhotosFragment extends BaseFragment implements AlbumsAdapter.OnAlbu
             );
             activity.getSupportFragmentManager()
                     .beginTransaction()
-                    .replace(R.id.fragment_container, fragment)
+                    .replace(getHostContainerId(), fragment)
                     .addToBackStack("album_photos")
                     .commit();
-            activity.setToolbarTitle(album.getTitle());
+            if (activity instanceof MainActivity) {
+                ((MainActivity) activity).setToolbarTitle(album.getTitle());
+            } else if (activity instanceof ChatActivity) {
+                ((ChatActivity) activity).setToolbarTitle(album.getTitle());
+            }
         }
+    }
+
+    private int getHostContainerId() {
+        return getActivity() instanceof ChatActivity ? R.id.chat_container : R.id.fragment_container;
     }
 }
