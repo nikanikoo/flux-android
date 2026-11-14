@@ -138,8 +138,8 @@ public class AlbumPhotosFragment extends BaseFragment implements AlbumPhotosAdap
         recyclerPhotos.setAdapter(photosAdapter);
         recyclerPhotos.addItemDecoration(new GridSpacingItemDecoration(GRID_COLUMNS, 2, true));
         swipeRefresh.setColorSchemeColors(
-                androidx.core.content.ContextCompat.getColor(requireContext(),
-                        com.google.android.material.R.color.m3_ref_palette_dynamic_primary40));
+                com.google.android.material.color.MaterialColors.getColor(
+                        swipeRefresh, androidx.appcompat.R.attr.colorPrimary));
     }
 
     private void setupSwipeRefresh() {

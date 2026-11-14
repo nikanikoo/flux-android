@@ -127,8 +127,8 @@ public class PhotosFragment extends BaseFragment implements AlbumsAdapter.OnAlbu
         albumsAdapter.setOnAlbumLongClickListener(this);
         recyclerAlbums.setAdapter(albumsAdapter);
         swipeRefresh.setColorSchemeColors(
-                androidx.core.content.ContextCompat.getColor(requireContext(),
-                        com.google.android.material.R.color.m3_ref_palette_dynamic_primary40));
+                com.google.android.material.color.MaterialColors.getColor(
+                        swipeRefresh, androidx.appcompat.R.attr.colorPrimary));
     }
 
     private void setupSwipeRefresh() {
