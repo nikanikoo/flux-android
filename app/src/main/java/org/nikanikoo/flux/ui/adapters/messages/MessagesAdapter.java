@@ -322,6 +322,8 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         for (MessageAttachment attachment : attachments) {
             if ("wall".equals(attachment.getType())) {
                 addWallCard(container, attachment);
+            } else if ("link".equals(attachment.getType())) {
+                addLinkCard(container, attachment, messageTextColor);
             } else if ("doc".equals(attachment.getType())) {
                 addDocumentCard(container, attachment);
             } else if ("audio".equals(attachment.getType()) && attachment.getAudio() != null) {
@@ -488,6 +490,82 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             }
         });
         container.addView(card);
+    }
+
+    private void addLinkCard(LinearLayout container, MessageAttachment attachment, int messageTextColor) {
+        LinearLayout card = new LinearLayout(context);
+        card.setOrientation(LinearLayout.VERTICAL);
+        int padding = dp(10);
+        card.setPadding(padding, padding, padding, padding);
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(0x1F000000);
+        background.setCornerRadius(dp(10));
+        card.setBackground(background);
+        card.setClickable(true);
+        card.setFocusable(true);
+
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        cardParams.topMargin = dp(8);
+        container.addView(card, cardParams);
+
+        String url = normalizeWebUrl(attachment.getUrl());
+        String titleText = attachment.getTitle();
+        if (titleText == null || titleText.trim().isEmpty()) {
+            titleText = context.getString(R.string.message_link_default_title);
+        }
+
+        TextView title = new TextView(context);
+        title.setText(ValidationUtils.SanitizeText(titleText));
+        title.setTextColor(messageTextColor);
+        title.setTypeface(null, android.graphics.Typeface.BOLD);
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        card.addView(title);
+
+        if (!url.isEmpty()) {
+            TextView urlView = new TextView(context);
+            urlView.setText(url);
+            urlView.setTextColor(messageTextColor);
+            urlView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+            urlView.setPaintFlags(urlView.getPaintFlags() | android.graphics.Paint.UNDERLINE_TEXT_FLAG);
+            urlView.setClickable(true);
+            urlView.setFocusable(true);
+            urlView.setOnClickListener(v -> SafeLinkMovementMethod.handleLinkClick(context, url));
+            LinearLayout.LayoutParams urlParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            urlParams.topMargin = dp(4);
+            card.addView(urlView, urlParams);
+        }
+
+        String description = attachment.getSubtitle();
+        if (description != null && !description.trim().isEmpty()
+                && !description.equals(attachment.getTitle())) {
+            TextView descriptionView = new TextView(context);
+            descriptionView.setText(ValidationUtils.SanitizeText(description));
+            descriptionView.setTextColor(messageTextColor);
+            descriptionView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+            descriptionView.setMaxLines(3);
+            descriptionView.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            LinearLayout.LayoutParams descriptionParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            descriptionParams.topMargin = dp(4);
+            card.addView(descriptionView, descriptionParams);
+        }
+
+        if (!url.isEmpty()) {
+            card.setOnClickListener(v -> SafeLinkMovementMethod.handleLinkClick(context, url));
+        }
+    }
+
+    private String normalizeWebUrl(String value) {
+        if (value == null) return "";
+        String url = value.trim();
+        if (url.isEmpty()) return "";
+        if (url.regionMatches(true, 0, "https://", 0, 8)
+                || url.regionMatches(true, 0, "http://", 0, 7)) {
+            return url;
+        }
+        return "https://" + url;
     }
 
     private void bindReferences(TextView view, Message message) {

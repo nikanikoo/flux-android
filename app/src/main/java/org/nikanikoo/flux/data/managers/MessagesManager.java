@@ -522,7 +522,7 @@ public class MessagesManager extends BaseManager<MessagesManager> {
 
             String type = attachment.optString("type", "");
             if (type.isEmpty()) {
-                for (String candidate : new String[]{"photo", "video", "audio", "doc", "wall", "sticker", "gift", "poll"}) {
+                for (String candidate : new String[]{"photo", "video", "audio", "doc", "wall", "link", "sticker", "gift", "poll"}) {
                     if (attachment.optJSONObject(candidate) != null) {
                         type = candidate;
                         break;
@@ -582,6 +582,11 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                 imageUrl = giftData.optString("thumb_256", "");
                 if (imageUrl.isEmpty()) imageUrl = giftData.optString("thumb_96", "");
                 if (imageUrl.isEmpty()) imageUrl = giftData.optString("thumb_48", "");
+            } else if ("link".equals(type)) {
+                title = data.optString("title", "");
+                if (title.isEmpty()) title = data.optString("caption", "");
+                subtitle = data.optString("description", "");
+                if (subtitle.isEmpty()) subtitle = data.optString("caption", "");
             } else if ("sticker".equals(type)) {
                 imageUrl = data.optString("photo_128", "");
                 if (imageUrl.isEmpty()) imageUrl = data.optString("photo_256", "");
@@ -597,7 +602,9 @@ public class MessagesManager extends BaseManager<MessagesManager> {
             } else {
                 title = type;
             }
-            String url = "doc".equals(type) ? data.optString("url", data.optString("private_url", "")) : "";
+            String url = "doc".equals(type)
+                    ? data.optString("url", data.optString("private_url", ""))
+                    : "link".equals(type) ? data.optString("url", "") : "";
             int navigationOwnerId = "doc".equals(type) ? data.optInt("owner_id", 0) : 0;
             int navigationMediaId = "doc".equals(type) ? data.optInt("id", 0) : 0;
             String navigationAccessKey = "doc".equals(type) ? data.optString("access_key", null) : null;

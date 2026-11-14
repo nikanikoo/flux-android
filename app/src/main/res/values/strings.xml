@@ -876,6 +876,7 @@
         <item quantity="other">%d голосов</item>
     </plurals>
     <string name="message_gift_image">Изображение подарка</string>
+    <string name="message_link_default_title">Ссылка</string>
     <string name="chat_event_generic">Событие беседы</string>
     <string name="coins_transfer_outgoing">Вы передали %1$d %2$s</string>
     <plurals name="vote_count">
