@@ -6,11 +6,11 @@ import android.util.TypedValue;
 import android.view.Gravity;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.core.content.ContextCompat;
+import androidx.core.widget.NestedScrollView;
 
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
@@ -54,7 +54,9 @@ public final class StickerPickerDialog {
             StickerStoreDialog.show(context, () -> show(context, listener));
         });
 
-        ScrollView scroll = new ScrollView(context);
+        NestedScrollView scroll = new NestedScrollView(context);
+        scroll.setFillViewport(true);
+        scroll.setNestedScrollingEnabled(true);
         LinearLayout packsContainer = new LinearLayout(context);
         packsContainer.setOrientation(LinearLayout.VERTICAL);
         addMessage(context, packsContainer, R.string.stickers_loading);
