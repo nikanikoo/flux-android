@@ -323,6 +323,9 @@
     <string name="audio_playlist_back">Back to playlists</string>
     <string name="video_comments_title">Video comments</string>
     <string name="video_comments_read_only">Comments are disabled</string>
+    <string name="post_likes_title">Liked by (%1$d)</string>
+    <string name="post_likes_title_loading">Loading likes</string>
+    <string name="post_likes_empty">No likes yet</string>
     <string name="video_like">Like</string>
     <string name="video_liked">Liked · %1$d</string>
     <string name="video_not_liked">♡ · %1$d</string>

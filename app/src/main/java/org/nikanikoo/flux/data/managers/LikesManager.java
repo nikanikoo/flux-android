@@ -5,9 +5,13 @@ import android.content.Context;
 import org.json.JSONObject;
 import org.nikanikoo.flux.data.managers.api.OpenVKApi;
 import org.nikanikoo.flux.utils.Logger;
+import org.nikanikoo.flux.data.models.UserProfile;
+import org.json.JSONArray;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Manager for handling like operations (add, delete, check status, toggle).
@@ -29,6 +33,11 @@ public class LikesManager extends BaseManager<LikesManager> {
      */
     public interface LikeStatusCallback {
         void onSuccess(boolean isLiked);
+        void onError(String error);
+    }
+
+    public interface LikedUsersCallback {
+        void onSuccess(List<UserProfile> users, int totalCount);
         void onError(String error);
     }
 
@@ -161,6 +170,42 @@ public class LikesManager extends BaseManager<LikesManager> {
             public void onError(String error) {
                 Logger.e(TAG, "Error checking like status: " + error);
                 callback.onError("Не удалось проверить статус лайка");
+            }
+        });
+    }
+
+    public void getLikedUsers(String type, int ownerId, int itemId, LikedUsersCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("type", type);
+        params.put("owner_id", String.valueOf(ownerId));
+        params.put("item_id", String.valueOf(itemId));
+        params.put("extended", "1");
+        params.put("count", "100");
+
+        api.callMethod("likes.getList", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                try {
+                    JSONObject result = response.getJSONObject("response");
+                    JSONArray items = result.optJSONArray("items");
+                    List<UserProfile> users = new ArrayList<>();
+                    if (items != null) {
+                        for (int i = 0; i < items.length(); i++) {
+                            JSONObject item = items.optJSONObject(i);
+                            if (item != null) users.add(UserProfile.fromJson(item));
+                        }
+                    }
+                    callback.onSuccess(users, result.optInt("count", users.size()));
+                } catch (Exception e) {
+                    Logger.e(TAG, "Error parsing liked users", e);
+                    callback.onError("Не удалось обработать список лайков");
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                Logger.e(TAG, "Error loading liked users: " + error);
+                callback.onError(error);
             }
         });
     }

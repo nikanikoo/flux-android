@@ -19,6 +19,7 @@ import org.nikanikoo.flux.data.managers.LikesManager;
 import org.nikanikoo.flux.data.managers.PostsManager;
 import org.nikanikoo.flux.data.models.Post;
 import org.nikanikoo.flux.ui.adapters.posts.PostAdapter;
+import org.nikanikoo.flux.ui.dialogs.LikedUsersDialog;
 import org.nikanikoo.flux.ui.custom.EndlessScrollListener;
 import org.nikanikoo.flux.ui.custom.PaginationHelper;
 import org.nikanikoo.flux.ui.fragments.BaseFragment;
@@ -373,6 +374,13 @@ public abstract class BaseProfileFragment extends BaseFragment implements PostAd
                     }
                 }
             });
+    }
+
+    @Override
+    public void onLikesClick(Post post) {
+        if (isAdded() && post != null) {
+            LikedUsersDialog.show(requireContext(), post.getOwnerId(), post.getPostId());
+        }
     }
 
     @Override

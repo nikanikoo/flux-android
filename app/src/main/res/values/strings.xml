@@ -369,6 +369,9 @@
     <string name="audio_playlist_back">К плейлистам</string>
     <string name="video_comments_title">Комментарии к видео</string>
     <string name="video_comments_read_only">Комментирование отключено</string>
+    <string name="post_likes_title">Поставили лайк (%1$d)</string>
+    <string name="post_likes_title_loading">Загружаем, кто поставил лайк</string>
+    <string name="post_likes_empty">Лайков пока нет</string>
     <string name="video_like">Нравится</string>
     <string name="video_liked">Нравится · %1$d</string>
     <string name="video_not_liked">♡ · %1$d</string>

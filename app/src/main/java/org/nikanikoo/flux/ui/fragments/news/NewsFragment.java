@@ -29,6 +29,7 @@ import org.nikanikoo.flux.data.managers.api.OpenVKApi;
 import org.nikanikoo.flux.data.managers.LikesManager;
 import org.nikanikoo.flux.data.models.Post;
 import org.nikanikoo.flux.ui.adapters.posts.PostAdapter;
+import org.nikanikoo.flux.ui.dialogs.LikedUsersDialog;
 import org.nikanikoo.flux.data.managers.PostsManager;
 import org.nikanikoo.flux.ui.fragments.profile.ProfileFragment;
 import org.nikanikoo.flux.data.managers.ProfileManager;
@@ -612,6 +613,13 @@ public class NewsFragment extends BaseFragment implements PostAdapter.OnPostClic
                 }
             }
         });
+    }
+
+    @Override
+    public void onLikesClick(Post post) {
+        if (isAdded() && post != null) {
+            LikedUsersDialog.show(requireContext(), post.getOwnerId(), post.getPostId());
+        }
     }
 
     @Override

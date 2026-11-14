@@ -14,6 +14,9 @@ import android.text.util.Linkify;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.MotionEvent;
+import android.view.ViewParent;
+import android.view.ViewConfiguration;
 import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
@@ -59,6 +62,7 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
     public interface OnPostClickListener {
         void onAuthorClick(int authorId, String authorName, boolean isGroup);
         void onLikeClick(Post post);
+        void onLikesClick(Post post);
         void onCommentClick(Post post);
         void onShareClick(Post post);
         void onPostLongClick(Post post, View view);
@@ -745,6 +749,18 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 clickListener.onLikeClick(post);
             }
         });
+        View.OnLongClickListener openLikersListener = v -> {
+            if (clickListener == null) return false;
+            clickListener.onLikesClick(post);
+            return true;
+        };
+        holder.likeButton.setOnLongClickListener(openLikersListener);
+        holder.likeButton.setOnTouchListener(createLikeGestureListener());
+        holder.likeCount.setOnClickListener(v -> {
+            if (clickListener != null) clickListener.onLikesClick(post);
+        });
+        holder.likeCount.setOnLongClickListener(openLikersListener);
+        holder.likeCount.setOnTouchListener(createLikeGestureListener());
         
         holder.commentButton.setOnClickListener(v -> {
             if (clickListener != null) {
@@ -766,6 +782,29 @@ public class PostAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
                 }
             });
         }
+    }
+
+    private View.OnTouchListener createLikeGestureListener() {
+        final float touchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
+        final float[] downPosition = new float[2];
+        return (view, event) -> {
+            ViewParent parent = view.getParent();
+            if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                downPosition[0] = event.getX();
+                downPosition[1] = event.getY();
+                parent.requestDisallowInterceptTouchEvent(true);
+            } else if (event.getActionMasked() == MotionEvent.ACTION_MOVE) {
+                float dx = Math.abs(event.getX() - downPosition[0]);
+                float dy = Math.abs(event.getY() - downPosition[1]);
+                if (dy > touchSlop && dy > dx) {
+                    parent.requestDisallowInterceptTouchEvent(false);
+                }
+            } else if (event.getActionMasked() == MotionEvent.ACTION_UP
+                    || event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
+                parent.requestDisallowInterceptTouchEvent(false);
+            }
+            return false;
+        };
     }
 
     private void updateLikeState(PostViewHolder holder, Post post) {
