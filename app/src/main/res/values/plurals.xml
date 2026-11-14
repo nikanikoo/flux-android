@@ -6,4 +6,10 @@
         <item quantity="many">%d фото</item>
         <item quantity="other">%d фото</item>
     </plurals>
+    <plurals name="audio_playlist_tracks">
+        <item quantity="one">%d трек</item>
+        <item quantity="few">%d трека</item>
+        <item quantity="many">%d треков</item>
+        <item quantity="other">%d треков</item>
+    </plurals>
 </resources>

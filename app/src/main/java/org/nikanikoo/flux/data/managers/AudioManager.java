@@ -6,6 +6,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.nikanikoo.flux.data.managers.api.OpenVKApi;
 import org.nikanikoo.flux.data.models.Audio;
+import org.nikanikoo.flux.data.models.Album;
 import org.nikanikoo.flux.utils.Logger;
 
 import java.util.ArrayList;
@@ -33,6 +34,76 @@ public class AudioManager extends BaseManager<AudioManager> {
     public interface AudioActionCallback {
         void onSuccess();
         void onError(String error);
+    }
+
+    public interface AlbumsCallback {
+        void onSuccess(List<Album> albums);
+        void onError(String error);
+    }
+
+    public void getAlbums(int ownerId, AlbumsCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("owner_id", String.valueOf(ownerId));
+        params.put("count", "100");
+        api.callMethod("audio.getAlbums", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                try {
+                    JSONObject result = response.getJSONObject("response");
+                    JSONArray items = result.optJSONArray("items");
+                    List<Album> albums = new ArrayList<>();
+                    if (items != null) {
+                        for (int i = 0; i < items.length(); i++) {
+                            JSONObject item = items.optJSONObject(i);
+                            if (item == null) continue;
+                            Album album = new Album();
+                            album.setId(item.optInt("id"));
+                            album.setOwnerId(item.optInt("owner_id", ownerId));
+                            album.setTitle(item.optString("title", ""));
+                            album.setDescription(item.optString("description", ""));
+                            album.setSize(item.optInt("size", item.optInt("length", 0)));
+                            album.setThumbSrc(item.optString("cover_url", ""));
+                            albums.add(album);
+                        }
+                    }
+                    callback.onSuccess(albums);
+                } catch (Exception e) {
+                    Logger.e(TAG, "Error parsing audio playlists", e);
+                    callback.onError("Failed to process playlists");
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    public void getPlaylistAudios(int ownerId, int albumId, int offset, int count, AudioCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("owner_id", String.valueOf(ownerId));
+        params.put("album_id", String.valueOf(albumId));
+        params.put("offset", String.valueOf(offset));
+        params.put("count", String.valueOf(count));
+        api.callMethod("audio.get", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                try {
+                    JSONObject result = response.getJSONObject("response");
+                    JSONArray items = result.optJSONArray("items");
+                    callback.onSuccess(parseAudios(items), result.optInt("count", 0));
+                } catch (Exception e) {
+                    Logger.e(TAG, "Error parsing playlist tracks", e);
+                    callback.onError("Failed to process playlist tracks");
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
     }
 
     public void getAudio(int ownerId, int offset, int count, AudioCallback callback) {

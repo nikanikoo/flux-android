@@ -22,11 +22,15 @@ import androidx.media3.common.util.UnstableApi;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.ui.PlayerView;
 
+import com.google.android.material.button.MaterialButton;
+
 import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.utils.Logger;
 import org.nikanikoo.flux.utils.LocaleManager;
 import org.nikanikoo.flux.utils.ThemeManager;
 import org.nikanikoo.flux.data.models.Video;
+import org.nikanikoo.flux.data.managers.LikesManager;
+import org.nikanikoo.flux.ui.fragments.comments.VideoCommentsBottomSheetFragment;
 
 import java.lang.ref.WeakReference;
 
@@ -46,6 +50,9 @@ public class VideoPlayerActivity extends AppCompatActivity {
     private String videoUrl;
     
     private TextView titleText;
+    private TextView descriptionText;
+    private MaterialButton likeButton;
+    private MaterialButton commentsButton;
     private ProgressBar loadingProgress;
     private View rewindZone;
     private View forwardZone;
@@ -168,12 +175,16 @@ public class VideoPlayerActivity extends AppCompatActivity {
 
         initViews();
         loadVideoData();
+        setupVideoActions();
         setupListeners();
     }
 
     private void initViews() {
         playerView = findViewById(R.id.player_view);
         titleText = findViewById(R.id.video_title);
+        descriptionText = findViewById(R.id.video_description);
+        likeButton = findViewById(R.id.video_like_button);
+        commentsButton = findViewById(R.id.video_comments_button);
         loadingProgress = findViewById(R.id.loading_progress);
         rewindZone = findViewById(R.id.rewind_zone);
         forwardZone = findViewById(R.id.forward_zone);
@@ -188,15 +199,59 @@ public class VideoPlayerActivity extends AppCompatActivity {
             video = (Video) intent.getSerializableExtra(EXTRA_VIDEO);
             if (video != null) {
                 videoUrl = video.getPlayer();
+                titleText.setText(video.getTitle());
+                descriptionText.setText(video.getDescription());
+                descriptionText.setVisibility(video.getDescription() == null || video.getDescription().trim().isEmpty()
+                        ? View.GONE : View.VISIBLE);
             }
         } else if (intent.hasExtra(EXTRA_VIDEO_URL)) {
             videoUrl = intent.getStringExtra(EXTRA_VIDEO_URL);
+            titleText.setText(intent.getStringExtra(EXTRA_VIDEO_TITLE));
         }
 
         if (videoUrl == null || videoUrl.isEmpty()) {
             Toast.makeText(this, getString(R.string.video_url_not_found), Toast.LENGTH_SHORT).show();
             finish();
         }
+    }
+
+    private void setupVideoActions() {
+        boolean hasApiVideo = video != null && video.getId() > 0 && video.getOwnerId() != 0;
+        likeButton.setEnabled(hasApiVideo);
+        commentsButton.setEnabled(hasApiVideo);
+        if (!hasApiVideo) {
+            likeButton.setVisibility(View.GONE);
+            commentsButton.setVisibility(View.GONE);
+            return;
+        }
+        updateVideoActionLabels();
+        likeButton.setOnClickListener(v -> LikesManager.getInstance(this).toggleLike(
+                "video", video.getOwnerId(), video.getId(), video.isUserLikes(),
+                new LikesManager.LikeCallback() {
+                    @Override
+                    public void onSuccess(int likesCount) {
+                        runOnUiThread(() -> {
+                            video.setUserLikes(!video.isUserLikes());
+                            video.setLikes(likesCount);
+                            updateVideoActionLabels();
+                        });
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        runOnUiThread(() -> Toast.makeText(VideoPlayerActivity.this, error, Toast.LENGTH_SHORT).show());
+                    }
+                }));
+        commentsButton.setOnClickListener(v -> VideoCommentsBottomSheetFragment
+                .newInstance(video.getOwnerId(), video.getId(), video.isCanComment())
+                .show(getSupportFragmentManager(), "video_comments"));
+    }
+
+    private void updateVideoActionLabels() {
+        if (video == null) return;
+        likeButton.setText(getString(video.isUserLikes() ? R.string.video_liked : R.string.video_not_liked,
+                video.getLikes()));
+        commentsButton.setText(getString(R.string.video_comments_count, video.getComments()));
     }
 
     @OptIn(markerClass = UnstableApi.class)

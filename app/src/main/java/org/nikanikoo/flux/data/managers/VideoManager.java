@@ -6,12 +6,16 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.nikanikoo.flux.data.managers.api.OpenVKApi;
 import org.nikanikoo.flux.data.models.Video;
+import org.nikanikoo.flux.data.models.Comment;
+import org.nikanikoo.flux.utils.TimeUtils;
 import org.nikanikoo.flux.utils.Logger;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 public class VideoManager extends BaseManager<VideoManager> {
     private static final String TAG = "VideoManager";
@@ -32,6 +36,151 @@ public class VideoManager extends BaseManager<VideoManager> {
     public interface VideoActionCallback {
         void onSuccess();
         void onError(String error);
+    }
+
+    public interface VideoCommentsCallback {
+        void onSuccess(List<Comment> comments, int totalCount);
+        void onError(String error);
+    }
+
+    public interface CommentActionCallback {
+        void onSuccess();
+        void onError(String error);
+    }
+
+    public void getComments(int ownerId, int videoId, int offset, int count, VideoCommentsCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("owner_id", String.valueOf(ownerId));
+        params.put("video_id", String.valueOf(videoId));
+        params.put("offset", String.valueOf(offset));
+        params.put("count", String.valueOf(count));
+        api.callMethod("video.getComments", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                try {
+                    JSONObject result = response.getJSONObject("response");
+                    JSONArray items = result.optJSONArray("items");
+                    List<Comment> comments = new ArrayList<>();
+                    if (items != null) {
+                        for (int i = 0; i < items.length(); i++) {
+                            JSONObject item = items.optJSONObject(i);
+                            if (item == null) continue;
+                            int authorId = item.optInt("from_id", item.optInt("uid", 0));
+                            long date = item.optLong("date", 0L);
+                            JSONObject likes = item.optJSONObject("likes");
+                            Comment comment = new Comment(item.optInt("id", item.optInt("cid")),
+                                    authorId, authorId == 0 ? "" : "ID " + Math.abs(authorId),
+                                    item.optString("text", item.optString("message", "")), date);
+                            comment.setLikesCount(likes != null ? likes.optInt("count", 0) : 0);
+                            comment.setLiked(likes != null && likes.optInt("user_likes", 0) == 1);
+                            comment.setGroup(authorId < 0);
+                            comment.setTimestamp(TimeUtils.formatTimeAgo(date));
+                            comments.add(comment);
+                        }
+                    }
+                    int totalCount = result.optInt("count", comments.size());
+                    enrichCommentAuthors(comments, totalCount, callback);
+                } catch (Exception e) {
+                    Logger.e(TAG, "Error parsing video comments", e);
+                    callback.onError("Failed to process video comments");
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    private void enrichCommentAuthors(List<Comment> comments, int totalCount, VideoCommentsCallback callback) {
+        Set<Integer> userIds = new LinkedHashSet<>();
+        for (Comment comment : comments) {
+            if (comment.getFromId() > 0) userIds.add(comment.getFromId());
+        }
+        if (userIds.isEmpty()) {
+            callback.onSuccess(comments, totalCount);
+            return;
+        }
+
+        StringBuilder ids = new StringBuilder();
+        for (Integer id : userIds) {
+            if (ids.length() > 0) ids.append(',');
+            ids.append(id);
+        }
+        Map<String, String> params = new HashMap<>();
+        params.put("user_ids", ids.toString());
+        params.put("fields", "photo_50,verified");
+        api.callMethod("users.get", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                try {
+                    JSONArray users = response.optJSONArray("response");
+                    if (users != null) {
+                        Map<Integer, JSONObject> byId = new HashMap<>();
+                        for (int i = 0; i < users.length(); i++) {
+                            JSONObject user = users.optJSONObject(i);
+                            if (user != null) byId.put(user.optInt("id"), user);
+                        }
+                        for (Comment comment : comments) {
+                            JSONObject user = byId.get(comment.getFromId());
+                            if (user == null) continue;
+                            String name = (user.optString("first_name", "") + " " +
+                                    user.optString("last_name", "")).trim();
+                            if (!name.isEmpty()) comment.setAuthorName(name);
+                            comment.setAuthorAvatarUrl(user.optString("photo_50", ""));
+                            comment.setAuthorVerified(user.optInt("verified", 0) == 1);
+                        }
+                    }
+                } catch (Exception e) {
+                    Logger.e(TAG, "Error loading video comment authors", e);
+                }
+                callback.onSuccess(comments, totalCount);
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onSuccess(comments, totalCount);
+            }
+        });
+    }
+
+    public void addComment(int ownerId, int videoId, String message, int replyToCommentId,
+                           CommentActionCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("owner_id", String.valueOf(ownerId));
+        params.put("video_id", String.valueOf(videoId));
+        params.put("message", message);
+        if (replyToCommentId > 0) params.put("reply_to_cid", String.valueOf(replyToCommentId));
+        api.callMethod("video.addComment", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                callback.onSuccess();
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    public void deleteComment(int ownerId, int videoId, int commentId, CommentActionCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("owner_id", String.valueOf(ownerId));
+        params.put("video_id", String.valueOf(videoId));
+        params.put("comment_id", String.valueOf(commentId));
+        api.callMethod("video.deleteComment", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                callback.onSuccess();
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
     }
 
     public void getVideos(int ownerId, int offset, int count, VideoCallback callback) {
@@ -169,6 +318,9 @@ public class VideoManager extends BaseManager<VideoManager> {
             if (json.has("likes")) {
                 JSONObject likes = json.getJSONObject("likes");
                 video.setLikes(likes.optInt("count", 0));
+                Object userLikes = likes.opt("user_likes");
+                video.setUserLikes(userLikes instanceof Boolean
+                        ? (Boolean) userLikes : likes.optInt("user_likes", 0) == 1);
             }
             
             return video;

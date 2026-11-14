@@ -363,6 +363,16 @@
     <string name="audio_no_title">Без названия</string>
     <string name="audio_tab_all">Все</string>
     <string name="audio_tab_downloaded">Загруженные</string>
+    <string name="audio_tab_playlists">Плейлисты</string>
+    <string name="audio_playlists">Плейлисты</string>
+    <string name="audio_playlists_empty">Плейлистов пока нет</string>
+    <string name="audio_playlist_back">К плейлистам</string>
+    <string name="video_comments_title">Комментарии к видео</string>
+    <string name="video_comments_read_only">Комментирование отключено</string>
+    <string name="video_like">Нравится</string>
+    <string name="video_liked">Нравится · %1$d</string>
+    <string name="video_not_liked">♡ · %1$d</string>
+    <string name="video_comments_count">Комментарии · %1$d</string>
     <string name="audio_downloading">Загрузка...</string>
     <string name="audio_downloaded">Трек загружен</string>
     <string name="audio_cover">Обложка трека</string>

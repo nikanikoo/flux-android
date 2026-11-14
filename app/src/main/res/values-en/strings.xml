@@ -317,6 +317,16 @@
     <string name="audio_no_title">No title</string>
     <string name="audio_tab_all">All</string>
     <string name="audio_tab_downloaded">Downloaded</string>
+    <string name="audio_tab_playlists">Playlists</string>
+    <string name="audio_playlists">Playlists</string>
+    <string name="audio_playlists_empty">No playlists yet</string>
+    <string name="audio_playlist_back">Back to playlists</string>
+    <string name="video_comments_title">Video comments</string>
+    <string name="video_comments_read_only">Comments are disabled</string>
+    <string name="video_like">Like</string>
+    <string name="video_liked">Liked · %1$d</string>
+    <string name="video_not_liked">♡ · %1$d</string>
+    <string name="video_comments_count">Comments · %1$d</string>
     <string name="audio_downloading">Downloading...</string>
     <string name="audio_downloaded">Track downloaded</string>
     <string name="audio_download_removed">Download removed</string>

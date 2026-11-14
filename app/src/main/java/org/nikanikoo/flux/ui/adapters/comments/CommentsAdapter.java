@@ -32,6 +32,7 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
     private int postOwnerId;
     private int postAuthorId;
     private boolean isAdmin;
+    private boolean canEdit = true;
 
     public interface OnCommentClickListener {
         void onAuthorClick(int authorId, String authorName, boolean isGroup);
@@ -79,6 +80,11 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
 
     public void setIsAdmin(boolean isAdmin) {
         this.isAdmin = isAdmin;
+        notifyDataSetChanged();
+    }
+
+    public void setCanEdit(boolean canEdit) {
+        this.canEdit = canEdit;
         notifyDataSetChanged();
     }
 
@@ -221,7 +227,7 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
         
         if (holder.editButton != null) {
             // Редактировать может только автор
-            holder.editButton.setVisibility(isCommentAuthor ? View.VISIBLE : View.GONE);
+            holder.editButton.setVisibility(canEdit && isCommentAuthor ? View.VISIBLE : View.GONE);
             holder.editButton.setOnClickListener(v -> {
                 if (clickListener != null) clickListener.onEditClick(comment);
             });

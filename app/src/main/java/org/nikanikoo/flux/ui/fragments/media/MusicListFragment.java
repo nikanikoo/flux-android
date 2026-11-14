@@ -13,6 +13,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -29,8 +30,10 @@ import org.nikanikoo.flux.data.managers.AudioCacheManager;
 import org.nikanikoo.flux.data.managers.AudioManager;
 import org.nikanikoo.flux.data.managers.ProfileManager;
 import org.nikanikoo.flux.data.models.Audio;
+import org.nikanikoo.flux.data.models.Album;
 import org.nikanikoo.flux.data.models.UserProfile;
 import org.nikanikoo.flux.ui.adapters.audio.AudioAdapter;
+import org.nikanikoo.flux.ui.adapters.audio.AudioPlaylistsAdapter;
 import org.nikanikoo.flux.ui.custom.EndlessScrollListener;
 import org.nikanikoo.flux.ui.custom.PaginationHelper;
 import org.nikanikoo.flux.ui.fragments.BaseFragment;
@@ -53,14 +56,20 @@ public class MusicListFragment extends BaseFragment implements AudioAdapter.OnAu
     private SwipeRefreshLayout swipeRefresh;
     private ProgressBar progressLoading;
     private TabLayout musicTabs;
+    private View playlistHeader;
+    private TextView playlistHeaderTitle;
     private LinearLayoutManager layoutManager;
     private EndlessScrollListener scrollListener;
     private PaginationHelper paginationHelper;
     private boolean isSearchMode = false;
     private boolean isQueueLoading = false;
     private boolean isDownloadedMode = false;
+    private boolean isPlaylistTracksMode = false;
+    private int currentPlaylistId = 0;
+    private String currentPlaylistTitle = "";
     private String currentSearchQuery = "";
     private int currentUserId = 0;
+    private final List<Album> audioPlaylists = new ArrayList<>();
     private final BroadcastReceiver audioCacheReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -97,7 +106,11 @@ public class MusicListFragment extends BaseFragment implements AudioAdapter.OnAu
         setupEndlessScroll();
         setupErrorView(view, R.id.swipe_refresh);
         setRetryCallback(() -> {
-            if (isSearchMode) {
+            if (musicTabs.getSelectedTabPosition() == 2 && !isPlaylistTracksMode) {
+                loadAudioPlaylists();
+            } else if (isPlaylistTracksMode) {
+                loadPlaylistTracks(true);
+            } else if (isSearchMode) {
                 searchAudios(currentSearchQuery, true);
             } else {
                 loadAudios(true);
@@ -130,6 +143,9 @@ public class MusicListFragment extends BaseFragment implements AudioAdapter.OnAu
 
     private void initViews(View view) {
         musicTabs = view.findViewById(R.id.music_tabs);
+        playlistHeader = view.findViewById(R.id.playlist_header);
+        playlistHeaderTitle = view.findViewById(R.id.playlist_header_title);
+        view.findViewById(R.id.playlist_back).setOnClickListener(v -> showAudioPlaylists());
         recyclerAudios = view.findViewById(R.id.recycler_audios);
         swipeRefresh = view.findViewById(R.id.swipe_refresh);
         progressLoading = view.findViewById(R.id.progress_loading);
@@ -138,6 +154,7 @@ public class MusicListFragment extends BaseFragment implements AudioAdapter.OnAu
     private void setupTabs() {
         musicTabs.addTab(musicTabs.newTab().setText(R.string.audio_tab_all));
         musicTabs.addTab(musicTabs.newTab().setText(R.string.audio_tab_downloaded));
+        musicTabs.addTab(musicTabs.newTab().setText(R.string.audio_tab_playlists));
         musicTabs.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
             public void onTabSelected(TabLayout.Tab tab) {
@@ -145,9 +162,20 @@ public class MusicListFragment extends BaseFragment implements AudioAdapter.OnAu
                 isSearchMode = false;
                 currentSearchQuery = "";
                 scrollListener.resetState();
-                if (isDownloadedMode) {
+                if (tab.getPosition() == 2) {
+                    isDownloadedMode = false;
+                    loadAudioPlaylists();
+                } else if (isDownloadedMode) {
+                    currentPlaylistId = 0;
+                    isPlaylistTracksMode = false;
+                    playlistHeader.setVisibility(View.GONE);
+                    recyclerAudios.setAdapter(audioAdapter);
                     loadDownloadedAudios();
                 } else {
+                    currentPlaylistId = 0;
+                    isPlaylistTracksMode = false;
+                    playlistHeader.setVisibility(View.GONE);
+                    recyclerAudios.setAdapter(audioAdapter);
                     loadAudios(true);
                 }
             }
@@ -172,7 +200,11 @@ public class MusicListFragment extends BaseFragment implements AudioAdapter.OnAu
     private void setupSwipeRefresh() {
         swipeRefresh.setOnRefreshListener(() -> {
             scrollListener.resetState();
-            if (isDownloadedMode) {
+            if (musicTabs.getSelectedTabPosition() == 2 && !isPlaylistTracksMode) {
+                loadAudioPlaylists();
+            } else if (isPlaylistTracksMode) {
+                loadPlaylistTracks(true);
+            } else if (isDownloadedMode) {
                 loadDownloadedAudios();
             } else if (isSearchMode) {
                 searchAudios(currentSearchQuery, true);
@@ -187,8 +219,11 @@ public class MusicListFragment extends BaseFragment implements AudioAdapter.OnAu
         scrollListener = new EndlessScrollListener(layoutManager, paginationHelper) {
             @Override
             public void onLoadMore(int offset, int totalItemsCount, RecyclerView view) {
-                if (isDownloadedMode) {
+                if (musicTabs.getSelectedTabPosition() == 2 && !isPlaylistTracksMode) {
                     paginationHelper.setNoMoreData();
+                } else if (isPlaylistTracksMode) {
+                    loadPlaylistTracks(false);
+                } else if (isDownloadedMode) {
                 } else if (isSearchMode) {
                     searchAudios(currentSearchQuery, false);
                 } else {
@@ -263,11 +298,108 @@ public class MusicListFragment extends BaseFragment implements AudioAdapter.OnAu
         });
     }
 
+    private void loadAudioPlaylists() {
+        if (currentUserId == 0) return;
+        isPlaylistTracksMode = false;
+        currentPlaylistId = 0;
+        playlistHeader.setVisibility(View.GONE);
+        progressLoading.setVisibility(View.VISIBLE);
+        audioManager.getAlbums(currentUserId, new AudioManager.AlbumsCallback() {
+            @Override
+            public void onSuccess(List<Album> albums) {
+                if (!isAdded()) return;
+                requireActivity().runOnUiThread(() -> {
+                    progressLoading.setVisibility(View.GONE);
+                    swipeRefresh.setRefreshing(false);
+                    hideError();
+                    audioPlaylists.clear();
+                    audioPlaylists.addAll(albums);
+                    recyclerAudios.setAdapter(new AudioPlaylistsAdapter(audioPlaylists,
+                            MusicListFragment.this::openPlaylist));
+                    paginationHelper.setNoMoreData();
+                    if (audioPlaylists.isEmpty()) {
+                        Toast.makeText(requireContext(), R.string.audio_playlists_empty, Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                if (!isAdded()) return;
+                requireActivity().runOnUiThread(() -> {
+                    progressLoading.setVisibility(View.GONE);
+                    swipeRefresh.setRefreshing(false);
+                    showErrorAuto(error);
+                });
+            }
+        });
+    }
+
+    private void openPlaylist(Album album) {
+        currentPlaylistId = album.getId();
+        currentPlaylistTitle = album.getTitle();
+        isPlaylistTracksMode = true;
+        playlistHeaderTitle.setText(currentPlaylistTitle);
+        playlistHeader.setVisibility(View.VISIBLE);
+        recyclerAudios.setAdapter(audioAdapter);
+        loadPlaylistTracks(true);
+    }
+
+    private void showAudioPlaylists() {
+        isPlaylistTracksMode = false;
+        currentPlaylistId = 0;
+        playlistHeader.setVisibility(View.GONE);
+        recyclerAudios.setAdapter(new AudioPlaylistsAdapter(audioPlaylists,
+                MusicListFragment.this::openPlaylist));
+        paginationHelper.setNoMoreData();
+    }
+
+    private void loadPlaylistTracks(boolean refresh) {
+        if (currentPlaylistId == 0) return;
+        if (refresh) paginationHelper.reset();
+        if (!paginationHelper.canLoadMore() && !refresh) return;
+        if (refresh) progressLoading.setVisibility(View.VISIBLE);
+        int offset = refresh ? 0 : paginationHelper.getCurrentOffset();
+        audioManager.getPlaylistAudios(currentUserId, currentPlaylistId, offset, AUDIOS_PER_PAGE,
+                new AudioManager.AudioCallback() {
+                    @Override
+                    public void onSuccess(List<Audio> tracks, int totalCount) {
+                        if (!isAdded()) return;
+                        requireActivity().runOnUiThread(() -> {
+                            paginationHelper.onDataLoaded(tracks.size());
+                            progressLoading.setVisibility(View.GONE);
+                            swipeRefresh.setRefreshing(false);
+                            hideError();
+                            if (refresh) audios.clear();
+                            audios.addAll(tracks);
+                            audioAdapter.notifyDataSetChanged();
+                            if (tracks.isEmpty()) paginationHelper.setNoMoreData();
+                        });
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        if (!isAdded()) return;
+                        requireActivity().runOnUiThread(() -> {
+                            paginationHelper.stopLoading();
+                            progressLoading.setVisibility(View.GONE);
+                            swipeRefresh.setRefreshing(false);
+                            showErrorAuto(error);
+                        });
+                    }
+                });
+    }
+
     private void searchAudios(String query, boolean refresh) {
         if (isDownloadedMode) {
             loadDownloadedAudios(query);
             return;
         }
+
+        currentPlaylistId = 0;
+        isPlaylistTracksMode = false;
+        playlistHeader.setVisibility(View.GONE);
+        recyclerAudios.setAdapter(audioAdapter);
 
         if (query.trim().isEmpty()) {
             isSearchMode = false;
@@ -446,7 +578,9 @@ public class MusicListFragment extends BaseFragment implements AudioAdapter.OnAu
             }
         };
 
-        if (isSearchMode) {
+        if (currentPlaylistId > 0) {
+            audioManager.getPlaylistAudios(currentUserId, currentPlaylistId, offset, PLAYBACK_QUEUE_PAGE_SIZE, callback);
+        } else if (isSearchMode) {
             audioManager.searchAudio(currentSearchQuery, offset, PLAYBACK_QUEUE_PAGE_SIZE, callback);
         } else {
             audioManager.getAudio(currentUserId, offset, PLAYBACK_QUEUE_PAGE_SIZE, callback);
