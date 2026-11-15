@@ -116,6 +116,8 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
         // Показать количество непрочитанных
         if (conversation.getUnreadCount() > 0) {
             holder.unreadBadge.setVisibility(View.VISIBLE);
+            holder.unreadBadge.setText(conversation.getUnreadCount() > 99
+                    ? "99+" : String.valueOf(conversation.getUnreadCount()));
         } else {
             holder.unreadBadge.setVisibility(View.GONE);
         }
@@ -262,7 +264,7 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
         ImageView notificationsMutedIndicator;
         TextView lastMessageText;
         TextView timeText;
-        View unreadBadge;
+        TextView unreadBadge;
         View onlineIndicator;
         ImageView peerVerified;
 
