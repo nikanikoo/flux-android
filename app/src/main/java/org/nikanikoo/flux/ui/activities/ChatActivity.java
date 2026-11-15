@@ -54,6 +54,7 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     private Toolbar toolbar;
+    private android.view.View toolbarHeader;
     private int peerId;
     private int chatId;
     private String peerName;
@@ -64,6 +65,8 @@ public class ChatActivity extends AppCompatActivity {
     private TextView toolbarTitleView;
     private TextView toolbarSubtitleView;
     private boolean chatNotificationsMuted;
+    private boolean toolbarHeaderActive;
+    private int toolbarProfileUserId;
     private final Handler notificationStateHandler = new Handler(Looper.getMainLooper());
     private Runnable notificationExpiryRunnable;
     private ActivityResultLauncher<String> chatPhotoPicker;
@@ -104,8 +107,20 @@ public class ChatActivity extends AppCompatActivity {
 
         getSupportFragmentManager().addOnBackStackChangedListener(() -> {
             if (isChatScreenVisible()) {
+                toolbarHeaderActive = false;
+                toolbarProfileUserId = 0;
                 toolbarTitle = peerName != null ? peerName : getString(R.string.chat_title);
+                toolbarTyping = false;
+                if (toolbarHeader != null) toolbarHeader.setOnClickListener(v -> openChatHeaderOptions());
                 updateToolbarTitle();
+                loadToolbarHeader();
+                MessagesManager.getInstance(this).refreshPushSettings(peerId,
+                        new MessagesManager.PushSettingsCallback() {
+                            @Override public void onSuccess(MessagesManager.PushSettings settings) {
+                                updateNotificationMuteIndicator(settings);
+                            }
+                            @Override public void onError(String error) { }
+                        });
             }
             invalidateOptionsMenu();
         });
@@ -395,16 +410,16 @@ public class ChatActivity extends AppCompatActivity {
                 getSupportActionBar().setDisplayShowTitleEnabled(false);
                 getSupportActionBar().setDisplayShowCustomEnabled(true);
                 toolbar.setContentInsetsRelative((int) (16 * getResources().getDisplayMetrics().density), 0);
-                android.view.View header = getLayoutInflater().inflate(R.layout.chat_toolbar_header, toolbar, false);
-                getSupportActionBar().setCustomView(header,
+                toolbarHeader = getLayoutInflater().inflate(R.layout.chat_toolbar_header, toolbar, false);
+                getSupportActionBar().setCustomView(toolbarHeader,
                         new androidx.appcompat.app.ActionBar.LayoutParams(
                                 androidx.appcompat.app.ActionBar.LayoutParams.WRAP_CONTENT,
                                 androidx.appcompat.app.ActionBar.LayoutParams.MATCH_PARENT,
                                 android.view.Gravity.START | android.view.Gravity.CENTER_VERTICAL));
-                toolbarAvatar = header.findViewById(R.id.chat_toolbar_avatar);
-                toolbarTitleView = header.findViewById(R.id.chat_toolbar_title);
-                toolbarSubtitleView = header.findViewById(R.id.chat_toolbar_subtitle);
-                header.setOnClickListener(v -> openChatHeaderOptions());
+                toolbarAvatar = toolbarHeader.findViewById(R.id.chat_toolbar_avatar);
+                toolbarTitleView = toolbarHeader.findViewById(R.id.chat_toolbar_title);
+                toolbarSubtitleView = toolbarHeader.findViewById(R.id.chat_toolbar_subtitle);
+                toolbarHeader.setOnClickListener(v -> openChatHeaderOptions());
                 updateToolbarTitle();
                 getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             }
@@ -477,6 +492,38 @@ public class ChatActivity extends AppCompatActivity {
     public void setToolbarTitle(String title) {
         if (title != null) toolbarTitle = title;
         updateToolbarTitle();
+    }
+
+    public void showProfileToolbar(int userId, String displayName) {
+        toolbarHeaderActive = true;
+        toolbarProfileUserId = userId;
+        toolbarTitle = displayName != null && !displayName.trim().isEmpty()
+                ? displayName : getString(R.string.profile_title);
+        toolbarOnline = false;
+        toolbarTyping = false;
+        if (toolbarHeader != null) toolbarHeader.setOnClickListener(null);
+        if (toolbarAvatar != null) toolbarAvatar.setImageResource(R.drawable.camera_200);
+        updateToolbarTitle();
+
+        java.util.Map<String, String> params = new java.util.HashMap<>();
+        params.put("user_ids", String.valueOf(userId));
+        params.put("fields", "photo_50,online");
+        OpenVKApi.getInstance(this).callMethod("users.get", params, new OpenVKApi.ApiCallback() {
+            @Override public void onSuccess(JSONObject response) {
+                org.json.JSONArray users = response.optJSONArray("response");
+                JSONObject user = users != null && users.length() > 0 ? users.optJSONObject(0) : null;
+                if (user == null) return;
+                String avatarUrl = user.optString("photo_50", "");
+                boolean online = user.optInt("online", 0) == 1;
+                runOnUiThread(() -> {
+                    if (!toolbarHeaderActive || toolbarProfileUserId != userId) return;
+                    toolbarOnline = online;
+                    updateToolbarSubtitle();
+                    showToolbarAvatar(avatarUrl);
+                });
+            }
+            @Override public void onError(String error) { }
+        });
     }
 
     private void updateNotificationMuteIndicator(MessagesManager.PushSettings settings) {
