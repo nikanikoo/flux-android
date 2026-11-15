@@ -37,6 +37,7 @@ import org.nikanikoo.flux.services.LongPollManager;
 
 import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.ui.fragments.messages.ChatFragment;
+import org.nikanikoo.flux.ui.fragments.profile.ProfileFragment;
 import org.nikanikoo.flux.utils.LocaleManager;
 import org.nikanikoo.flux.utils.ThemeManager;
 
@@ -106,7 +107,14 @@ public class ChatActivity extends AppCompatActivity {
         setupToolbar(peerName);
 
         getSupportFragmentManager().addOnBackStackChangedListener(() -> {
-            if (isChatScreenVisible()) {
+            androidx.fragment.app.Fragment currentFragment =
+                    getSupportFragmentManager().findFragmentById(R.id.chat_container);
+            if (currentFragment instanceof ProfileFragment) {
+                Bundle args = currentFragment.getArguments();
+                int profileUserId = args != null ? args.getInt("user_id", 0) : 0;
+                String profileUserName = args != null ? args.getString("user_name") : null;
+                if (profileUserId > 0) showProfileToolbar(profileUserId, profileUserName);
+            } else if (isChatScreenVisible()) {
                 toolbarHeaderActive = false;
                 toolbarProfileUserId = 0;
                 toolbarTitle = peerName != null ? peerName : getString(R.string.chat_title);
@@ -440,7 +448,9 @@ public class ChatActivity extends AppCompatActivity {
                     JSONObject settings = conversation != null ? conversation.optJSONObject("chat_settings") : null;
                     JSONObject photo = settings != null ? settings.optJSONObject("photo") : null;
                     String url = photo != null ? photo.optString("photo_50", photo.optString("photo_200", "")) : "";
-                    runOnUiThread(() -> showToolbarAvatar(url));
+                    runOnUiThread(() -> {
+                        if (!toolbarHeaderActive) showToolbarAvatar(url);
+                    });
                 }
                 @Override public void onError(String error) { }
             });
@@ -457,6 +467,7 @@ public class ChatActivity extends AppCompatActivity {
                 if (user == null) return;
                 String url = user.optString("photo_50", "");
                 runOnUiThread(() -> {
+                    if (toolbarHeaderActive) return;
                     toolbarOnline = user.optInt("online", 0) == 1;
                     updateToolbarSubtitle();
                     showToolbarAvatar(url);

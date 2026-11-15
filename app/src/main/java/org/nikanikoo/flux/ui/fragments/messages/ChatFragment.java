@@ -1266,9 +1266,6 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
 
         if (userId > 0) {
             // Пользователь
-            if (getActivity() instanceof ChatActivity) {
-                ((ChatActivity) getActivity()).showProfileToolbar(userId, userName);
-            }
             ProfileFragment profileFragment = ProfileFragment.newInstanceWithId(userId, userName);
             getActivity().getSupportFragmentManager().beginTransaction()
                     .replace(containerId, profileFragment)
