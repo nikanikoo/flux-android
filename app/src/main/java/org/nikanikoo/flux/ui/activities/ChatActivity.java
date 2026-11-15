@@ -190,7 +190,8 @@ public class ChatActivity extends AppCompatActivity {
                 getString(R.string.chat_members_action),
                 getString(R.string.chat_add_member_action),
                 getString(R.string.chat_rename_action),
-                getString(R.string.chat_change_photo_action)
+                getString(R.string.chat_change_photo_action),
+                getString(R.string.chat_notifications_menu)
         };
         new MaterialAlertDialogBuilder(this)
                 .setTitle(peerName)
@@ -198,8 +199,21 @@ public class ChatActivity extends AppCompatActivity {
                     if (which == 0) loadChatMembers();
                     else if (which == 1) promptAddMember();
                     else if (which == 2) promptRenameChat();
-                    else chatPhotoPicker.launch("image/*");
+                    else if (which == 3) chatPhotoPicker.launch("image/*");
+                    else openNotificationOptions();
                 })
+                .show();
+    }
+
+    private void openChatHeaderOptions() {
+        if (chatId > 0) {
+            openGroupOptions();
+            return;
+        }
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(peerName)
+                .setItems(new String[] { getString(R.string.chat_notifications_menu) },
+                        (dialog, which) -> openNotificationOptions())
                 .show();
     }
 
@@ -390,6 +404,7 @@ public class ChatActivity extends AppCompatActivity {
                 toolbarAvatar = header.findViewById(R.id.chat_toolbar_avatar);
                 toolbarTitleView = header.findViewById(R.id.chat_toolbar_title);
                 toolbarSubtitleView = header.findViewById(R.id.chat_toolbar_subtitle);
+                header.setOnClickListener(v -> openChatHeaderOptions());
                 updateToolbarTitle();
                 getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             }
