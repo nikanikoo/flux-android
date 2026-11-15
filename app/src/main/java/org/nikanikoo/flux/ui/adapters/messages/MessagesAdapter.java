@@ -132,9 +132,11 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         Object item = items.get(position);
 
         if (holder instanceof OutgoingMessageViewHolder) {
-            bindOutgoingMessage((OutgoingMessageViewHolder) holder, (Message) item, isContinuation(position, (Message) item));
+            bindOutgoingMessage((OutgoingMessageViewHolder) holder, (Message) item,
+                    isContinuation(position, (Message) item), position);
         } else if (holder instanceof IncomingMessageViewHolder) {
-            bindIncomingMessage((IncomingMessageViewHolder) holder, (Message) item, isContinuation(position, (Message) item));
+            bindIncomingMessage((IncomingMessageViewHolder) holder, (Message) item,
+                    isContinuation(position, (Message) item), position);
         } else if (holder instanceof ChatEventViewHolder) {
             bindChatEvent((ChatEventViewHolder) holder, (Message) item);
         } else if (holder instanceof DateHeaderViewHolder) {
@@ -142,9 +144,11 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         }
     }
 
-    private void bindOutgoingMessage(OutgoingMessageViewHolder holder, Message message, boolean continuation) {
+    private void bindOutgoingMessage(OutgoingMessageViewHolder holder, Message message, boolean continuation,
+                                     int position) {
         applyMessageSpacing(holder.itemView, continuation);
-        applyMediaBubbleStyle(holder.bubble, message, R.drawable.message_bubble_outgoing);
+        applyMediaBubbleStyle(holder.bubble, message, R.drawable.message_bubble_outgoing,
+                continuation, continuesWithNext(position, message));
         String sanitizedText = ValidationUtils.SanitizeText(message.getText());
         CharSequence formattedText = MentionUtils.formatMentions(sanitizedText, (id, name, isGroup) -> {
             if (listener != null) {
@@ -153,14 +157,10 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         },true);
         boolean hasText = sanitizedText != null && !sanitizedText.trim().isEmpty();
         holder.messageText.setVisibility(hasText ? View.VISIBLE : View.GONE);
-        holder.messageText.setText(hasText
-                ? withInlineTime(formattedText, message, holder.messageText.getCurrentTextColor(),
-                        message.isReadState() || message.isPending())
-                : formattedText);
+        holder.messageText.setText(formattedText);
         holder.timeText.setText(formatMessageTime(message));
-        holder.metadataFallback.setVisibility(hasText ? View.GONE : View.VISIBLE);
-        holder.readStatus.setVisibility(!hasText && (message.isReadState() || message.isPending())
-                ? View.VISIBLE : View.GONE);
+        holder.metadataFallback.setVisibility(View.VISIBLE);
+        holder.readStatus.setVisibility(message.isReadState() || message.isPending() ? View.VISIBLE : View.GONE);
         if (message.isPending()) holder.readStatus.setImageResource(android.R.drawable.ic_popup_sync);
         else holder.readStatus.setImageResource(android.R.drawable.ic_menu_view);
         Linkify.addLinks(holder.messageText, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES);
@@ -175,9 +175,11 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         
     }
 
-    private void bindIncomingMessage(IncomingMessageViewHolder holder, Message message, boolean continuation) {
+    private void bindIncomingMessage(IncomingMessageViewHolder holder, Message message, boolean continuation,
+                                     int position) {
         applyMessageSpacing(holder.itemView, continuation);
-        applyMediaBubbleStyle(holder.bubble, message, R.drawable.message_bubble_incoming);
+        applyMediaBubbleStyle(holder.bubble, message, R.drawable.message_bubble_incoming,
+                continuation, continuesWithNext(position, message));
         String sanitizedText = ValidationUtils.SanitizeText(message.getText());
         CharSequence formattedText = MentionUtils.formatMentions(sanitizedText, (id, name, isGroup) -> {
             if (listener != null) {
@@ -186,11 +188,9 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         }, true);
         boolean hasText = sanitizedText != null && !sanitizedText.trim().isEmpty();
         holder.messageText.setVisibility(hasText ? View.VISIBLE : View.GONE);
-        holder.messageText.setText(hasText
-                ? withInlineTime(formattedText, message, holder.messageText.getCurrentTextColor(), false)
-                : formattedText);
+        holder.messageText.setText(formattedText);
         holder.timeText.setText(formatMessageTime(message));
-        holder.timeText.setVisibility(hasText ? View.GONE : View.VISIBLE);
+        holder.timeText.setVisibility(View.VISIBLE);
         Linkify.addLinks(holder.messageText, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES);
         holder.messageText.setMovementMethod(SafeLinkMovementMethod.getInstance());
         
@@ -219,35 +219,6 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 listener.onAvatarClick(message.getFromId(), message.getUserName());
             }
         });
-    }
-
-    // Adds a compact timestamp and optional read marker after the message text.
-    private CharSequence withInlineTime(CharSequence messageText, Message message, int textColor, boolean showReadStatus) {
-        SpannableStringBuilder result = new SpannableStringBuilder(messageText);
-        if (result.length() > 0) result.append("  ");
-        int timeStart = result.length();
-        result.append(formatMessageTime(message));
-        int mutedColor = Color.argb(180, Color.red(textColor), Color.green(textColor), Color.blue(textColor));
-        result.setSpan(new RelativeSizeSpan(0.75f), timeStart, result.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        result.setSpan(new ForegroundColorSpan(mutedColor), timeStart, result.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-
-        if (showReadStatus) {
-            int statusResource = message.isPending()
-                    ? android.R.drawable.ic_popup_sync : android.R.drawable.ic_menu_view;
-            Drawable status = ContextCompat.getDrawable(context, statusResource);
-            if (status != null) {
-                status = DrawableCompat.wrap(status.mutate());
-                DrawableCompat.setTint(status, textColor);
-                int size = (int) (14 * context.getResources().getDisplayMetrics().density + 0.5f);
-                status.setBounds(0, 0, size, size);
-                result.append("  ");
-                int iconStart = result.length();
-                result.append("\uFFFC");
-                result.setSpan(new ImageSpan(status, ImageSpan.ALIGN_BOTTOM), iconStart, result.length(),
-                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-            }
-        }
-        return result;
     }
 
     private String formatMessageTime(Message message) {
@@ -282,13 +253,24 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 && previous.getFromId() == message.getFromId();
     }
 
+    private boolean continuesWithNext(int position, Message message) {
+        if (message.isChatSystemEvent() || position + 1 >= items.size()) return false;
+        Object nextItem = items.get(position + 1);
+        if (!(nextItem instanceof Message)) return false;
+        Message next = (Message) nextItem;
+        return !next.isChatSystemEvent()
+                && next.isOut() == message.isOut()
+                && next.getFromId() == message.getFromId();
+    }
+
     private void applyMessageSpacing(View itemView, boolean continuation) {
         int side = dp(12);
         int vertical = dp(continuation ? 1 : 4);
         itemView.setPadding(side, vertical, side, vertical);
     }
 
-    private void applyMediaBubbleStyle(LinearLayout bubble, Message message, int normalBackground) {
+    private void applyMediaBubbleStyle(LinearLayout bubble, Message message, int normalBackground,
+                                      boolean continuation, boolean continuesWithNext) {
         boolean mediaOnly = message.getText() == null || message.getText().trim().isEmpty();
         mediaOnly &= message.getReply() == null && message.getForwardedMessages().isEmpty();
         List<MessageAttachment> attachments = message.getAttachments();
@@ -309,7 +291,31 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             bubble.setMinimumWidth(0);
             bubble.setElevation(0f);
         } else {
-            bubble.setBackgroundResource(normalBackground);
+            android.graphics.drawable.Drawable drawable = ContextCompat.getDrawable(context, normalBackground);
+            if (drawable instanceof GradientDrawable) {
+                GradientDrawable groupedBackground = (GradientDrawable) drawable.mutate();
+                float regular = dp(20);
+                float joined = dp(6);
+                float tail = dp(4);
+                float topLeft = regular;
+                float topRight = regular;
+                float bottomRight = regular;
+                float bottomLeft = regular;
+                if (message.isOut()) {
+                    if (continuation) topRight = joined;
+                    if (!continuesWithNext) bottomRight = tail;
+                } else {
+                    if (continuation) topLeft = joined;
+                    if (!continuesWithNext) bottomLeft = tail;
+                }
+                groupedBackground.setCornerRadii(new float[] {
+                        topLeft, topLeft, topRight, topRight,
+                        bottomRight, bottomRight, bottomLeft, bottomLeft
+                });
+                bubble.setBackground(groupedBackground);
+            } else {
+                bubble.setBackgroundResource(normalBackground);
+            }
             int padding = dp(16);
             bubble.setPadding(padding, padding, padding, padding);
             bubble.setMinimumWidth(dp(200));
