@@ -57,35 +57,6 @@
             android:layout_height="wrap_content"
             android:orientation="vertical" />
 
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:orientation="horizontal"
-            android:layout_gravity="end"
-            android:gravity="center_vertical">
-
-            <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/time_text"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="12:34"
-                android:textSize="12sp"
-                android:textColor="?attr/colorOnPrimary"
-                android:alpha="0.8" />
-
-            <ImageView
-                android:id="@+id/read_status"
-                android:layout_width="16dp"
-                android:layout_height="16dp"
-                android:layout_marginStart="6dp"
-                android:src="@android:drawable/ic_menu_view"
-                android:alpha="0.8"
-                android:visibility="gone"
-                app:tint="?attr/colorOnPrimary" />
-
-        </LinearLayout>
-
     </LinearLayout>
 
 </LinearLayout>

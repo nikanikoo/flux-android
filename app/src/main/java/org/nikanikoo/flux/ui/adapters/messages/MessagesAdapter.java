@@ -6,11 +6,17 @@ import android.content.Intent;
 import android.net.Uri;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.text.util.Linkify;
 import android.text.Layout;
 import android.text.Selection;
 import android.text.Spannable;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
 import android.text.style.ClickableSpan;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.ImageSpan;
+import android.text.style.RelativeSizeSpan;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -21,6 +27,8 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.LinearLayout;
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
+import androidx.core.graphics.drawable.DrawableCompat;
 import androidx.recyclerview.widget.RecyclerView;
 import com.squareup.picasso.Picasso;
 
@@ -132,11 +140,12 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
     private void bindOutgoingMessage(OutgoingMessageViewHolder holder, Message message) {
         String sanitizedText = ValidationUtils.SanitizeText(message.getText());
-        holder.messageText.setText(MentionUtils.formatMentions(sanitizedText, (id, name, isGroup) -> {
+        CharSequence formattedText = MentionUtils.formatMentions(sanitizedText, (id, name, isGroup) -> {
             if (listener != null) {
                 listener.onAvatarClick(isGroup ? -id : id, name);
             }
-        },true));
+        },true);
+        holder.messageText.setText(withInlineTime(formattedText, message, holder.messageText.getCurrentTextColor(), message.isReadState()));
         Linkify.addLinks(holder.messageText, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES);
         holder.messageText.setMovementMethod(SafeLinkMovementMethod.getInstance());
         
@@ -147,26 +156,16 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         bindReferences(holder.replyPreview, message);
         bindAttachments(holder.attachments, message.getAttachments(), holder.messageText.getCurrentTextColor());
         
-        // Форматирование времени
-        Date date = new Date(message.getDate() * 1000);
-        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
-        holder.timeText.setText(sdf.format(date));
-        
-        // Показать статус прочтения
-        if (message.isReadState()) {
-            holder.readStatus.setVisibility(View.VISIBLE);
-        } else {
-            holder.readStatus.setVisibility(View.GONE);
-        }
     }
 
     private void bindIncomingMessage(IncomingMessageViewHolder holder, Message message) {
         String sanitizedText = ValidationUtils.SanitizeText(message.getText());
-        holder.messageText.setText(MentionUtils.formatMentions(sanitizedText, (id, name, isGroup) -> {
+        CharSequence formattedText = MentionUtils.formatMentions(sanitizedText, (id, name, isGroup) -> {
             if (listener != null) {
                 listener.onAvatarClick(isGroup ? -id : id, name);
             }
-        }, true));
+        }, true);
+        holder.messageText.setText(withInlineTime(formattedText, message, holder.messageText.getCurrentTextColor(), false));
         Linkify.addLinks(holder.messageText, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES);
         holder.messageText.setMovementMethod(SafeLinkMovementMethod.getInstance());
         
@@ -176,11 +175,6 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         bindMessageOptions(holder.bubble, holder.messageText, message);
         bindReferences(holder.replyPreview, message);
         bindAttachments(holder.attachments, message.getAttachments(), holder.messageText.getCurrentTextColor());
-        
-        // Форматирование времени
-        Date date = new Date(message.getDate() * 1000);
-        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
-        holder.timeText.setText(sdf.format(date));
         
         // Загрузить аватар отправителя
         if (message.getUserPhoto() != null && !message.getUserPhoto().isEmpty()) {
@@ -201,7 +195,33 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         });
     }
 
-    // Обработчик клика на опции сообщения
+    // Adds a compact timestamp and optional read marker after the message text.
+    private CharSequence withInlineTime(CharSequence messageText, Message message, int textColor, boolean showReadStatus) {
+        SpannableStringBuilder result = new SpannableStringBuilder(messageText);
+        if (result.length() > 0) result.append("  ");
+        int timeStart = result.length();
+        result.append(new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(message.getDate() * 1000)));
+        int mutedColor = Color.argb(180, Color.red(textColor), Color.green(textColor), Color.blue(textColor));
+        result.setSpan(new RelativeSizeSpan(0.75f), timeStart, result.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        result.setSpan(new ForegroundColorSpan(mutedColor), timeStart, result.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+
+        if (showReadStatus) {
+            Drawable status = ContextCompat.getDrawable(context, android.R.drawable.ic_menu_view);
+            if (status != null) {
+                status = DrawableCompat.wrap(status.mutate());
+                DrawableCompat.setTint(status, textColor);
+                int size = (int) (14 * context.getResources().getDisplayMetrics().density + 0.5f);
+                status.setBounds(0, 0, size, size);
+                result.append("  ");
+                int iconStart = result.length();
+                result.append("\uFFFC");
+                result.setSpan(new ImageSpan(status, ImageSpan.ALIGN_BOTTOM), iconStart, result.length(),
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+        }
+        return result;
+    }
+
     private void bindSenderName(TextView senderNameView, Message message) {
         if (!groupChat) {
             senderNameView.setVisibility(View.GONE);
@@ -872,8 +892,6 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         TextView messageText;
         TextView replyPreview;
         LinearLayout attachments;
-        TextView timeText;
-        ImageView readStatus;
 
         OutgoingMessageViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -882,8 +900,6 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             messageText = itemView.findViewById(R.id.message_text);
             replyPreview = itemView.findViewById(R.id.reply_preview);
             attachments = itemView.findViewById(R.id.message_attachments);
-            timeText = itemView.findViewById(R.id.time_text);
-            readStatus = itemView.findViewById(R.id.read_status);
         }
     }
 
@@ -894,7 +910,6 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         TextView messageText;
         TextView replyPreview;
         LinearLayout attachments;
-        TextView timeText;
 
         IncomingMessageViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -904,7 +919,6 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             messageText = itemView.findViewById(R.id.message_text);
             replyPreview = itemView.findViewById(R.id.reply_preview);
             attachments = itemView.findViewById(R.id.message_attachments);
-            timeText = itemView.findViewById(R.id.time_text);
         }
     }
 
