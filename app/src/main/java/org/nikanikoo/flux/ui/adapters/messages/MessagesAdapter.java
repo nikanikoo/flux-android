@@ -128,9 +128,9 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         Object item = items.get(position);
 
         if (holder instanceof OutgoingMessageViewHolder) {
-            bindOutgoingMessage((OutgoingMessageViewHolder) holder, (Message) item);
+            bindOutgoingMessage((OutgoingMessageViewHolder) holder, (Message) item, isContinuation(position, (Message) item));
         } else if (holder instanceof IncomingMessageViewHolder) {
-            bindIncomingMessage((IncomingMessageViewHolder) holder, (Message) item);
+            bindIncomingMessage((IncomingMessageViewHolder) holder, (Message) item, isContinuation(position, (Message) item));
         } else if (holder instanceof ChatEventViewHolder) {
             bindChatEvent((ChatEventViewHolder) holder, (Message) item);
         } else if (holder instanceof DateHeaderViewHolder) {
@@ -138,7 +138,8 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         }
     }
 
-    private void bindOutgoingMessage(OutgoingMessageViewHolder holder, Message message) {
+    private void bindOutgoingMessage(OutgoingMessageViewHolder holder, Message message, boolean continuation) {
+        applyMessageSpacing(holder.itemView, continuation);
         String sanitizedText = ValidationUtils.SanitizeText(message.getText());
         CharSequence formattedText = MentionUtils.formatMentions(sanitizedText, (id, name, isGroup) -> {
             if (listener != null) {
@@ -151,14 +152,15 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         
         // Устанавливаем цвет ссылок таким же, как у обычного текста
         holder.messageText.setLinkTextColor(holder.messageText.getCurrentTextColor());
-        bindSenderName(holder.senderName, message);
+        bindSenderName(holder.senderName, message, continuation);
         bindMessageOptions(holder.bubble, holder.messageText, message);
         bindReferences(holder.replyPreview, message);
         bindAttachments(holder.attachments, message.getAttachments(), holder.messageText.getCurrentTextColor());
         
     }
 
-    private void bindIncomingMessage(IncomingMessageViewHolder holder, Message message) {
+    private void bindIncomingMessage(IncomingMessageViewHolder holder, Message message, boolean continuation) {
+        applyMessageSpacing(holder.itemView, continuation);
         String sanitizedText = ValidationUtils.SanitizeText(message.getText());
         CharSequence formattedText = MentionUtils.formatMentions(sanitizedText, (id, name, isGroup) -> {
             if (listener != null) {
@@ -171,21 +173,22 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         
         // Устанавливаем цвет ссылок таким же, как у обычного текста
         holder.messageText.setLinkTextColor(holder.messageText.getCurrentTextColor());
-        bindSenderName(holder.senderName, message);
+        bindSenderName(holder.senderName, message, continuation);
         bindMessageOptions(holder.bubble, holder.messageText, message);
         bindReferences(holder.replyPreview, message);
         bindAttachments(holder.attachments, message.getAttachments(), holder.messageText.getCurrentTextColor());
         
         // Загрузить аватар отправителя
-        if (message.getUserPhoto() != null && !message.getUserPhoto().isEmpty()) {
+        if (!continuation && message.getUserPhoto() != null && !message.getUserPhoto().isEmpty()) {
             Picasso.get()
                     .load(message.getUserPhoto())
                     .placeholder(R.drawable.camera_200)
                     .error(R.drawable.camera_200)
                     .into(holder.avatarImage);
-        } else {
+        } else if (!continuation) {
             holder.avatarImage.setImageResource(R.drawable.camera_200);
         }
+        holder.avatarImage.setVisibility(continuation ? View.INVISIBLE : View.VISIBLE);
         
         // Обработчик клика на аватарку
         holder.avatarImage.setOnClickListener(v -> {
@@ -222,7 +225,11 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         return result;
     }
 
-    private void bindSenderName(TextView senderNameView, Message message) {
+    private void bindSenderName(TextView senderNameView, Message message, boolean continuation) {
+        if (continuation) {
+            senderNameView.setVisibility(View.GONE);
+            return;
+        }
         if (!groupChat) {
             senderNameView.setVisibility(View.GONE);
             return;
@@ -234,6 +241,22 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         }
         senderNameView.setText(senderName);
         senderNameView.setVisibility(View.VISIBLE);
+    }
+
+    private boolean isContinuation(int position, Message message) {
+        if (position <= 0) return false;
+        Object previousItem = items.get(position - 1);
+        if (!(previousItem instanceof Message)) return false;
+        Message previous = (Message) previousItem;
+        return !previous.isChatSystemEvent()
+                && previous.isOut() == message.isOut()
+                && previous.getFromId() == message.getFromId();
+    }
+
+    private void applyMessageSpacing(View itemView, boolean continuation) {
+        int side = dp(12);
+        int vertical = dp(continuation ? 1 : 4);
+        itemView.setPadding(side, vertical, side, vertical);
     }
 
     private void bindMessageOptions(View bubble, TextView messageText, Message message) {
