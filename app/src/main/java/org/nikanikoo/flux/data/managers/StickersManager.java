@@ -1,12 +1,14 @@
 package org.nikanikoo.flux.data.managers;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.nikanikoo.flux.data.managers.api.OpenVKApi;
 import org.nikanikoo.flux.data.models.Sticker;
 import org.nikanikoo.flux.data.models.StickerPack;
+import org.nikanikoo.flux.security.AccountManager;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -98,6 +100,12 @@ public class StickersManager extends BaseManager<StickersManager> {
     }
 
     public void getOwnedStickers(StickersCallback callback) {
+        SharedPreferences cache = context.getSharedPreferences("stickers_cache", Context.MODE_PRIVATE);
+        String cacheKey = getOwnedStickersCacheKey();
+        List<Sticker> cached = readCachedStickers(cache.getString(cacheKey, null));
+        boolean cacheShown = cache.contains(cacheKey);
+        if (cacheShown) callback.onSuccess(cached);
+
         Map<String, String> params = new HashMap<>();
         params.put("count", "100");
         params.put("offset", "0");
@@ -135,16 +143,61 @@ public class StickersManager extends BaseManager<StickersManager> {
                             }
                         }
                     }
+                    cache.edit().putString(cacheKey, serializeStickers(result)).apply();
                     callback.onSuccess(result);
                 } catch (Exception e) {
-                    callback.onError(e.getMessage() != null ? e.getMessage() : "Could not read stickers");
+                    if (!cacheShown) {
+                        callback.onError(e.getMessage() != null ? e.getMessage() : "Could not read stickers");
+                    }
                 }
             }
 
             @Override
             public void onError(String error) {
-                callback.onError(error);
+                if (!cacheShown) callback.onError(error);
             }
         });
+    }
+
+    private String getOwnedStickersCacheKey() {
+        AccountManager.Account account = AccountManager.getInstance(context).getCurrentAccount();
+        String accountId = account != null ? account.id : "default";
+        return "owned_stickers_" + accountId;
+    }
+
+    private String serializeStickers(List<Sticker> stickers) {
+        JSONArray array = new JSONArray();
+        for (Sticker sticker : stickers) {
+            JSONObject item = new JSONObject();
+            try {
+                item.put("id", sticker.getId());
+                item.put("pack_name", sticker.getPackName());
+                item.put("image_url", sticker.getImageUrl());
+                item.put("emoji", sticker.getEmoji());
+                array.put(item);
+            } catch (Exception ignored) {
+            }
+        }
+        return array.toString();
+    }
+
+    private List<Sticker> readCachedStickers(String json) {
+        List<Sticker> stickers = new ArrayList<>();
+        if (json == null || json.isEmpty()) return stickers;
+        try {
+            JSONArray array = new JSONArray(json);
+            for (int i = 0; i < array.length(); i++) {
+                JSONObject item = array.optJSONObject(i);
+                if (item == null) continue;
+                int id = item.optInt("id", 0);
+                String imageUrl = item.optString("image_url", "");
+                if (id > 0 && !imageUrl.isEmpty()) {
+                    stickers.add(new Sticker(id, item.optString("pack_name", ""), imageUrl,
+                            item.optString("emoji", "")));
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return stickers;
     }
 }
