@@ -45,6 +45,8 @@ public class LongPollManager {
 
     private final List<OnMessageEventListener> messageEventListeners = 
             java.util.Collections.synchronizedList(new ArrayList<>());
+    private final List<OnOnlineEventListener> onlineEventListeners =
+            java.util.Collections.synchronizedList(new ArrayList<>());
     private volatile OnTypingEventListener typingEventListener;
     private volatile OnOnlineEventListener onlineEventListener;
     private volatile OnNotificationSettingsEventListener notificationSettingsEventListener;
@@ -129,6 +131,14 @@ public class LongPollManager {
         this.onlineEventListener = listener;
     }
 
+    public void addOnlineEventListener(OnOnlineEventListener listener) {
+        if (listener != null && !onlineEventListeners.contains(listener)) onlineEventListeners.add(listener);
+    }
+
+    public void removeOnlineEventListener(OnOnlineEventListener listener) {
+        onlineEventListeners.remove(listener);
+    }
+
     public void setTypingEventListener(OnTypingEventListener listener) {
         this.typingEventListener = listener;
     }
@@ -143,6 +153,7 @@ public class LongPollManager {
         }
         typingEventListener = null;
         onlineEventListener = null;
+        onlineEventListeners.clear();
         notificationSettingsEventListener = null;
     }
 
@@ -741,14 +752,17 @@ public class LongPollManager {
             
             Log.d(TAG, "User " + (isOnline ? "online" : "offline") + ": " + userId);
             
-            if (onlineEventListener != null) {
-                final int finalUserId = userId;
-                final boolean finalIsOnline = isOnline;
-                
-                mainHandler.post(() -> 
-                    onlineEventListener.onUserOnline(finalUserId, finalIsOnline)
-                );
-            }
+            final int finalUserId = userId;
+            final boolean finalIsOnline = isOnline;
+            mainHandler.post(() -> {
+                OnOnlineEventListener legacyListener = onlineEventListener;
+                if (legacyListener != null) legacyListener.onUserOnline(finalUserId, finalIsOnline);
+                synchronized (onlineEventListeners) {
+                    for (OnOnlineEventListener listener : new ArrayList<>(onlineEventListeners)) {
+                        listener.onUserOnline(finalUserId, finalIsOnline);
+                    }
+                }
+            });
             
         } catch (Exception e) {
             Logger.e(TAG, "Error processing user online", e);

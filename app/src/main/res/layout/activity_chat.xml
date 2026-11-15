@@ -11,7 +11,7 @@
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
         android:background="?attr/colorSurfaceContainer"
-        android:elevation="4dp"/>
+        android:elevation="4dp" />
 
     <FrameLayout
         android:id="@+id/chat_container"

@@ -1955,10 +1955,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                 actionBar.setSubtitle(subtitleText);
             }
         } else if (getActivity() instanceof ChatActivity) {
-            androidx.appcompat.app.ActionBar actionBar = ((ChatActivity) getActivity()).getSupportActionBar();
-            if (actionBar != null) {
-                actionBar.setSubtitle(subtitleText);
-            }
+            ((ChatActivity) getActivity()).setChatTyping(subtitleText != null);
         }
     }
 }

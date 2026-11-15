@@ -11,6 +11,8 @@ import android.text.style.ImageSpan;
 import android.view.MenuItem;
 import android.view.Menu;
 import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 import android.net.Uri;
 
@@ -25,9 +27,13 @@ import androidx.appcompat.app.AlertDialog;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import com.squareup.picasso.Picasso;
+import org.nikanikoo.flux.ui.custom.CircularImageTransformation;
+import org.nikanikoo.flux.ui.fragments.settings.AppearanceSettingsFragment;
 import org.nikanikoo.flux.data.managers.MessagesManager;
 import org.nikanikoo.flux.data.managers.PhotoUploadManager;
 import org.nikanikoo.flux.data.managers.api.OpenVKApi;
+import org.nikanikoo.flux.services.LongPollManager;
 
 import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.ui.fragments.messages.ChatFragment;
@@ -52,6 +58,11 @@ public class ChatActivity extends AppCompatActivity {
     private int chatId;
     private String peerName;
     private String toolbarTitle;
+    private boolean toolbarOnline;
+    private boolean toolbarTyping;
+    private ImageView toolbarAvatar;
+    private TextView toolbarTitleView;
+    private TextView toolbarSubtitleView;
     private boolean chatNotificationsMuted;
     private final Handler notificationStateHandler = new Handler(Looper.getMainLooper());
     private Runnable notificationExpiryRunnable;
@@ -60,6 +71,14 @@ public class ChatActivity extends AppCompatActivity {
     private final MessagesManager.PushSettingsChangeListener pushSettingsChangeListener = (changedPeerId, settings) -> {
         if (changedPeerId != peerId) return;
         runOnUiThread(() -> updateNotificationMuteIndicator(settings));
+    };
+    private final LongPollManager.OnOnlineEventListener chatOnlineListener = (userId, online) -> {
+        if (userId == peerId) {
+            runOnUiThread(() -> {
+                toolbarOnline = online;
+                updateToolbarSubtitle();
+            });
+        }
     };
 
     @Override
@@ -97,6 +116,7 @@ public class ChatActivity extends AppCompatActivity {
                 .replace(R.id.chat_container, chatFragment)
                 .commit();
         }
+        loadToolbarHeader();
     }
 
     @Override
@@ -110,6 +130,7 @@ public class ChatActivity extends AppCompatActivity {
         super.onStart();
         MessagesManager messagesManager = MessagesManager.getInstance(this);
         messagesManager.addPushSettingsChangeListener(pushSettingsChangeListener);
+        LongPollManager.getInstance(this).addOnlineEventListener(chatOnlineListener);
         messagesManager.refreshPushSettings(peerId, new MessagesManager.PushSettingsCallback() {
             @Override
             public void onSuccess(MessagesManager.PushSettings settings) {
@@ -126,6 +147,7 @@ public class ChatActivity extends AppCompatActivity {
     @Override
     protected void onStop() {
         MessagesManager.getInstance(this).removePushSettingsChangeListener(pushSettingsChangeListener);
+        LongPollManager.getInstance(this).removeOnlineEventListener(chatOnlineListener);
         if (notificationExpiryRunnable != null) {
             notificationStateHandler.removeCallbacks(notificationExpiryRunnable);
             notificationExpiryRunnable = null;
@@ -356,10 +378,85 @@ public class ChatActivity extends AppCompatActivity {
         if (toolbar != null) {
             setSupportActionBar(toolbar);
             if (getSupportActionBar() != null) {
+                getSupportActionBar().setDisplayShowTitleEnabled(false);
+                getSupportActionBar().setDisplayShowCustomEnabled(true);
+                toolbar.setContentInsetsRelative((int) (16 * getResources().getDisplayMetrics().density), 0);
+                android.view.View header = getLayoutInflater().inflate(R.layout.chat_toolbar_header, toolbar, false);
+                getSupportActionBar().setCustomView(header,
+                        new androidx.appcompat.app.ActionBar.LayoutParams(
+                                androidx.appcompat.app.ActionBar.LayoutParams.WRAP_CONTENT,
+                                androidx.appcompat.app.ActionBar.LayoutParams.MATCH_PARENT,
+                                android.view.Gravity.START | android.view.Gravity.CENTER_VERTICAL));
+                toolbarAvatar = header.findViewById(R.id.chat_toolbar_avatar);
+                toolbarTitleView = header.findViewById(R.id.chat_toolbar_title);
+                toolbarSubtitleView = header.findViewById(R.id.chat_toolbar_subtitle);
                 updateToolbarTitle();
                 getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             }
         }
+    }
+
+    private void loadToolbarHeader() {
+        if (peerId > 2000000000) {
+            java.util.Map<String, String> params = new java.util.HashMap<>();
+            params.put("peer_ids", String.valueOf(peerId));
+            params.put("extended", "1");
+            OpenVKApi.getInstance(this).callMethod("messages.getConversationsById", params, new OpenVKApi.ApiCallback() {
+                @Override public void onSuccess(JSONObject response) {
+                    JSONObject data = response.optJSONObject("response");
+                    org.json.JSONArray items = data != null ? data.optJSONArray("items") : null;
+                    JSONObject item = items != null && items.length() > 0 ? items.optJSONObject(0) : null;
+                    JSONObject conversation = item != null ? item.optJSONObject("conversation") : null;
+                    JSONObject settings = conversation != null ? conversation.optJSONObject("chat_settings") : null;
+                    JSONObject photo = settings != null ? settings.optJSONObject("photo") : null;
+                    String url = photo != null ? photo.optString("photo_50", photo.optString("photo_200", "")) : "";
+                    runOnUiThread(() -> showToolbarAvatar(url));
+                }
+                @Override public void onError(String error) { }
+            });
+            return;
+        }
+
+        java.util.Map<String, String> params = new java.util.HashMap<>();
+        params.put("user_ids", String.valueOf(peerId));
+        params.put("fields", "photo_50,online");
+        OpenVKApi.getInstance(this).callMethod("users.get", params, new OpenVKApi.ApiCallback() {
+            @Override public void onSuccess(JSONObject response) {
+                org.json.JSONArray users = response.optJSONArray("response");
+                JSONObject user = users != null && users.length() > 0 ? users.optJSONObject(0) : null;
+                if (user == null) return;
+                String url = user.optString("photo_50", "");
+                runOnUiThread(() -> {
+                    toolbarOnline = user.optInt("online", 0) == 1;
+                    updateToolbarSubtitle();
+                    showToolbarAvatar(url);
+                });
+            }
+            @Override public void onError(String error) { }
+        });
+    }
+
+    private void showToolbarAvatar(String url) {
+        if (toolbarAvatar == null || url == null || url.isEmpty()) return;
+        com.squareup.picasso.RequestCreator request = Picasso.get().load(url).placeholder(R.drawable.camera_200);
+        if (getSharedPreferences("appearance_settings", MODE_PRIVATE)
+                .getBoolean(AppearanceSettingsFragment.KEY_ROUND_AVATARS, true)) {
+            request.transform(new CircularImageTransformation());
+        }
+        request.into(toolbarAvatar);
+    }
+
+    public void setChatTyping(boolean typing) {
+        toolbarTyping = typing;
+        updateToolbarSubtitle();
+    }
+
+    private void updateToolbarSubtitle() {
+        if (toolbarSubtitleView == null) return;
+        String status = toolbarTyping ? getString(R.string.chat_typing)
+                : toolbarOnline ? getString(R.string.profile_status_online) : "";
+        toolbarSubtitleView.setText(status);
+        toolbarSubtitleView.setVisibility(status.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE);
     }
 
     public void setToolbarTitle(String title) {
@@ -388,6 +485,20 @@ public class ChatActivity extends AppCompatActivity {
 
     private void updateToolbarTitle() {
         if (toolbarTitle == null) return;
+        if (toolbarTitleView != null) {
+            toolbarTitleView.setText(toolbarTitle);
+            Drawable muteIcon = chatNotificationsMuted && isChatScreenVisible()
+                    ? ContextCompat.getDrawable(this, R.drawable.ic_notifications_off) : null;
+            if (muteIcon != null) {
+                muteIcon = DrawableCompat.wrap(muteIcon.mutate());
+                int size = (int) (18 * getResources().getDisplayMetrics().density + 0.5f);
+                muteIcon.setBounds(0, 0, size, size);
+            }
+            toolbarTitleView.setCompoundDrawablesRelative(null, null, muteIcon, null);
+            toolbarTitleView.setCompoundDrawablePadding((int) (6 * getResources().getDisplayMetrics().density));
+            updateToolbarSubtitle();
+            return;
+        }
         CharSequence displayTitle = toolbarTitle;
         if (chatNotificationsMuted && isChatScreenVisible()) {
             Drawable icon = ContextCompat.getDrawable(this, R.drawable.ic_notifications_off);
