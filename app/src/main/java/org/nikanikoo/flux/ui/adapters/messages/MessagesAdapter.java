@@ -433,7 +433,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             } else if ("link".equals(attachment.getType())) {
                 addLinkCard(container, attachment, messageTextColor);
             } else if ("doc".equals(attachment.getType())) {
-                addDocumentCard(container, attachment);
+                addDocumentCard(container, attachment, messageTextColor);
             } else if ("audio".equals(attachment.getType()) && attachment.getAudio() != null) {
                 LinearLayout audioContainer = new LinearLayout(context);
                 audioContainer.setOrientation(LinearLayout.VERTICAL);
@@ -458,7 +458,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 LinearLayout.LayoutParams imageParams = new LinearLayout.LayoutParams(dp(220), dp(160));
                 imageParams.topMargin = dp(8);
                 image.setLayoutParams(imageParams);
-                image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                image.setScaleType(ImageView.ScaleType.FIT_CENTER);
                 image.setContentDescription(attachment.getTitle());
                 Picasso.get().load(attachment.getImageUrl())
                         .placeholder(android.R.drawable.ic_menu_gallery)
@@ -575,7 +575,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         container.addView(stickerFrame, frameParams);
     }
 
-    private void addDocumentCard(LinearLayout container, MessageAttachment attachment) {
+    private void addDocumentCard(LinearLayout container, MessageAttachment attachment, int messageTextColor) {
         LinearLayout card = new LinearLayout(context);
         card.setOrientation(LinearLayout.VERTICAL);
         int padding = dp(10);
@@ -591,15 +591,17 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
         TextView name = new TextView(context);
         name.setText(attachment.getTitle().isEmpty() ? "Документ" : attachment.getTitle());
-        name.setTypeface(null, android.graphics.Typeface.BOLD);
-        name.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        name.setTextColor(messageTextColor);
+        name.setTypeface(null, attachment.isGifDocument()
+                ? android.graphics.Typeface.NORMAL : android.graphics.Typeface.BOLD);
+        name.setTextSize(TypedValue.COMPLEX_UNIT_SP, attachment.isGifDocument() ? 16 : 14);
         card.addView(name);
 
         if (attachment.getImageUrl() != null && !attachment.getImageUrl().isEmpty()) {
             ImageView preview = new ImageView(context);
             preview.setLayoutParams(new LinearLayout.LayoutParams(dp(220), dp(130)));
-            preview.setScaleType(ImageView.ScaleType.CENTER_CROP);
-            Picasso.get().load(attachment.getImageUrl()).fit().centerCrop()
+            preview.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            Picasso.get().load(attachment.getImageUrl()).fit().centerInside()
                     .placeholder(android.R.drawable.ic_menu_gallery)
                     .error(android.R.drawable.ic_menu_gallery).into(preview);
             LinearLayout.LayoutParams previewParams = (LinearLayout.LayoutParams) preview.getLayoutParams();
@@ -609,6 +611,8 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
         TextView details = new TextView(context);
         details.setText(attachment.getSubtitle().isEmpty() ? "Открыть документ" : attachment.getSubtitle().toUpperCase(Locale.getDefault()) + " · Открыть документ");
+        details.setTextColor(messageTextColor);
+        details.setAlpha(0.8f);
         details.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         LinearLayout.LayoutParams detailsParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
