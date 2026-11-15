@@ -18,7 +18,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
-import android.widget.PopupMenu;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -540,30 +539,42 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     }
 
     private void showAttachmentMenu() {
-        PopupMenu menu = new PopupMenu(requireContext(), attachButton);
-        menu.getMenu().add(0, 1, 0, R.string.attach_photo_action);
-        menu.getMenu().add(0, 2, 1, R.string.attach_video_action);
-        menu.getMenu().add(0, 3, 2, R.string.attach_audio_action);
-        menu.getMenu().add(0, 4, 3, R.string.attach_document_action);
-        menu.setOnMenuItemClickListener(item -> {
-            switch (item.getItemId()) {
-                case 1:
-                    photoPicker.launch("image/*");
-                    return true;
-                case 2:
-                    loadVideosForAttachment();
-                    return true;
-                case 3:
-                    loadAudiosForAttachment();
-                    return true;
-                case 4:
-                    loadDocumentsForAttachment();
-                    return true;
-                default:
-                    return false;
-            }
-        });
-        menu.show();
+        LinearLayout menuContent = new LinearLayout(requireContext());
+        menuContent.setOrientation(LinearLayout.VERTICAL);
+        menuContent.setPadding(0, dp(4), 0, dp(4));
+
+        PopupWindow menu = new PopupWindow(menuContent, dp(224), ViewGroup.LayoutParams.WRAP_CONTENT, true);
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(resolveThemeColor(com.google.android.material.R.attr.colorSurfaceContainerHigh));
+        background.setCornerRadius(dp(20));
+        menu.setBackgroundDrawable(background);
+        menu.setElevation(dp(8));
+        menu.setOutsideTouchable(true);
+        menu.setInputMethodMode(PopupWindow.INPUT_METHOD_NOT_NEEDED);
+        menu.setClippingEnabled(true);
+
+        addMessageAction(menuContent, menu, R.string.attach_photo_action, R.drawable.ic_photo, false,
+                () -> photoPicker.launch("image/*"));
+        addMessageAction(menuContent, menu, R.string.attach_video_action, R.drawable.ic_video_library, false,
+                this::loadVideosForAttachment);
+        addMessageAction(menuContent, menu, R.string.attach_audio_action, R.drawable.ic_library_music, false,
+                this::loadAudiosForAttachment);
+        addMessageAction(menuContent, menu, R.string.attach_document_action, R.drawable.ic_attach_file, false,
+                this::loadDocumentsForAttachment);
+
+        menuContent.measure(
+                View.MeasureSpec.makeMeasureSpec(dp(224), View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+        int menuHeight = menuContent.getMeasuredHeight();
+        int[] anchorLocation = new int[2];
+        attachButton.getLocationOnScreen(anchorLocation);
+        Rect visibleFrame = new Rect();
+        attachButton.getWindowVisibleDisplayFrame(visibleFrame);
+        int belowSpace = visibleFrame.bottom - (anchorLocation[1] + attachButton.getHeight());
+        int aboveSpace = anchorLocation[1] - visibleFrame.top;
+        int yOffset = belowSpace < menuHeight && aboveSpace > belowSpace
+                ? -attachButton.getHeight() - menuHeight : 0;
+        menu.showAsDropDown(attachButton, 0, yOffset, Gravity.START);
     }
 
     private void loadVideosForAttachment() {
