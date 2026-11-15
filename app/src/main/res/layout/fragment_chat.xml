@@ -120,10 +120,11 @@
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/jump_latest_button"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
             android:contentDescription="@string/chat_jump_latest"
             android:src="@drawable/ic_keyboard_arrow_down"
+            app:fabSize="normal"
             app:backgroundTint="?attr/colorSurfaceContainerHigh"
             app:tint="?attr/colorOnSurface" />
 
@@ -132,6 +133,8 @@
             android:layout_width="wrap_content"
             android:layout_height="20dp"
             android:layout_gravity="top|end"
+            android:translationX="3dp"
+            android:translationY="-3dp"
             android:minWidth="20dp"
             android:gravity="center"
             android:paddingStart="5dp"
