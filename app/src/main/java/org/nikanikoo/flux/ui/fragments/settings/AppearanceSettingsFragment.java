@@ -68,6 +68,7 @@ public class AppearanceSettingsFragment extends Fragment {
 
     public static final String KEY_START_SECTION = "start_section";
     public static final String DEFAULT_START_SECTION = "drawer_news";
+    public static final String KEY_ROUND_AVATARS = "round_avatars";
 
     public static final String KEY_DRAWER_NAV_ITEMS = "drawer_nav_items";
     public static final String DEFAULT_DRAWER_NAV_ITEMS = "drawer_news,drawer_friends,drawer_photos,drawer_videos,drawer_audio,drawer_messages,drawer_groups,drawer_notes,drawer_settings";
@@ -100,6 +101,7 @@ public class AppearanceSettingsFragment extends Fragment {
     private View settingsNavigationStartSection;
     private View settingsNavigationSections;
     private SwitchMaterial switchNavigationLabels;
+    private SwitchMaterial switchRoundAvatars;
 
     @Nullable
     @Override
@@ -124,6 +126,7 @@ public class AppearanceSettingsFragment extends Fragment {
         navigationSectionsTitle = view.findViewById(R.id.navigation_sections_title);
         navigationSectionsValue = view.findViewById(R.id.navigation_sections_value);
         switchNavigationLabels = view.findViewById(R.id.switch_navigation_labels);
+        switchRoundAvatars = view.findViewById(R.id.switch_round_avatars);
         
         settingsThemeMode = view.findViewById(R.id.settings_theme_mode);
         settingsColorScheme = view.findViewById(R.id.settings_color_scheme);
@@ -149,6 +152,9 @@ public class AppearanceSettingsFragment extends Fragment {
                 ((MainActivity) getActivity()).refreshBottomNavigation();
             }
         });
+        switchRoundAvatars.setOnCheckedChangeListener((buttonView, isChecked) ->
+                requireContext().getSharedPreferences(MenuDashboardFragment.PREFS_NAME, Context.MODE_PRIVATE)
+                        .edit().putBoolean(KEY_ROUND_AVATARS, isChecked).apply());
     }
     
     private void updateThemeValues() {
@@ -174,6 +180,7 @@ public class AppearanceSettingsFragment extends Fragment {
 
         switchNavigationLabels.setChecked(prefs.getBoolean(MenuDashboardFragment.KEY_BOTTOM_NAV_LABELS, true));
         switchNavigationLabels.setEnabled(isBottomNav);
+        switchRoundAvatars.setChecked(prefs.getBoolean(KEY_ROUND_AVATARS, true));
         
         String savedItems = prefs.getString(MenuDashboardFragment.KEY_BOTTOM_NAV_ITEMS,
                 MenuDashboardFragment.DEFAULT_BOTTOM_NAV_ITEMS);

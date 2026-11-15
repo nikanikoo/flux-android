@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <item name="tag_album_art_key" type="id"/>
-    <item name="drawer_menu_dashboard" type="id"/>
-    <item name="action_notifications" type="id"/>
-    <item name="action_theme_toggle" type="id"/>
-    <item name="action_settings" type="id"/>
+    <item name="avatar_shape_state" type="id" />
+    <item name="avatar_layout_listener" type="id" />
+    <item name="tag_album_art_key" type="id" />
+    <item name="drawer_menu_dashboard" type="id" />
+    <item name="action_theme_toggle" type="id" />
+    <item name="action_settings" type="id" />
+    <item name="action_notifications" type="id" />
 </resources>
