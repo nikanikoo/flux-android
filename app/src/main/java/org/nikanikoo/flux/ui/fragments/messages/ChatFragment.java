@@ -96,6 +96,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     private ImageView attachButton;
     private ImageView stickerButton;
     private View pendingAttachmentPreview;
+    private View chatComposer;
     private android.widget.LinearLayout pendingAttachmentList;
     private View pinnedMessageCard;
     private TextView pinnedMessagePreview;
@@ -270,6 +271,9 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         recyclerView = view.findViewById(R.id.recycler_view);
         recyclerBaseTopPadding = recyclerView.getPaddingTop();
         recyclerBaseBottomPadding = recyclerView.getPaddingBottom();
+        chatComposer = view.findViewById(R.id.chat_composer);
+        chatComposer.addOnLayoutChangeListener((v, left, top, right, bottom,
+                                                oldLeft, oldTop, oldRight, oldBottom) -> updateRecyclerBottomPadding(false));
         swipeRefreshLayout = view.findViewById(R.id.swipe_refresh);
         messageInput = view.findViewById(R.id.message_input);
         sendButton = view.findViewById(R.id.send_button);
@@ -1192,9 +1196,11 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
 
     private void updateRecyclerBottomPadding(boolean hasAttachments) {
         if (recyclerView == null) return;
-        int extra = hasAttachments ? dp(112) : 0;
+        int composerHeight = chatComposer != null ? chatComposer.getHeight() : 0;
+        if (composerHeight == 0) composerHeight = dp(56);
+        int bottomPadding = Math.max(recyclerBaseBottomPadding, composerHeight + dp(8));
         recyclerView.setPadding(recyclerView.getPaddingLeft(), recyclerView.getPaddingTop(),
-                recyclerView.getPaddingRight(), recyclerBaseBottomPadding + extra);
+                recyclerView.getPaddingRight(), bottomPadding);
     }
 
     private void clearPendingAttachment() {
