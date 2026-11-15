@@ -61,6 +61,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     private static final int TYPE_OUTGOING = 1;
     private static final int TYPE_DATE_HEADER = 2;
     private static final int TYPE_CHAT_EVENT = 3;
+    private static final long MESSAGE_GROUPING_INTERVAL_SECONDS = 5 * 60;
 
     private List<Object> items;
     private Context context;
@@ -248,9 +249,11 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         Object previousItem = items.get(position - 1);
         if (!(previousItem instanceof Message)) return false;
         Message previous = (Message) previousItem;
+        long gap = message.getDate() - previous.getDate();
         return !previous.isChatSystemEvent()
                 && previous.isOut() == message.isOut()
-                && previous.getFromId() == message.getFromId();
+                && previous.getFromId() == message.getFromId()
+                && gap >= 0 && gap <= MESSAGE_GROUPING_INTERVAL_SECONDS;
     }
 
     private boolean continuesWithNext(int position, Message message) {
@@ -258,9 +261,11 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         Object nextItem = items.get(position + 1);
         if (!(nextItem instanceof Message)) return false;
         Message next = (Message) nextItem;
+        long gap = next.getDate() - message.getDate();
         return !next.isChatSystemEvent()
                 && next.isOut() == message.isOut()
-                && next.getFromId() == message.getFromId();
+                && next.getFromId() == message.getFromId()
+                && gap >= 0 && gap <= MESSAGE_GROUPING_INTERVAL_SECONDS;
     }
 
     private void applyMessageSpacing(View itemView, boolean continuation) {
@@ -303,10 +308,10 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 float bottomLeft = regular;
                 if (message.isOut()) {
                     if (continuation) topRight = joined;
-                    if (!continuesWithNext) bottomRight = tail;
+                    bottomRight = continuesWithNext ? joined : tail;
                 } else {
                     if (continuation) topLeft = joined;
-                    if (!continuesWithNext) bottomLeft = tail;
+                    bottomLeft = continuesWithNext ? joined : tail;
                 }
                 groupedBackground.setCornerRadii(new float[] {
                         topLeft, topLeft, topRight, topRight,
