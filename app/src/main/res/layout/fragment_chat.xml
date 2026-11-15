@@ -284,10 +284,11 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:minHeight="40dp"
+                android:minLines="1"
                 android:paddingTop="4dp"
                 android:paddingBottom="4dp"
                 android:hint="@string/chat_message_hint"
-                android:maxLines="3"
+                android:maxLines="5"
                 android:inputType="textMultiLine|textCapSentences"
                 android:imeOptions="actionSend"
                 android:textSize="16sp" />
