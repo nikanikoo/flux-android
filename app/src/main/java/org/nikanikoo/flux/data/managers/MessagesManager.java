@@ -9,6 +9,7 @@ import org.nikanikoo.flux.data.models.Audio;
 import org.nikanikoo.flux.data.models.Message;
 import org.nikanikoo.flux.data.models.MessageAttachment;
 import org.nikanikoo.flux.data.models.MessageReference;
+import org.nikanikoo.flux.security.AccountManager;
 import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.utils.ImageUtils;
 import org.nikanikoo.flux.utils.AsyncTaskHelper;
@@ -283,6 +284,7 @@ public class MessagesManager extends BaseManager<MessagesManager> {
         api.callMethod("messages.getConversations", params, new OpenVKApi.ApiCallback() {
             @Override
             public void onSuccess(JSONObject response) {
+                cacheOfflineResponse(conversationsCacheKey(count, offset), response);
                 // Parse conversations in background thread to avoid UI blocking
                 AsyncTaskHelper.executeAsync(() -> {
                     return parseConversationsResponse(response);
@@ -303,7 +305,16 @@ public class MessagesManager extends BaseManager<MessagesManager> {
             @Override
             public void onError(String error) {
                 Logger.e(TAG, "Ошибка получения диалогов: " + error);
-                callback.onError(error);
+                JSONObject cached = getOfflineResponse(conversationsCacheKey(count, offset));
+                if (cached == null) {
+                    callback.onError(error);
+                    return;
+                }
+                AsyncTaskHelper.executeAsync(() -> parseConversationsResponse(cached),
+                        new AsyncTaskHelper.AsyncCallback<List<Conversation>>() {
+                    @Override public void onSuccess(List<Conversation> conversations) { callback.onSuccess(conversations); }
+                    @Override public void onError(String parseError) { callback.onError(error); }
+                });
             }
         });
     }
@@ -325,6 +336,7 @@ public class MessagesManager extends BaseManager<MessagesManager> {
         api.callMethod("messages.getHistory", params, new OpenVKApi.ApiCallback() {
             @Override
             public void onSuccess(JSONObject response) {
+                cacheOfflineResponse(historyCacheKey(peerId, count, offset, startMessageId), response);
                 // Parse messages in background thread to avoid UI blocking
                 final int finalPeerId = peerId;
                 AsyncTaskHelper.executeAsync(() -> {
@@ -346,9 +358,51 @@ public class MessagesManager extends BaseManager<MessagesManager> {
             @Override
             public void onError(String error) {
                 Logger.e(TAG, "Error loading messages: " + error);
-                callback.onError("Не удалось загрузить сообщения");
+                JSONObject cached = getOfflineResponse(historyCacheKey(peerId, count, offset, startMessageId));
+                if (cached == null) {
+                    callback.onError("Не удалось загрузить сообщения");
+                    return;
+                }
+                final int finalPeerId = peerId;
+                AsyncTaskHelper.executeAsync(() -> parseMessagesResponse(cached, finalPeerId),
+                        new AsyncTaskHelper.AsyncCallback<List<Message>>() {
+                    @Override public void onSuccess(List<Message> messages) { callback.onSuccess(messages); }
+                    @Override public void onError(String parseError) {
+                        callback.onError("Не удалось загрузить сообщения");
+                    }
+                });
             }
         });
+    }
+
+    private String offlineCachePrefix() {
+        AccountManager.Account account = AccountManager.getInstance(context).getCurrentAccount();
+        String accountId = account != null ? account.id : "default";
+        return "account_" + accountId + "_";
+    }
+
+    private String conversationsCacheKey(int count, int offset) {
+        return offlineCachePrefix() + "conversations_" + count + "_" + offset;
+    }
+
+    private String historyCacheKey(int peerId, int count, int offset, int startMessageId) {
+        return offlineCachePrefix() + "history_" + peerId + "_" + count + "_" + offset + "_" + startMessageId;
+    }
+
+    private void cacheOfflineResponse(String key, JSONObject response) {
+        context.getSharedPreferences("messages_offline_cache", Context.MODE_PRIVATE)
+                .edit().putString(key, response.toString()).apply();
+    }
+
+    private JSONObject getOfflineResponse(String key) {
+        String json = context.getSharedPreferences("messages_offline_cache", Context.MODE_PRIVATE)
+                .getString(key, null);
+        if (json == null || json.isEmpty()) return null;
+        try {
+            return new JSONObject(json);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     public void getPinnedMessage(int peerId, PinnedMessageCallback callback) {
