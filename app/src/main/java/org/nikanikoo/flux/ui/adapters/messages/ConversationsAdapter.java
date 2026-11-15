@@ -29,7 +29,7 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
             new android.os.Handler(android.os.Looper.getMainLooper());
     private final MessagesManager.PushSettingsChangeListener pushSettingsChangeListener;
 
-    private final java.util.Set<Integer> typingUserIds = new java.util.HashSet<>();
+    private final java.util.Map<Integer, String> typingUsersByPeerId = new java.util.HashMap<>();
     private final android.os.Handler typingHandler = new android.os.Handler(android.os.Looper.getMainLooper());
     private final java.util.Map<Integer, Runnable> typingRunnables = new java.util.HashMap<>();
 
@@ -95,8 +95,9 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
         });
         
         android.util.TypedValue typedValue = new android.util.TypedValue();
-        if (typingUserIds.contains(conversation.getPeerId())) {
-            holder.lastMessageText.setText(context.getString(R.string.chat_typing));
+        String typingText = typingUsersByPeerId.get(conversation.getPeerId());
+        if (typingText != null) {
+            holder.lastMessageText.setText(typingText);
             holder.lastMessageText.getContext().getTheme().resolveAttribute(androidx.appcompat.R.attr.colorPrimary, typedValue, true);
             holder.lastMessageText.setTextColor(typedValue.data);
         } else {
@@ -214,33 +215,33 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
         }
     }
 
-    public void setUserTyping(int userId, boolean isTyping) {
-        Runnable existing = typingRunnables.remove(userId);
+    public void setUserTyping(int peerId, String typingText) {
+        Runnable existing = typingRunnables.remove(peerId);
         if (existing != null) {
             typingHandler.removeCallbacks(existing);
         }
 
-        if (isTyping) {
-            typingUserIds.add(userId);
+        if (typingText != null) {
+            typingUsersByPeerId.put(peerId, typingText);
             
             Runnable clearRunnable = () -> {
-                typingUserIds.remove(userId);
-                typingRunnables.remove(userId);
+                typingUsersByPeerId.remove(peerId);
+                typingRunnables.remove(peerId);
                 for (int i = 0; i < conversations.size(); i++) {
-                    if (conversations.get(i).getPeerId() == userId) {
+                    if (conversations.get(i).getPeerId() == peerId) {
                         notifyItemChanged(i);
                         break;
                     }
                 }
             };
-            typingRunnables.put(userId, clearRunnable);
+            typingRunnables.put(peerId, clearRunnable);
             typingHandler.postDelayed(clearRunnable, 6000);
         } else {
-            typingUserIds.remove(userId);
+            typingUsersByPeerId.remove(peerId);
         }
 
         for (int i = 0; i < conversations.size(); i++) {
-            if (conversations.get(i).getPeerId() == userId) {
+            if (conversations.get(i).getPeerId() == peerId) {
                 notifyItemChanged(i);
                 break;
             }
@@ -250,7 +251,7 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
     public void cleanup() {
         typingHandler.removeCallbacksAndMessages(null);
         typingRunnables.clear();
-        typingUserIds.clear();
+        typingUsersByPeerId.clear();
         messagesManager.removePushSettingsChangeListener(pushSettingsChangeListener);
         pushSettingsHandler.removeCallbacksAndMessages(null);
     }

@@ -28,7 +28,11 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.widget.Toast;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class MessagesListFragment extends BaseFragment implements ConversationsAdapter.OnConversationClickListener, LongPollManager.OnTypingEventListener {
     
@@ -43,6 +47,8 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
     private static List<Conversation> sCachedConversations = null;
     private static boolean sIsConversationsLoaded = false;
     private int activePeerId = -1;
+    private final Map<Integer, String> typingNamesByPeerId = new HashMap<>();
+    private final Set<Integer> typingNameRequests = new HashSet<>();
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -127,7 +133,34 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
     public void onUserTyping(int peerId, int userId) {
         if (getActivity() != null && isViewCreated && adapter != null) {
             getActivity().runOnUiThread(() -> {
-                adapter.setUserTyping(peerId, true);
+                if (peerId <= 2000000000) {
+                    adapter.setUserTyping(peerId, getString(R.string.chat_typing));
+                    return;
+                }
+
+                String cachedName = typingNamesByPeerId.get(peerId);
+                if (cachedName != null) {
+                    adapter.setUserTyping(peerId, getString(R.string.chat_typing_with_name, cachedName));
+                } else {
+                    adapter.setUserTyping(peerId, getString(R.string.chat_typing));
+                    if (typingNameRequests.add(peerId)) {
+                        messagesManager.getUserInfo(userId, new MessagesManager.UserInfoCallback() {
+                            @Override
+                            public void onSuccess(String userName, String userPhoto) {
+                                typingNameRequests.remove(peerId);
+                                typingNamesByPeerId.put(peerId, userName);
+                                if (isAdded() && adapter != null) {
+                                    adapter.setUserTyping(peerId, getString(R.string.chat_typing_with_name, userName));
+                                }
+                            }
+
+                            @Override
+                            public void onError(String error) {
+                                typingNameRequests.remove(peerId);
+                            }
+                        });
+                    }
+                }
             });
         }
     }
