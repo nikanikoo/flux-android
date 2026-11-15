@@ -36,6 +36,7 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
     public interface OnConversationClickListener {
         void onConversationClick(Conversation conversation);
         void onAvatarClick(int userId, String userName);
+        void onConversationLongClick(Conversation conversation);
     }
 
     public ConversationsAdapter(Context context, List<Conversation> conversations) {
@@ -150,6 +151,11 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
             if (listener != null) {
                 listener.onConversationClick(conversation);
             }
+        });
+        holder.itemView.setOnLongClickListener(v -> {
+            if (listener == null) return false;
+            listener.onConversationLongClick(conversation);
+            return true;
         });
     }
 

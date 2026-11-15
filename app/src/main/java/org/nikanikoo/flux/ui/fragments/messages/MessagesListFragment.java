@@ -392,6 +392,80 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
         startActivity(intent);
     }
 
+    @Override
+    public void onConversationLongClick(Conversation conversation) {
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(conversation.getTitle())
+                .setItems(new CharSequence[]{getString(R.string.chat_notifications_menu),
+                        getString(R.string.chat_delete_conversation)}, (dialog, which) -> {
+                    if (which == 0) showConversationNotificationOptions(conversation);
+                    else confirmDeleteConversation(conversation);
+                })
+                .show();
+    }
+
+    private void showConversationNotificationOptions(Conversation conversation) {
+        messagesManager.refreshPushSettings(conversation.getPeerId(), new MessagesManager.PushSettingsCallback() {
+            @Override
+            public void onSuccess(MessagesManager.PushSettings settings) {
+                if (!isAdded()) return;
+                List<String> options = new ArrayList<>();
+                List<Integer> durations = new ArrayList<>();
+                if (!settings.areNotificationsEnabled()) {
+                    options.add(getString(R.string.chat_notifications_enable));
+                    durations.add(0);
+                }
+                options.add(getString(R.string.chat_notifications_mute_1_hour));
+                durations.add(3600);
+                options.add(getString(R.string.chat_notifications_mute_8_hours));
+                durations.add(28800);
+                options.add(getString(R.string.chat_notifications_mute_forever));
+                durations.add(-1);
+
+                new MaterialAlertDialogBuilder(requireContext())
+                        .setTitle(R.string.chat_notifications_menu)
+                        .setItems(options.toArray(new String[0]), (dialog, which) ->
+                                messagesManager.setSilenceMode(conversation.getPeerId(), durations.get(which),
+                                        new MessagesManager.SilenceModeCallback() {
+                                            @Override public void onSuccess() {
+                                                if (isAdded()) Toast.makeText(requireContext(),
+                                                        durations.get(which) == 0 ? R.string.chat_notifications_enabled
+                                                                : R.string.chat_notifications_muted,
+                                                        Toast.LENGTH_SHORT).show();
+                                            }
+                                            @Override public void onError(String error) {
+                                                if (isAdded()) Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
+                                            }
+                                        }))
+                        .show();
+            }
+
+            @Override
+            public void onError(String error) {
+                if (isAdded()) Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void confirmDeleteConversation(Conversation conversation) {
+        new MaterialAlertDialogBuilder(requireContext())
+                .setMessage(getString(R.string.chat_delete_conversation_confirm, conversation.getTitle()))
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.delete, (dialog, which) -> messagesManager.deleteConversation(
+                        conversation.getPeerId(), new org.nikanikoo.flux.data.managers.api.OpenVKApi.ApiCallback() {
+                            @Override public void onSuccess(org.json.JSONObject response) {
+                                if (!isAdded()) return;
+                                conversations.remove(conversation);
+                                cacheConversations();
+                                if (adapter != null) adapter.updateConversations(conversations);
+                            }
+                            @Override public void onError(String error) {
+                                if (isAdded()) Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
+                            }
+                        }))
+                .show();
+    }
+
     private void loadFriendsForNewConversation() {
         FriendsManager.getInstance(requireContext()).getFriends(1000, 0, new FriendsManager.FriendsCallback() {
             @Override
