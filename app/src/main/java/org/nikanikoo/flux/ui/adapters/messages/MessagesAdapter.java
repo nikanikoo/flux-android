@@ -140,6 +140,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
     private void bindOutgoingMessage(OutgoingMessageViewHolder holder, Message message, boolean continuation) {
         applyMessageSpacing(holder.itemView, continuation);
+        applyMediaBubbleStyle(holder.bubble, message, R.drawable.message_bubble_outgoing);
         String sanitizedText = ValidationUtils.SanitizeText(message.getText());
         CharSequence formattedText = MentionUtils.formatMentions(sanitizedText, (id, name, isGroup) -> {
             if (listener != null) {
@@ -168,6 +169,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
     private void bindIncomingMessage(IncomingMessageViewHolder holder, Message message, boolean continuation) {
         applyMessageSpacing(holder.itemView, continuation);
+        applyMediaBubbleStyle(holder.bubble, message, R.drawable.message_bubble_incoming);
         String sanitizedText = ValidationUtils.SanitizeText(message.getText());
         CharSequence formattedText = MentionUtils.formatMentions(sanitizedText, (id, name, isGroup) -> {
             if (listener != null) {
@@ -274,6 +276,35 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         int side = dp(12);
         int vertical = dp(continuation ? 1 : 4);
         itemView.setPadding(side, vertical, side, vertical);
+    }
+
+    private void applyMediaBubbleStyle(LinearLayout bubble, Message message, int normalBackground) {
+        boolean mediaOnly = message.getText() == null || message.getText().trim().isEmpty();
+        mediaOnly &= message.getReply() == null && message.getForwardedMessages().isEmpty();
+        List<MessageAttachment> attachments = message.getAttachments();
+        mediaOnly &= attachments != null && !attachments.isEmpty();
+        if (mediaOnly) {
+            for (MessageAttachment attachment : attachments) {
+                String type = attachment.getType();
+                if (!"sticker".equals(type) && !"photo".equals(type) && !"video".equals(type)) {
+                    mediaOnly = false;
+                    break;
+                }
+            }
+        }
+
+        if (mediaOnly) {
+            bubble.setBackground(null);
+            bubble.setPadding(0, 0, 0, 0);
+            bubble.setMinimumWidth(0);
+            bubble.setElevation(0f);
+        } else {
+            bubble.setBackgroundResource(normalBackground);
+            int padding = dp(16);
+            bubble.setPadding(padding, padding, padding, padding);
+            bubble.setMinimumWidth(dp(200));
+            bubble.setElevation(dp(2));
+        }
     }
 
     private void bindMessageOptions(View bubble, TextView messageText, Message message) {
