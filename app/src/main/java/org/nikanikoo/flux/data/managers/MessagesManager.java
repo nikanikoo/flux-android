@@ -562,6 +562,7 @@ public class MessagesManager extends BaseManager<MessagesManager> {
             String imageUrl = "";
             String title = "";
             String subtitle = "";
+            String animationUrl = "";
             org.nikanikoo.flux.data.models.Video parsedVideo = null;
             Audio parsedAudio = null;
             if ("photo".equals(type)) {
@@ -614,6 +615,20 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                 subtitle = data.optString("description", "");
                 if (subtitle.isEmpty()) subtitle = data.optString("caption", "");
             } else if ("sticker".equals(type)) {
+                animationUrl = data.optString("animation_url", "");
+                if (animationUrl.isEmpty()) {
+                    JSONArray animations = data.optJSONArray("animations");
+                    JSONObject animation = animations != null && animations.length() > 0
+                            ? animations.optJSONObject(0) : null;
+                    if (animation != null) animationUrl = animation.optString("url", "");
+                }
+                if (animationUrl.isEmpty() && data.optBoolean("is_animated", false)) {
+                    int packId = data.optInt("product_id", data.optInt("pack_id", 0));
+                    int stickerId = data.optInt("id", data.optInt("sticker_id", 0));
+                    if (packId > 0 && stickerId > 0) {
+                        animationUrl = api.getBaseUrl() + "/sticker/" + packId + "/" + stickerId + "_512.json";
+                    }
+                }
                 imageUrl = data.optString("photo_128", "");
                 if (imageUrl.isEmpty()) imageUrl = data.optString("photo_256", "");
                 if (imageUrl.isEmpty()) imageUrl = data.optString("photo_64", "");
@@ -661,6 +676,7 @@ public class MessagesManager extends BaseManager<MessagesManager> {
             MessageAttachment messageAttachment = new MessageAttachment(type, imageUrl, title, subtitle,
                     parsedVideo, url, targetUrl, navigationOwnerId, navigationMediaId,
                     navigationAccessKey, attachmentId);
+            messageAttachment.setAnimationUrl(animationUrl);
             messageAttachment.setAudio(parsedAudio);
             parsed.add(messageAttachment);
         }

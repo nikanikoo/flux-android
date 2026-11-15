@@ -24,6 +24,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewConfiguration;
 import android.widget.ImageView;
+import android.widget.FrameLayout;
 import android.widget.TextView;
 import android.widget.LinearLayout;
 import androidx.annotation.NonNull;
@@ -31,6 +32,8 @@ import androidx.core.content.ContextCompat;
 import androidx.core.graphics.drawable.DrawableCompat;
 import androidx.recyclerview.widget.RecyclerView;
 import com.squareup.picasso.Picasso;
+import com.airbnb.lottie.LottieAnimationView;
+import com.airbnb.lottie.LottieDrawable;
 
 import org.nikanikoo.flux.FluxApplication;
 import org.nikanikoo.flux.data.models.Message;
@@ -429,7 +432,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             } else if ("gift".equals(attachment.getType())) {
                 addGiftPreview(container, attachment, messageTextColor);
             } else if ("sticker".equals(attachment.getType())) {
-                addStickerImage(container, attachment.getImageUrl());
+                addStickerImage(container, attachment);
             } else if (attachment.getImageUrl() != null && !attachment.getImageUrl().isEmpty()) {
                 ImageView image = new ImageView(context);
                 LinearLayout.LayoutParams imageParams = new LinearLayout.LayoutParams(dp(220), dp(160));
@@ -516,20 +519,40 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
      * @param container контейнер сообщения
      * @param imageUrl ссылка на стикер
      */
-    private void addStickerImage(LinearLayout container, String imageUrl) {
+    private void addStickerImage(LinearLayout container, MessageAttachment attachment) {
+        String imageUrl = attachment.getImageUrl();
         if (imageUrl == null || imageUrl.isEmpty()) return;
 
-        ImageView image = new ImageView(context);
-        image.setLayoutParams(new LinearLayout.LayoutParams(dp(128), dp(128)));
-        image.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        image.setContentDescription(context.getString(R.string.message_sticker_image));
+        FrameLayout stickerFrame = new FrameLayout(context);
+        LinearLayout.LayoutParams frameParams = new LinearLayout.LayoutParams(dp(128), dp(128));
+        frameParams.topMargin = dp(6);
+        stickerFrame.setLayoutParams(frameParams);
+
+        ImageView fallback = new ImageView(context);
+        fallback.setLayoutParams(new FrameLayout.LayoutParams(dp(128), dp(128)));
+        fallback.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        fallback.setContentDescription(context.getString(R.string.message_sticker_image));
         Picasso.get().load(imageUrl)
                 .placeholder(R.drawable.ic_image_placeholder)
                 .error(R.drawable.ic_image_error)
-                .fit().centerInside().into(image);
-        LinearLayout.LayoutParams imageParams = (LinearLayout.LayoutParams) image.getLayoutParams();
-        imageParams.topMargin = dp(6);
-        container.addView(image, imageParams);
+                .fit().centerInside().into(fallback);
+        stickerFrame.addView(fallback);
+
+        String animationUrl = attachment.getAnimationUrl();
+        if (animationUrl != null && !animationUrl.isEmpty()) {
+            if (!animationUrl.startsWith("http://") && !animationUrl.startsWith("https://")) {
+                animationUrl = OpenVKApi.getInstance(context).getBaseUrl()
+                        + (animationUrl.startsWith("/") ? animationUrl : "/" + animationUrl);
+            }
+            LottieAnimationView animation = new LottieAnimationView(context);
+            animation.setLayoutParams(new FrameLayout.LayoutParams(dp(128), dp(128)));
+            animation.setCacheComposition(true);
+            animation.setRepeatCount(LottieDrawable.INFINITE);
+            animation.setAnimationFromUrl(animationUrl);
+            animation.playAnimation();
+            stickerFrame.addView(animation);
+        }
+        container.addView(stickerFrame, frameParams);
     }
 
     private void addDocumentCard(LinearLayout container, MessageAttachment attachment) {
@@ -1048,6 +1071,13 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 inHolder.messageText.clearFocus();
             }
         }
+        setLottiePlayback(holder.itemView, false);
+    }
+
+    @Override
+    public void onViewAttachedToWindow(@NonNull RecyclerView.ViewHolder holder) {
+        super.onViewAttachedToWindow(holder);
+        setLottiePlayback(holder.itemView, true);
     }
 
     public void notifyMessageChanged(Message message) {
@@ -1088,6 +1118,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     @Override
     public void onViewRecycled(@NonNull RecyclerView.ViewHolder holder) {
         super.onViewRecycled(holder);
+        cancelLottieAnimations(holder.itemView);
         if (holder instanceof OutgoingMessageViewHolder) {
             OutgoingMessageViewHolder outHolder = (OutgoingMessageViewHolder) holder;
             if (outHolder.messageText != null) {
@@ -1098,6 +1129,26 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             if (inHolder.messageText != null) {
                 inHolder.messageText.clearFocus();
             }
+        }
+    }
+
+    private void setLottiePlayback(View view, boolean play) {
+        if (view instanceof LottieAnimationView) {
+            LottieAnimationView animation = (LottieAnimationView) view;
+            if (play) animation.playAnimation();
+            else animation.pauseAnimation();
+        } else if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) setLottiePlayback(group.getChildAt(i), play);
+        }
+    }
+
+    private void cancelLottieAnimations(View view) {
+        if (view instanceof LottieAnimationView) {
+            ((LottieAnimationView) view).cancelAnimation();
+        } else if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) cancelLottieAnimations(group.getChildAt(i));
         }
     }
 }

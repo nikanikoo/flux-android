@@ -13,6 +13,7 @@ public class MessageAttachment {
     private final int id;
     private final String accessKey;
     private final String attachmentId;
+    private String animationUrl;
 
     public MessageAttachment(String type, String imageUrl, String title, String subtitle) {
         this(type, imageUrl, title, subtitle, null);
@@ -61,6 +62,8 @@ public class MessageAttachment {
     public int getId() { return id; }
     public String getAccessKey() { return accessKey; }
     public String getAttachmentId() { return attachmentId; }
+    public String getAnimationUrl() { return animationUrl; }
+    public void setAnimationUrl(String animationUrl) { this.animationUrl = animationUrl; }
     public void setAudio(Audio audio) { this.audio = audio; }
     public boolean isGifDocument() {
         if (!"doc".equals(type)) return false;
