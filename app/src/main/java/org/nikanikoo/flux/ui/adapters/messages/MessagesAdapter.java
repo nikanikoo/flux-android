@@ -146,7 +146,14 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 listener.onAvatarClick(isGroup ? -id : id, name);
             }
         },true);
-        holder.messageText.setText(withInlineTime(formattedText, message, holder.messageText.getCurrentTextColor(), message.isReadState()));
+        boolean hasText = sanitizedText != null && !sanitizedText.trim().isEmpty();
+        holder.messageText.setVisibility(hasText ? View.VISIBLE : View.GONE);
+        holder.messageText.setText(hasText
+                ? withInlineTime(formattedText, message, holder.messageText.getCurrentTextColor(), message.isReadState())
+                : formattedText);
+        holder.timeText.setText(formatMessageTime(message));
+        holder.metadataFallback.setVisibility(hasText ? View.GONE : View.VISIBLE);
+        holder.readStatus.setVisibility(!hasText && message.isReadState() ? View.VISIBLE : View.GONE);
         Linkify.addLinks(holder.messageText, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES);
         holder.messageText.setMovementMethod(SafeLinkMovementMethod.getInstance());
         
@@ -167,7 +174,13 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 listener.onAvatarClick(isGroup ? -id : id, name);
             }
         }, true);
-        holder.messageText.setText(withInlineTime(formattedText, message, holder.messageText.getCurrentTextColor(), false));
+        boolean hasText = sanitizedText != null && !sanitizedText.trim().isEmpty();
+        holder.messageText.setVisibility(hasText ? View.VISIBLE : View.GONE);
+        holder.messageText.setText(hasText
+                ? withInlineTime(formattedText, message, holder.messageText.getCurrentTextColor(), false)
+                : formattedText);
+        holder.timeText.setText(formatMessageTime(message));
+        holder.timeText.setVisibility(hasText ? View.GONE : View.VISIBLE);
         Linkify.addLinks(holder.messageText, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES);
         holder.messageText.setMovementMethod(SafeLinkMovementMethod.getInstance());
         
@@ -203,7 +216,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         SpannableStringBuilder result = new SpannableStringBuilder(messageText);
         if (result.length() > 0) result.append("  ");
         int timeStart = result.length();
-        result.append(new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(message.getDate() * 1000)));
+        result.append(formatMessageTime(message));
         int mutedColor = Color.argb(180, Color.red(textColor), Color.green(textColor), Color.blue(textColor));
         result.setSpan(new RelativeSizeSpan(0.75f), timeStart, result.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         result.setSpan(new ForegroundColorSpan(mutedColor), timeStart, result.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -223,6 +236,10 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             }
         }
         return result;
+    }
+
+    private String formatMessageTime(Message message) {
+        return new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(message.getDate() * 1000));
     }
 
     private void bindSenderName(TextView senderNameView, Message message, boolean continuation) {
@@ -662,7 +679,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         card.setBackground(background);
         LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        cardParams.topMargin = dp(8);
+        cardParams.topMargin = dp(2);
         card.setLayoutParams(cardParams);
 
         TextView author = new TextView(context);
@@ -915,6 +932,9 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         TextView messageText;
         TextView replyPreview;
         LinearLayout attachments;
+        TextView timeText;
+        LinearLayout metadataFallback;
+        ImageView readStatus;
 
         OutgoingMessageViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -923,6 +943,9 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             messageText = itemView.findViewById(R.id.message_text);
             replyPreview = itemView.findViewById(R.id.reply_preview);
             attachments = itemView.findViewById(R.id.message_attachments);
+            timeText = itemView.findViewById(R.id.time_text);
+            metadataFallback = itemView.findViewById(R.id.message_metadata_fallback);
+            readStatus = itemView.findViewById(R.id.read_status);
         }
     }
 
@@ -933,6 +956,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         TextView messageText;
         TextView replyPreview;
         LinearLayout attachments;
+        TextView timeText;
 
         IncomingMessageViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -942,6 +966,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             messageText = itemView.findViewById(R.id.message_text);
             replyPreview = itemView.findViewById(R.id.reply_preview);
             attachments = itemView.findViewById(R.id.message_attachments);
+            timeText = itemView.findViewById(R.id.time_text);
         }
     }
 
