@@ -1289,7 +1289,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
 
     @Override
     public void onReplySwipe(Message message) {
-        if (message != null) setReplyTarget(message);
+        if (message != null && !message.isPending()) setReplyTarget(message);
     }
 
     /**

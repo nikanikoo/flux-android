@@ -1,6 +1,9 @@
 package org.nikanikoo.flux.data.managers;
 
 import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkRequest;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.nikanikoo.flux.data.managers.api.OpenVKApi;
@@ -23,6 +26,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MessagesManager extends BaseManager<MessagesManager> {
     private static final String TAG = "MessagesManager";
@@ -30,11 +34,26 @@ public class MessagesManager extends BaseManager<MessagesManager> {
     private final Map<Integer, CachedPushSettings> pushSettingsCache = new ConcurrentHashMap<>();
     private final Map<Integer, List<PushSettingsCallback>> pendingPushSettings = new HashMap<>();
     private final Object pushSettingsLock = new Object();
+    private final Object outboxLock = new Object();
+    private final AtomicBoolean flushingOutbox = new AtomicBoolean(false);
     private final List<PushSettingsChangeListener> pushSettingsChangeListeners =
             Collections.synchronizedList(new ArrayList<>());
 
     private MessagesManager(Context context) {
         super(context);
+        ConnectivityManager connectivityManager = (ConnectivityManager)
+                this.context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (connectivityManager != null) {
+            try {
+                connectivityManager.registerNetworkCallback(
+                        new NetworkRequest.Builder().addCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET).build(),
+                        new ConnectivityManager.NetworkCallback() {
+                            @Override public void onAvailable(Network network) { flushPendingMessages(); }
+                        });
+            } catch (Exception e) {
+                Logger.w(TAG, "Could not monitor network changes for the message outbox", e);
+            }
+        }
     }
 
     public static synchronized MessagesManager getInstance(Context context) {
@@ -275,6 +294,7 @@ public class MessagesManager extends BaseManager<MessagesManager> {
 
     // Получение списка диалогов
     public void getConversations(int count, int offset, ConversationsCallback callback) {
+        flushPendingMessages();
         Map<String, String> params = new HashMap<>();
         params.put("count", String.valueOf(count));
         params.put("offset", String.valueOf(offset));
@@ -291,7 +311,7 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                 }, new AsyncTaskHelper.AsyncCallback<List<Conversation>>() {
                     @Override
                     public void onSuccess(List<Conversation> conversations) {
-                        callback.onSuccess(conversations);
+                        callback.onSuccess(mergePendingConversations(conversations));
                     }
                     
                     @Override
@@ -312,7 +332,9 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                 }
                 AsyncTaskHelper.executeAsync(() -> parseConversationsResponse(cached),
                         new AsyncTaskHelper.AsyncCallback<List<Conversation>>() {
-                    @Override public void onSuccess(List<Conversation> conversations) { callback.onSuccess(conversations); }
+                    @Override public void onSuccess(List<Conversation> conversations) {
+                        callback.onSuccess(mergePendingConversations(conversations));
+                    }
                     @Override public void onError(String parseError) { callback.onError(error); }
                 });
             }
@@ -325,6 +347,7 @@ public class MessagesManager extends BaseManager<MessagesManager> {
     }
 
     public void getHistory(int peerId, int count, int offset, int startMessageId, MessagesCallback callback) {
+        flushPendingMessages();
         Map<String, String> params = new HashMap<>();
         params.put("peer_id", String.valueOf(peerId));
         params.put("count", String.valueOf(count));
@@ -344,7 +367,7 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                 }, new AsyncTaskHelper.AsyncCallback<List<Message>>() {
                     @Override
                     public void onSuccess(List<Message> messages) {
-                        callback.onSuccess(messages);
+                        callback.onSuccess(mergePendingMessages(peerId, messages));
                     }
                     
                     @Override
@@ -360,13 +383,20 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                 Logger.e(TAG, "Error loading messages: " + error);
                 JSONObject cached = getOfflineResponse(historyCacheKey(peerId, count, offset, startMessageId));
                 if (cached == null) {
+                    List<Message> pending = mergePendingMessages(peerId, new ArrayList<>());
+                    if (!pending.isEmpty()) {
+                        callback.onSuccess(pending);
+                        return;
+                    }
                     callback.onError("Не удалось загрузить сообщения");
                     return;
                 }
                 final int finalPeerId = peerId;
                 AsyncTaskHelper.executeAsync(() -> parseMessagesResponse(cached, finalPeerId),
                         new AsyncTaskHelper.AsyncCallback<List<Message>>() {
-                    @Override public void onSuccess(List<Message> messages) { callback.onSuccess(messages); }
+                    @Override public void onSuccess(List<Message> messages) {
+                        callback.onSuccess(mergePendingMessages(peerId, messages));
+                    }
                     @Override public void onError(String parseError) {
                         callback.onError("Не удалось загрузить сообщения");
                     }
@@ -403,6 +433,179 @@ public class MessagesManager extends BaseManager<MessagesManager> {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private String outboxKey() {
+        return offlineCachePrefix() + "pending_outbox";
+    }
+
+    private JSONArray readOutbox() {
+        String value = context.getSharedPreferences("messages_offline_cache", Context.MODE_PRIVATE)
+                .getString(outboxKey(), "[]");
+        try {
+            return new JSONArray(value);
+        } catch (Exception e) {
+            return new JSONArray();
+        }
+    }
+
+    private int enqueuePendingMessage(int peerId, String message, String attachment,
+                                      int replyToMessageId, int stickerId, long randomId) {
+        synchronized (outboxLock) {
+            JSONArray outbox = readOutbox();
+            for (int i = 0; i < outbox.length(); i++) {
+                JSONObject existing = outbox.optJSONObject(i);
+                if (existing != null && existing.optLong("random_id") == randomId) {
+                    return existing.optInt("local_id");
+                }
+            }
+            int localId = -((int) System.nanoTime() & 0x7ffffffe) - 1;
+            JSONObject item = new JSONObject();
+            try {
+                item.put("peer_id", peerId);
+                item.put("message", message == null ? "" : message);
+                item.put("attachment", attachment == null ? "" : attachment);
+                item.put("reply_to", replyToMessageId);
+                item.put("sticker_id", stickerId);
+                item.put("random_id", randomId);
+                item.put("local_id", localId);
+                item.put("date", System.currentTimeMillis() / 1000L);
+                outbox.put(item);
+                context.getSharedPreferences("messages_offline_cache", Context.MODE_PRIVATE)
+                        .edit().putString(outboxKey(), outbox.toString()).apply();
+            } catch (Exception e) {
+                Logger.e(TAG, "Could not save an outgoing message to the offline queue", e);
+            }
+            return localId;
+        }
+    }
+
+    private boolean isNetworkAvailable() {
+        try {
+            ConnectivityManager manager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            android.net.NetworkInfo networkInfo = manager == null ? null : manager.getActiveNetworkInfo();
+            return networkInfo != null && networkInfo.isConnected();
+        } catch (SecurityException e) {
+            return true;
+        }
+    }
+
+    private void flushPendingMessages() {
+        if (!isNetworkAvailable() || !flushingOutbox.compareAndSet(false, true)) return;
+        JSONArray pending = readOutbox();
+        if (pending.length() == 0) {
+            flushingOutbox.set(false);
+            return;
+        }
+        sendQueuedMessageAt(pending, 0);
+    }
+
+    private void sendQueuedMessageAt(JSONArray snapshot, int index) {
+        if (index >= snapshot.length()) {
+            flushingOutbox.set(false);
+            return;
+        }
+        JSONObject item = snapshot.optJSONObject(index);
+        if (item == null) {
+            sendQueuedMessageAt(snapshot, index + 1);
+            return;
+        }
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_id", String.valueOf(item.optInt("peer_id")));
+        params.put("message", item.optString("message", ""));
+        params.put("random_id", String.valueOf(item.optLong("random_id")));
+        String attachment = item.optString("attachment", "");
+        if (!attachment.isEmpty()) params.put("attachment", attachment);
+        int stickerId = item.optInt("sticker_id", 0);
+        if (stickerId > 0) params.put("sticker_id", String.valueOf(stickerId));
+        int replyTo = item.optInt("reply_to", 0);
+        if (replyTo > 0) params.put("reply_to", String.valueOf(replyTo));
+
+        api.callMethod("messages.send", params, new OpenVKApi.ApiCallback() {
+            @Override public void onSuccess(JSONObject response) {
+                removePendingMessage(item.optLong("random_id"));
+                sendQueuedMessageAt(snapshot, index + 1);
+            }
+            @Override public void onError(String error) {
+                Logger.w(TAG, "Queued message will be retried later: " + error);
+                flushingOutbox.set(false);
+            }
+        });
+    }
+
+    private void removePendingMessage(long randomId) {
+        synchronized (outboxLock) {
+            JSONArray current = readOutbox();
+            JSONArray remaining = new JSONArray();
+            for (int i = 0; i < current.length(); i++) {
+                JSONObject item = current.optJSONObject(i);
+                if (item != null && item.optLong("random_id") != randomId) remaining.put(item);
+            }
+            context.getSharedPreferences("messages_offline_cache", Context.MODE_PRIVATE)
+                    .edit().putString(outboxKey(), remaining.toString()).apply();
+        }
+    }
+
+    private List<Message> mergePendingMessages(int peerId, List<Message> messages) {
+        List<Message> result = messages == null ? new ArrayList<>() : messages;
+        JSONArray outbox = readOutbox();
+        List<Message> pending = new ArrayList<>();
+        AccountManager.Account account = AccountManager.getInstance(context).getCurrentAccount();
+        int userId = 0;
+        if (account != null) {
+            try { userId = Integer.parseInt(account.userId); } catch (Exception ignored) { }
+        }
+        for (int i = 0; i < outbox.length(); i++) {
+            JSONObject item = outbox.optJSONObject(i);
+            if (item == null || item.optInt("peer_id") != peerId) continue;
+            int localId = item.optInt("local_id");
+            Message message = new Message(localId, userId, userId, item.optString("message", ""),
+                    item.optLong("date"), true, false);
+            message.setPending(true);
+            String name = account != null ? account.fullName : "";
+            message.setUserName(name);
+            int replyTo = item.optInt("reply_to", 0);
+            if (replyTo > 0) message.setReply(new MessageReference(replyTo, "", ""));
+            int stickerId = item.optInt("sticker_id", 0);
+            List<MessageAttachment> attachments = new ArrayList<>();
+            if (stickerId > 0) {
+                String stickerUrl = api.getBaseUrl() + "/images/stickers/" + stickerId + "/128b.png";
+                attachments.add(new MessageAttachment("sticker", stickerUrl, "", ""));
+            }
+            String attachment = item.optString("attachment", "");
+            if (!attachment.isEmpty()) {
+                attachments.add(new MessageAttachment("pending", "",
+                        context.getString(R.string.message_waiting_for_network), ""));
+            }
+            message.setAttachments(attachments);
+            pending.add(message);
+        }
+        pending.sort((left, right) -> Long.compare(right.getDate(), left.getDate()));
+        result.addAll(0, pending);
+        return result;
+    }
+
+    private List<Conversation> mergePendingConversations(List<Conversation> conversations) {
+        JSONArray outbox = readOutbox();
+        if (outbox.length() == 0) return conversations;
+        Map<Integer, JSONObject> newestByPeer = new HashMap<>();
+        for (int i = 0; i < outbox.length(); i++) {
+            JSONObject item = outbox.optJSONObject(i);
+            if (item == null) continue;
+            int peerId = item.optInt("peer_id");
+            JSONObject previous = newestByPeer.get(peerId);
+            if (previous == null || previous.optLong("date") <= item.optLong("date")) newestByPeer.put(peerId, item);
+        }
+        if (conversations == null) return conversations;
+        for (Conversation conversation : conversations) {
+            JSONObject item = newestByPeer.get(conversation.getPeerId());
+            if (item == null) continue;
+            String preview = item.optString("message", "");
+            if (preview.isEmpty()) preview = context.getString(R.string.message_waiting_to_send);
+            conversation.setLastMessage(preview);
+            conversation.setLastMessageDate(item.optLong("date"));
+        }
+        return conversations;
     }
 
     public void getPinnedMessage(int peerId, PinnedMessageCallback callback) {
@@ -794,10 +997,18 @@ public class MessagesManager extends BaseManager<MessagesManager> {
 
     public void sendMessage(int peerId, String message, String attachment, int replyToMessageId,
                             int stickerId, SendMessageCallback callback) {
+        long randomId = System.currentTimeMillis();
+        if (!isNetworkAvailable()) {
+            int localMessageId = enqueuePendingMessage(peerId, message, attachment, replyToMessageId,
+                    stickerId, randomId);
+            callback.onSuccess(localMessageId);
+            return;
+        }
+
         Map<String, String> params = new HashMap<>();
         params.put("peer_id", String.valueOf(peerId));
         params.put("message", message);
-        params.put("random_id", String.valueOf(System.currentTimeMillis()));
+        params.put("random_id", String.valueOf(randomId));
         if (stickerId > 0) {
             params.put("sticker_id", String.valueOf(stickerId));
         }
@@ -823,7 +1034,13 @@ public class MessagesManager extends BaseManager<MessagesManager> {
             @Override
             public void onError(String error) {
                 Logger.e(TAG, "Error sending message: " + error);
-                callback.onError(error);
+                if (!isNetworkAvailable()) {
+                    int localMessageId = enqueuePendingMessage(peerId, message, attachment, replyToMessageId,
+                            stickerId, randomId);
+                    callback.onSuccess(localMessageId);
+                } else {
+                    callback.onError(error);
+                }
             }
         });
     }

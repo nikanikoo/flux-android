@@ -154,11 +154,15 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         boolean hasText = sanitizedText != null && !sanitizedText.trim().isEmpty();
         holder.messageText.setVisibility(hasText ? View.VISIBLE : View.GONE);
         holder.messageText.setText(hasText
-                ? withInlineTime(formattedText, message, holder.messageText.getCurrentTextColor(), message.isReadState())
+                ? withInlineTime(formattedText, message, holder.messageText.getCurrentTextColor(),
+                        message.isReadState() || message.isPending())
                 : formattedText);
         holder.timeText.setText(formatMessageTime(message));
         holder.metadataFallback.setVisibility(hasText ? View.GONE : View.VISIBLE);
-        holder.readStatus.setVisibility(!hasText && message.isReadState() ? View.VISIBLE : View.GONE);
+        holder.readStatus.setVisibility(!hasText && (message.isReadState() || message.isPending())
+                ? View.VISIBLE : View.GONE);
+        if (message.isPending()) holder.readStatus.setImageResource(android.R.drawable.ic_popup_sync);
+        else holder.readStatus.setImageResource(android.R.drawable.ic_menu_view);
         Linkify.addLinks(holder.messageText, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES);
         holder.messageText.setMovementMethod(SafeLinkMovementMethod.getInstance());
         
@@ -228,7 +232,9 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         result.setSpan(new ForegroundColorSpan(mutedColor), timeStart, result.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
 
         if (showReadStatus) {
-            Drawable status = ContextCompat.getDrawable(context, android.R.drawable.ic_menu_view);
+            int statusResource = message.isPending()
+                    ? android.R.drawable.ic_popup_sync : android.R.drawable.ic_menu_view;
+            Drawable status = ContextCompat.getDrawable(context, statusResource);
             if (status != null) {
                 status = DrawableCompat.wrap(status.mutate());
                 DrawableCompat.setTint(status, textColor);
@@ -314,6 +320,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     private void bindMessageOptions(View bubble, TextView messageText, Message message) {
         bubble.setTag(message);
         View.OnClickListener openOptions = v -> {
+            if (message.isPending()) return;
             clearTrackedSelection();
             clearTextSelection(messageText);
             if (listener != null) {

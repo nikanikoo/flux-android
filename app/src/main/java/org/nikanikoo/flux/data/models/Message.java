@@ -12,6 +12,7 @@ public class Message {
     private long date;
     private boolean out;
     private boolean readState;
+    private boolean pending;
     private String userName;
     private String userPhoto;
     private boolean userVerified;
@@ -41,6 +42,7 @@ public class Message {
     public long getDate() { return date; }
     public boolean isOut() { return out; }
     public boolean isReadState() { return readState; }
+    public boolean isPending() { return pending; }
     public String getUserName() { return userName; }
     public String getUserPhoto() { return userPhoto; }
     public boolean isUserVerified() { return userVerified; }
@@ -63,6 +65,7 @@ public class Message {
     public void setUserName(String userName) { this.userName = userName; }
     public void setUserPhoto(String userPhoto) { this.userPhoto = userPhoto; }
     public void setReadState(boolean readState) { this.readState = readState; }
+    public void setPending(boolean pending) { this.pending = pending; }
     public void setConversationMessageId(int conversationMessageId) { this.conversationMessageId = conversationMessageId; }
     public void setUserVerified(boolean userVerified) { this.userVerified = userVerified; }
     public void setActionType(String actionType) { this.actionType = actionType; }
