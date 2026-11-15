@@ -813,6 +813,12 @@ public class MessagesManager extends BaseManager<MessagesManager> {
         api.callMethod("messages.addChatUser", params, callback);
     }
 
+    public void createChat(String userIds, OpenVKApi.ApiCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("user_ids", userIds);
+        api.callMethod("messages.createChat", params, callback);
+    }
+
     public void removeChatUser(int peerId, int userId, OpenVKApi.ApiCallback callback) {
         Map<String, String> params = new HashMap<>();
         params.put("peer_id", String.valueOf(peerId));

@@ -890,4 +890,10 @@
     <string name="repost_choose_conversation">Выберите диалог</string>
     <string name="repost_no_groups">Нет групп, где можно опубликовать пост</string>
     <string name="repost_no_conversations">Нет доступных диалогов</string>
+    <string name="new_conversation">Новая переписка</string>
+    <string name="no_friends_available">Список друзей пуст</string>
+    <string name="select_at_least_one_friend">Выберите хотя бы одного друга</string>
+    <string name="chat_create_error">Не удалось создать беседу</string>
+    <string name="chat_title_default">Беседа</string>
+    <string name="continue_action">Продолжить</string>
 </resources>

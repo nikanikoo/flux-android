@@ -10,6 +10,8 @@ import org.nikanikoo.flux.data.models.Conversation;
 import org.nikanikoo.flux.data.models.Message;
 import org.nikanikoo.flux.ui.adapters.messages.ConversationsAdapter;
 import org.nikanikoo.flux.data.managers.MessagesManager;
+import org.nikanikoo.flux.data.managers.FriendsManager;
+import org.nikanikoo.flux.data.models.Friend;
 import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.ui.activities.ChatActivity;
 import org.nikanikoo.flux.ui.activities.MainActivity;
@@ -22,6 +24,9 @@ import org.nikanikoo.flux.services.LongPollManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import android.widget.Toast;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -64,7 +69,7 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
         initViews(view);
         setupRecyclerView();
         setupToolbarTitle();
-        setupErrorView(view, R.id.swipe_refresh);
+        setupErrorView(view, R.id.messages_swipe_refresh);
         setRetryCallback(() -> refreshConversations());
 
         isViewCreated = true;
@@ -268,7 +273,9 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
 
     private void initViews(View view) {
         recyclerView = view.findViewById(R.id.recycler_view);
-        swipeRefreshLayout = view.findViewById(R.id.swipe_refresh);
+        swipeRefreshLayout = view.findViewById(R.id.messages_swipe_refresh);
+        FloatingActionButton newConversationButton = view.findViewById(R.id.fab_new_conversation);
+        newConversationButton.setOnClickListener(v -> loadFriendsForNewConversation());
         
         swipeRefreshLayout.setOnRefreshListener(this::refreshConversations);
     }
@@ -382,6 +389,81 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
         intent.putExtra(ChatActivity.EXTRA_PEER_ID, conversation.getPeerId());
         intent.putExtra(ChatActivity.EXTRA_PEER_NAME, conversation.getTitle());
         intent.putExtra(ChatActivity.EXTRA_FROM_ID, conversation.getPeerId());
+        startActivity(intent);
+    }
+
+    private void loadFriendsForNewConversation() {
+        FriendsManager.getInstance(requireContext()).getFriends(1000, 0, new FriendsManager.FriendsCallback() {
+            @Override
+            public void onSuccess(List<Friend> friends) {
+                if (!isAdded()) return;
+                if (friends.isEmpty()) {
+                    Toast.makeText(requireContext(), R.string.no_friends_available, Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                showFriendPicker(friends);
+            }
+
+            @Override
+            public void onError(String error) {
+                if (isAdded()) Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void showFriendPicker(List<Friend> friends) {
+        String[] names = new String[friends.size()];
+        boolean[] selected = new boolean[friends.size()];
+        for (int i = 0; i < friends.size(); i++) names[i] = friends.get(i).getFullName().trim();
+
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.new_conversation)
+                .setMultiChoiceItems(names, selected, (dialog, which, checked) -> selected[which] = checked)
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.continue_action, (dialog, which) -> {
+                    List<Friend> chosen = new ArrayList<>();
+                    for (int i = 0; i < selected.length; i++) if (selected[i]) chosen.add(friends.get(i));
+                    if (chosen.isEmpty()) {
+                        Toast.makeText(requireContext(), R.string.select_at_least_one_friend, Toast.LENGTH_SHORT).show();
+                    } else if (chosen.size() == 1) {
+                        openConversation(chosen.get(0).getId(), chosen.get(0).getFullName());
+                    } else {
+                        createGroupConversation(chosen);
+                    }
+                })
+                .show();
+    }
+
+    private void createGroupConversation(List<Friend> friends) {
+        StringBuilder userIds = new StringBuilder();
+        for (Friend friend : friends) {
+            if (userIds.length() > 0) userIds.append(',');
+            userIds.append(friend.getId());
+        }
+        messagesManager.createChat(userIds.toString(), new org.nikanikoo.flux.data.managers.api.OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(org.json.JSONObject response) {
+                if (!isAdded()) return;
+                int chatId = response.optInt("response", 0);
+                if (chatId <= 0) {
+                    Toast.makeText(requireContext(), R.string.chat_create_error, Toast.LENGTH_LONG).show();
+                    return;
+                }
+                openConversation(2000000000 + chatId, getString(R.string.chat_title_default));
+            }
+
+            @Override
+            public void onError(String error) {
+                if (isAdded()) Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void openConversation(int peerId, String title) {
+        Intent intent = new Intent(requireContext(), ChatActivity.class);
+        intent.putExtra(ChatActivity.EXTRA_PEER_ID, peerId);
+        intent.putExtra(ChatActivity.EXTRA_PEER_NAME, title);
+        intent.putExtra(ChatActivity.EXTRA_FROM_ID, peerId);
         startActivity(intent);
     }
     
