@@ -99,6 +99,8 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     private android.widget.LinearLayout pendingAttachmentList;
     private View pinnedMessageCard;
     private TextView pinnedMessagePreview;
+    private View jumpLatestContainer;
+    private TextView unreadCountBadge;
     private int pinnedMessageId;
     private View pendingReplyPreview;
     private TextView pendingReplyAuthor;
@@ -116,6 +118,9 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     private int replyingToMessageId;
     private int lastMarkedReadMessageId;
     private int pendingReadMessageId;
+    private int unreadCount;
+    private boolean jumpedToFirstUnread;
+    private boolean loadingUnreadJumpHistory;
     private String replyingToAuthor = "";
     private String replyingToText = "";
     private MessagesManager messagesManager;
@@ -275,6 +280,9 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         pinnedMessageCard = view.findViewById(R.id.pinned_message_card);
         pinnedMessagePreview = view.findViewById(R.id.pinned_message_preview);
         pinnedMessageCard.setOnClickListener(v -> scrollToPinnedMessage());
+        jumpLatestContainer = view.findViewById(R.id.jump_latest_container);
+        unreadCountBadge = view.findViewById(R.id.unread_count_badge);
+        view.findViewById(R.id.jump_latest_button).setOnClickListener(v -> jumpToUnreadOrLatest());
         pendingReplyPreview = view.findViewById(R.id.pending_reply_preview);
         pendingReplyAuthor = view.findViewById(R.id.pending_reply_author);
         pendingReplyText = view.findViewById(R.id.pending_reply_text);
@@ -285,6 +293,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         messages = new ArrayList<>();
         updateReplyPreview();
         updatePendingAttachmentPreview();
+        loadConversationUnreadCount();
 
         swipeRefreshLayout.setOnRefreshListener(() -> {
             scrollListener.resetState();
@@ -315,6 +324,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
 
                 if (firstVisibleItem >= 0 && lastVisibleItem >= 0) {
                     updateDateHeader(firstVisibleItem, lastVisibleItem);
+                    updateJumpLatestButton();
                 }
             }
 
@@ -816,6 +826,8 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                             );
                         }
 
+                        updateJumpLatestButton();
+
                         if (isRefresh) {
                             scheduleMarkVisibleMessagesAsRead();
                         }
@@ -835,6 +847,125 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                 }
             }
         });
+    }
+
+    private void loadConversationUnreadCount() {
+        messagesManager.getConversationUnreadCount(peerId, new MessagesManager.UnreadCountCallback() {
+            @Override public void onSuccess(int count) {
+                if (!isAdded()) return;
+                unreadCount = count;
+                updateJumpLatestButton();
+            }
+            @Override public void onError(String error) {
+                // Keep the count derived from messages already loaded if the summary request fails.
+                updateJumpLatestButton();
+            }
+        });
+    }
+
+    private void updateJumpLatestButton() {
+        if (jumpLatestContainer == null || unreadCountBadge == null || recyclerView == null || adapter == null) return;
+        if (unreadCount > 0) {
+            unreadCountBadge.setText(unreadCount > 99 ? "99+" : String.valueOf(unreadCount));
+            unreadCountBadge.setVisibility(View.VISIBLE);
+        } else {
+            unreadCountBadge.setVisibility(View.GONE);
+        }
+        int lastVisible = layoutManager != null ? layoutManager.findLastVisibleItemPosition() : -1;
+        boolean atLatest = adapter.getItemCount() == 0 || lastVisible >= adapter.getItemCount() - 1;
+        jumpLatestContainer.setVisibility(unreadCount > 0 || !atLatest ? View.VISIBLE : View.GONE);
+    }
+
+    private void jumpToUnreadOrLatest() {
+        if (adapter == null || recyclerView == null || adapter.getItemCount() == 0) return;
+        if (jumpedToFirstUnread) {
+            scrollToLatestMessage();
+            jumpedToFirstUnread = false;
+            return;
+        }
+
+        int firstUnreadPosition = findFirstUnreadPosition();
+        int loadedUnreadCount = countLoadedUnreadMessages();
+        if (unreadCount > loadedUnreadCount && unreadCount > 0) {
+            loadHistoryForUnreadJump(0, 0);
+        } else if (firstUnreadPosition != RecyclerView.NO_POSITION) {
+            scrollToMessagePosition(firstUnreadPosition);
+        } else if (unreadCount > 0 && !loadingUnreadJumpHistory) {
+            loadHistoryForUnreadJump(0, 0);
+        } else {
+            scrollToLatestMessage();
+            jumpedToFirstUnread = false;
+        }
+    }
+
+    private int findFirstUnreadPosition() {
+        if (adapter == null) return RecyclerView.NO_POSITION;
+        for (int position = 0; position < adapter.getItemCount(); position++) {
+            Message message = adapter.getMessageAtPosition(position);
+            if (message != null && !message.isOut() && !message.isReadState() && !message.isChatSystemEvent()) {
+                return position;
+            }
+        }
+        return RecyclerView.NO_POSITION;
+    }
+
+    private int countLoadedUnreadMessages() {
+        if (adapter == null) return 0;
+        int count = 0;
+        for (int position = 0; position < adapter.getItemCount(); position++) {
+            Message message = adapter.getMessageAtPosition(position);
+            if (message != null && !message.isOut() && !message.isReadState() && !message.isChatSystemEvent()) count++;
+        }
+        return count;
+    }
+
+    private void loadHistoryForUnreadJump(int offset, int loadedCount) {
+        loadingUnreadJumpHistory = true;
+        int count = 100;
+        messagesManager.getHistory(peerId, count, offset, new MessagesManager.MessagesCallback() {
+            @Override public void onSuccess(List<Message> loadedMessages) {
+                if (!isAdded()) return;
+                requireActivity().runOnUiThread(() -> {
+                    if (adapter == null || recyclerView == null || loadedMessages == null || loadedMessages.isEmpty()) {
+                        loadingUnreadJumpHistory = false;
+                        scrollToLatestMessage();
+                        return;
+                    }
+                    Collections.reverse(loadedMessages);
+                    if (offset == 0) adapter.setMessages(loadedMessages);
+                    else adapter.addMessagesToTop(loadedMessages);
+                    if (scrollListener != null) scrollListener.resetState();
+                    paginationHelper.reset();
+                    int totalLoadedCount = loadedCount + loadedMessages.size();
+                    paginationHelper.onDataLoaded(totalLoadedCount);
+                    if (countLoadedUnreadMessages() < unreadCount && loadedMessages.size() >= count) {
+                        loadHistoryForUnreadJump(offset + count, totalLoadedCount);
+                        return;
+                    }
+                    loadingUnreadJumpHistory = false;
+                    int firstUnreadPosition = findFirstUnreadPosition();
+                    if (firstUnreadPosition != RecyclerView.NO_POSITION) scrollToMessagePosition(firstUnreadPosition);
+                    else scrollToLatestMessage();
+                });
+            }
+            @Override public void onError(String error) {
+                if (!isAdded()) return;
+                loadingUnreadJumpHistory = false;
+                Toast.makeText(requireContext(), error, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void scrollToMessagePosition(int position) {
+        if (position < 0 || recyclerView == null) return;
+        jumpedToFirstUnread = true;
+        recyclerView.smoothScrollToPosition(position);
+    }
+
+    private void scrollToLatestMessage() {
+        if (adapter == null || recyclerView == null || adapter.getItemCount() == 0) return;
+        recyclerView.smoothScrollToPosition(adapter.getItemCount() - 1);
+        jumpedToFirstUnread = false;
     }
 
     private void sendMessage() {
@@ -1753,6 +1884,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
             public void onSuccess(org.json.JSONObject response) {
                 lastMarkedReadMessageId = Math.max(lastMarkedReadMessageId, messageIdToMark);
                 if (pendingReadMessageId == messageIdToMark) pendingReadMessageId = 0;
+                if (recyclerView != null) recyclerView.post(() -> markLoadedMessagesReadThrough(messageIdToMark));
             }
 
             @Override
@@ -1760,6 +1892,20 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                 if (pendingReadMessageId == messageIdToMark) pendingReadMessageId = 0;
             }
         });
+    }
+
+    private void markLoadedMessagesReadThrough(int messageId) {
+        if (adapter == null) return;
+        for (int position = 0; position < adapter.getItemCount(); position++) {
+            Message message = adapter.getMessageAtPosition(position);
+            if (message != null && !message.isOut() && message.getId() <= messageId
+                    && !message.isReadState() && !message.isChatSystemEvent()) {
+                message.setReadState(true);
+                unreadCount = Math.max(0, unreadCount - 1);
+                adapter.notifyMessageChanged(message);
+            }
+        }
+        updateJumpLatestButton();
     }
 
     @Override

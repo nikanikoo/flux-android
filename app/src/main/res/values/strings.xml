@@ -901,4 +901,5 @@
     <string name="chat_delete_conversation_confirm">Удалить переписку с «%1$s»?</string>
     <string name="appearance_avatars_group">Аватары</string>
     <string name="appearance_round_avatars">Круглые аватары</string>
+    <string name="chat_jump_latest">Переместиться к непрочитанным сообщениям</string>
 </resources>

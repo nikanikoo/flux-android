@@ -109,6 +109,40 @@
 
     </com.google.android.material.card.MaterialCardView>
 
+    <FrameLayout
+        android:id="@+id/jump_latest_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="88dp"
+        android:visibility="gone">
+
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/jump_latest_button"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:contentDescription="@string/chat_jump_latest"
+            android:src="@drawable/ic_keyboard_arrow_down"
+            app:backgroundTint="?attr/colorSurfaceContainerHigh"
+            app:tint="?attr/colorOnSurface" />
+
+        <TextView
+            android:id="@+id/unread_count_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="20dp"
+            android:layout_gravity="top|end"
+            android:minWidth="20dp"
+            android:gravity="center"
+            android:paddingStart="5dp"
+            android:paddingEnd="5dp"
+            android:background="@drawable/unread_badge"
+            android:textColor="?attr/colorOnError"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+    </FrameLayout>
+
     <!-- Поле ввода сообщения -->
     <LinearLayout
         android:id="@+id/chat_composer"

@@ -65,6 +65,11 @@ public class MessagesManager extends BaseManager<MessagesManager> {
         void onError(String error);
     }
 
+    public interface UnreadCountCallback {
+        void onSuccess(int unreadCount);
+        void onError(String error);
+    }
+
     public static final class PushSettings {
         private final long disabledUntil;
         private final boolean disabledForever;
@@ -390,6 +395,27 @@ public class MessagesManager extends BaseManager<MessagesManager> {
             public void onError(String error) {
                 callback.onError(error);
             }
+        });
+    }
+
+    public void getConversationUnreadCount(int peerId, UnreadCountCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_ids", String.valueOf(peerId));
+        params.put("extended", "1");
+        api.callMethod("messages.getConversationsById", params, new OpenVKApi.ApiCallback() {
+            @Override public void onSuccess(JSONObject response) {
+                JSONObject data = response.optJSONObject("response");
+                JSONArray items = data != null ? data.optJSONArray("items") : null;
+                JSONObject item = items != null && items.length() > 0 ? items.optJSONObject(0) : null;
+                JSONObject conversation = item != null ? item.optJSONObject("conversation") : null;
+                if (conversation == null) conversation = item;
+                if (conversation == null) {
+                    callback.onError("Диалог не найден");
+                    return;
+                }
+                callback.onSuccess(Math.max(0, conversation.optInt("unread_count", 0)));
+            }
+            @Override public void onError(String error) { callback.onError(error); }
         });
     }
 
