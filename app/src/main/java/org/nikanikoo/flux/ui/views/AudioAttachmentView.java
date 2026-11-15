@@ -14,6 +14,7 @@ import org.nikanikoo.flux.data.models.Audio;
 import org.nikanikoo.flux.utils.AlbumArtFetcher;
 
 import java.util.List;
+import java.util.Collections;
 
 /**
  * Helper class for displaying audio attachments in posts and comments
@@ -84,6 +85,40 @@ public class AudioAttachmentView {
 
             container.addView(audioView);
         }
+    }
+
+    public static void addMessageAudioAttachment(Context context, LinearLayout container, Audio audio) {
+        if (audio == null) return;
+        container.removeAllViews();
+        container.setVisibility(View.VISIBLE);
+
+        View audioView = LayoutInflater.from(context).inflate(R.layout.item_audio, container, false);
+        MaterialCardView audioCard = audioView.findViewById(R.id.audio_card);
+        ImageView audioCover = audioView.findViewById(R.id.audio_cover);
+        ImageView coverPlaceholder = audioView.findViewById(R.id.audio_cover_placeholder);
+        TextView artistText = audioView.findViewById(R.id.audio_artist);
+        TextView titleText = audioView.findViewById(R.id.audio_title);
+        View downloadedIndicator = audioView.findViewById(R.id.audio_downloaded_indicator);
+        View moreButton = audioView.findViewById(R.id.audio_more_button);
+
+        artistText.setText(audio.getArtist());
+        titleText.setText(audio.getTitle());
+        downloadedIndicator.setVisibility(View.GONE);
+        moreButton.setVisibility(View.GONE);
+        audioCover.setImageDrawable(null);
+        if (coverPlaceholder != null) coverPlaceholder.setVisibility(View.VISIBLE);
+        new AlbumArtFetcher(context).loadAlbumArt(audio.getArtist(), audio.getTitle(), audioCover, 0,
+                new AlbumArtFetcher.AlbumArtCallback() {
+                    @Override public void onSuccess(String imageUrl) {
+                        if (coverPlaceholder != null) coverPlaceholder.setVisibility(View.GONE);
+                    }
+                    @Override public void onError(String error) {
+                        if (coverPlaceholder != null) coverPlaceholder.setVisibility(View.VISIBLE);
+                    }
+                });
+        audioCard.setOnClickListener(v -> AudioPlayerHelper.playOrToggleTrack(
+                context, Collections.singletonList(audio), 0));
+        container.addView(audioView);
     }
 
     /**

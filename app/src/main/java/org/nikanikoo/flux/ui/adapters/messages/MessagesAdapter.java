@@ -42,6 +42,7 @@ import org.nikanikoo.flux.data.models.MessageReference;
 import org.nikanikoo.flux.data.managers.api.OpenVKApi;
 import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.ui.views.AudioAttachmentView;
+import org.nikanikoo.flux.ui.views.VideoAttachmentView;
 import org.nikanikoo.flux.utils.MentionUtils;
 import org.nikanikoo.flux.utils.SafeLinkMovementMethod;
 import org.nikanikoo.flux.utils.ValidationUtils;
@@ -427,12 +428,18 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                         ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
                 audioParams.topMargin = dp(8);
                 container.addView(audioContainer, audioParams);
-                AudioAttachmentView.addAudioAttachments(context, audioContainer,
-                        Collections.singletonList(attachment.getAudio()), null);
+                AudioAttachmentView.addMessageAudioAttachment(context, audioContainer, attachment.getAudio());
             } else if ("gift".equals(attachment.getType())) {
                 addGiftPreview(container, attachment, messageTextColor);
             } else if ("sticker".equals(attachment.getType())) {
                 addStickerImage(container, attachment);
+            } else if ("video".equals(attachment.getType()) && attachment.getVideo() != null) {
+                VideoAttachmentView videoView = new VideoAttachmentView(context);
+                videoView.setVideo(attachment.getVideo());
+                LinearLayout.LayoutParams videoParams = new LinearLayout.LayoutParams(dp(240),
+                        ViewGroup.LayoutParams.WRAP_CONTENT);
+                videoParams.topMargin = dp(8);
+                container.addView(videoView, videoParams);
             } else if (attachment.getImageUrl() != null && !attachment.getImageUrl().isEmpty()) {
                 ImageView image = new ImageView(context);
                 LinearLayout.LayoutParams imageParams = new LinearLayout.LayoutParams(dp(220), dp(160));
