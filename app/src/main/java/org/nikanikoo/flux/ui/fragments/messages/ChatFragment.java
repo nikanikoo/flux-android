@@ -333,11 +333,12 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
      */
     private RecyclerView.OnItemTouchListener createReplySwipeListener() {
         return new RecyclerView.OnItemTouchListener() {
-            private View bubble;
+            private View messageRow;
             private Message message;
             private float startX;
             private float startY;
-            private boolean replyStarted;
+            private boolean swipeTracking;
+            private boolean replyTriggered;
             private final int swipeThreshold = dp(72);
 
             @Override
@@ -354,7 +355,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                         if (candidate != null && isTouchInside(candidate, recyclerView, event)) {
                             Object taggedMessage = candidate.getTag();
                             if (taggedMessage instanceof Message) {
-                                bubble = candidate;
+                                messageRow = item;
                                 message = (Message) taggedMessage;
                             }
                         }
@@ -362,18 +363,18 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                     return false;
                 }
 
-                if (event.getActionMasked() == MotionEvent.ACTION_MOVE && bubble != null && !replyStarted) {
+                if (event.getActionMasked() == MotionEvent.ACTION_MOVE && messageRow != null && !swipeTracking) {
                     float deltaX = event.getX() - startX;
                     float deltaY = event.getY() - startY;
-                    if (Math.abs(deltaX) >= swipeThreshold && Math.abs(deltaX) > Math.abs(deltaY) * 1.2f) {
-                        replyStarted = true;
-                        onReplySwipe(message);
+                    int touchSlop = android.view.ViewConfiguration.get(requireContext()).getScaledTouchSlop();
+                    if (Math.abs(deltaX) > Math.max(dp(8), touchSlop) && Math.abs(deltaX) > Math.abs(deltaY) * 1.2f) {
+                        swipeTracking = true;
                         return true;
                     }
                 }
 
                 if ((event.getActionMasked() == MotionEvent.ACTION_UP
-                        || event.getActionMasked() == MotionEvent.ACTION_CANCEL) && !replyStarted) {
+                        || event.getActionMasked() == MotionEvent.ACTION_CANCEL) && !swipeTracking) {
                     resetGesture();
                 }
                 return false;
@@ -382,14 +383,22 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
             @Override
             public void onTouchEvent(@androidx.annotation.NonNull RecyclerView recyclerView,
                                      @androidx.annotation.NonNull MotionEvent event) {
-                if (bubble == null) return;
+                if (messageRow == null) return;
                 if (event.getActionMasked() == MotionEvent.ACTION_MOVE) {
                     float deltaX = event.getX() - startX;
-                    float maxOffset = dp(36);
-                    bubble.setTranslationX(Math.max(-maxOffset, Math.min(maxOffset, deltaX * 0.25f)));
+                    float maxOffset = dp(72);
+                    messageRow.setTranslationX(Math.max(-maxOffset, Math.min(maxOffset, deltaX)));
+                    if (!replyTriggered && Math.abs(deltaX) >= swipeThreshold) {
+                        replyTriggered = true;
+                        onReplySwipe(message);
+                    }
                 } else if (event.getActionMasked() == MotionEvent.ACTION_UP
                         || event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
-                    bubble.animate().translationX(0).setDuration(150).start();
+                    if (!replyTriggered && Math.abs(event.getX() - startX) >= swipeThreshold) {
+                        replyTriggered = true;
+                        onReplySwipe(message);
+                    }
+                    messageRow.animate().translationX(0).setDuration(150).start();
                     resetGesture();
                 }
             }
@@ -411,9 +420,10 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
             }
 
             private void resetGesture() {
-                bubble = null;
+                messageRow = null;
                 message = null;
-                replyStarted = false;
+                swipeTracking = false;
+                replyTriggered = false;
             }
         };
     }
