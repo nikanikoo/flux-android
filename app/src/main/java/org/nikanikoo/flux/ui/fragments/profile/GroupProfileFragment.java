@@ -472,7 +472,7 @@ public class GroupProfileFragment extends BaseProfileFragment {
             GroupMembersFragment membersFragment = GroupMembersFragment.newInstance(groupId, currentGroup.getName());
             getActivity().getSupportFragmentManager()
                     .beginTransaction()
-                    .replace(R.id.fragment_container, membersFragment)
+                    .replace(getId(), membersFragment)
                     .addToBackStack(null)
                     .commit();
         }
@@ -483,7 +483,7 @@ public class GroupProfileFragment extends BaseProfileFragment {
             PhotosFragment photosFragment = PhotosFragment.newInstance(-currentGroup.getId(), currentGroup.getName());
             getActivity().getSupportFragmentManager()
                     .beginTransaction()
-                    .replace(R.id.fragment_container, photosFragment)
+                    .replace(getId(), photosFragment)
                     .addToBackStack("photos_group_" + currentGroup.getId())
                     .commit();
         }
@@ -506,14 +506,14 @@ public class GroupProfileFragment extends BaseProfileFragment {
                 GroupProfileFragment groupProfileFragment = GroupProfileFragment.newInstance(groupId, authorName);
                 getActivity().getSupportFragmentManager()
                         .beginTransaction()
-                        .replace(R.id.fragment_container, groupProfileFragment)
+                        .replace(getId(), groupProfileFragment)
                         .addToBackStack(null)
                         .commit();
             } else {
                 ProfileFragment profileFragment = ProfileFragment.newInstanceWithId(authorId, authorName);
                 getActivity().getSupportFragmentManager()
                         .beginTransaction()
-                        .replace(R.id.fragment_container, profileFragment)
+                        .replace(getId(), profileFragment)
                         .addToBackStack(null)
                         .commit();
             }

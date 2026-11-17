@@ -269,7 +269,7 @@ public class GroupMembersFragment extends Fragment implements FriendsAdapter.OnF
         
         if (getParentFragmentManager() != null) {
             getParentFragmentManager().beginTransaction()
-                    .replace(R.id.fragment_container, profileFragment)
+                    .replace(getId(), profileFragment)
                     .addToBackStack("member_profile")
                     .commit();
         }
@@ -281,7 +281,7 @@ public class GroupMembersFragment extends Fragment implements FriendsAdapter.OnF
         
         if (getParentFragmentManager() != null) {
             getParentFragmentManager().beginTransaction()
-                    .replace(R.id.fragment_container, chatFragment)
+                    .replace(getId(), chatFragment)
                     .addToBackStack("member_chat")
                     .commit();
         }

@@ -205,13 +205,13 @@ public class SimpleCommentsFragment extends Fragment implements CommentsAdapter.
                 int groupId = authorId < 0 ? -authorId : authorId;
                 GroupProfileFragment groupProfileFragment = GroupProfileFragment.newInstance(groupId, authorName);
                 getActivity().getSupportFragmentManager().beginTransaction()
-                        .replace(R.id.fragment_container, groupProfileFragment)
+                        .replace(getId(), groupProfileFragment)
                         .addToBackStack("group_" + groupId)
                         .commit();
             } else {
                 ProfileFragment profileFragment = ProfileFragment.newInstanceWithId(authorId, authorName);
                 getActivity().getSupportFragmentManager().beginTransaction()
-                        .replace(R.id.fragment_container, profileFragment)
+                        .replace(getId(), profileFragment)
                         .addToBackStack("profile_" + authorId)
                         .commit();
             }

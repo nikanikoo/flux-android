@@ -412,7 +412,7 @@ public class PhotosFragment extends BaseFragment implements AlbumsAdapter.OnAlbu
             );
             activity.getSupportFragmentManager()
                     .beginTransaction()
-                    .replace(R.id.fragment_container, fragment)
+                    .replace(getId(), fragment)
                     .addToBackStack("album_photos")
                     .commit();
             activity.setToolbarTitle(album.getTitle());
