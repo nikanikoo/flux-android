@@ -320,7 +320,7 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
                     );
                     if (getActivity() != null) {
                         getActivity().getSupportFragmentManager().beginTransaction()
-                                .replace(R.id.fragment_container, groupProfileFragment)
+                                .replace(getId(), groupProfileFragment)
                                 .addToBackStack("group_" + groupId)
                                 .commit();
                     }
@@ -333,7 +333,7 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
                     );
                     if (getActivity() != null) {
                         getActivity().getSupportFragmentManager().beginTransaction()
-                                .replace(R.id.fragment_container, profileFragment)
+                                .replace(getId(), profileFragment)
                                 .addToBackStack("profile_" + userId)
                                 .commit();
                     }
@@ -715,14 +715,14 @@ public class CommentsFragment extends Fragment implements CommentsAdapter.OnComm
                 int groupId = authorId < 0 ? -authorId : authorId;
                 GroupProfileFragment groupProfileFragment = GroupProfileFragment.newInstance(groupId, authorName);
                 getActivity().getSupportFragmentManager().beginTransaction()
-                        .replace(R.id.fragment_container, groupProfileFragment)
+                        .replace(getId(), groupProfileFragment)
                         .addToBackStack("group_" + groupId)
                         .commit();
             } else {
                 // Пользователь
                 ProfileFragment profileFragment = ProfileFragment.newInstanceWithId(authorId, authorName);
                 getActivity().getSupportFragmentManager().beginTransaction()
-                        .replace(R.id.fragment_container, profileFragment)
+                        .replace(getId(), profileFragment)
                         .addToBackStack("profile_" + authorId)
                         .commit();
             }

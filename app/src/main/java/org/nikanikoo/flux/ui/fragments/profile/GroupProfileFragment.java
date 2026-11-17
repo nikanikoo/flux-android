@@ -532,7 +532,7 @@ public class GroupProfileFragment extends BaseProfileFragment {
         CommentsFragment commentsFragment = CommentsFragment.newInstance(post);
         if (getActivity() != null) {
             getActivity().getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.fragment_container, commentsFragment)
+                    .replace(getId(), commentsFragment)
                     .addToBackStack("comments_" + post.getPostId())
                     .commit();
         }

@@ -328,7 +328,7 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
         
         UserFriendsFragment friendsFragment = UserFriendsFragment.newInstance(userId, userName);
         getActivity().getSupportFragmentManager().beginTransaction()
-                .replace(R.id.fragment_container, friendsFragment)
+                .replace(getId(), friendsFragment)
                 .addToBackStack("friends_" + userId)
                 .commit();
     }
@@ -341,7 +341,7 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
 
         PhotosFragment photosFragment = PhotosFragment.newInstance(userId, userName);
         getActivity().getSupportFragmentManager().beginTransaction()
-                .replace(R.id.fragment_container, photosFragment)
+                .replace(getId(), photosFragment)
                 .addToBackStack("photos_" + userId)
                 .commit();
     }
@@ -374,7 +374,7 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
         }
         ChatFragment chatFragment = ChatFragment.newInstance(userId, userName);
         getActivity().getSupportFragmentManager().beginTransaction()
-                .replace(R.id.fragment_container, chatFragment)
+                .replace(getId(), chatFragment)
                 .addToBackStack("chat_" + userId)
                 .commit();
     }
@@ -553,7 +553,7 @@ public class ProfileFragment extends BaseProfileFragment implements ProfileContr
         CommentsFragment commentsFragment = CommentsFragment.newInstance(post);
         if (getActivity() != null) {
             getActivity().getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.fragment_container, commentsFragment)
+                    .replace(getId(), commentsFragment)
                     .addToBackStack("comments_" + post.getPostId())
                     .commit();
         }
