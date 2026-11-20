@@ -95,7 +95,9 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     private ImageView sendButton;
     private ImageView attachButton;
     private ImageView stickerButton;
+    private View editMessageHeader;
     private View pendingAttachmentPreview;
+    private Message editingMessage;
     private View chatComposer;
     private android.widget.LinearLayout pendingAttachmentList;
     private View pinnedMessageCard;
@@ -279,6 +281,8 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         sendButton = view.findViewById(R.id.send_button);
         attachButton = view.findViewById(R.id.attach_button);
         stickerButton = view.findViewById(R.id.sticker_button);
+        editMessageHeader = view.findViewById(R.id.message_edit_header);
+        view.findViewById(R.id.cancel_message_edit).setOnClickListener(v -> cancelMessageEditing());
         pendingAttachmentPreview = view.findViewById(R.id.pending_attachment_preview);
         pendingAttachmentList = view.findViewById(R.id.pending_attachment_list);
         pinnedMessageCard = view.findViewById(R.id.pinned_message_card);
@@ -973,12 +977,17 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     }
 
     private void sendMessage() {
+        if (editingMessage != null) {
+            saveEditedMessage();
+            return;
+        }
         String messageText = messageInput.getText().toString().trim();
         if (photoUploadInProgress) return;
         sendMessage(messageText, getPendingAttachmentString());
     }
 
     private void sendSticker(Sticker sticker) {
+        if (editingMessage != null) return;
         if (sticker == null || !stickerButton.isEnabled()) return;
         stickerButton.setEnabled(false);
         messagesManager.sendMessage(peerId, "", null, replyingToMessageId, sticker.getId(),
@@ -1342,7 +1351,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
 
         if (message.isOut() && canEditMessage(message)) {
             addMessageAction(menuContent, menu, R.string.edit, R.drawable.ic_edit, false,
-                    () -> showEditMessageDialog(message));
+                    () -> startMessageEditing(message));
         }
         if (message.getText() != null && !message.getText().isEmpty()) {
             addMessageAction(menuContent, menu, R.string.copy, R.drawable.ic_copy, false,
@@ -1463,6 +1472,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     }
 
     private boolean canEditMessage(Message message) {
+        if (!pendingPhotoAttachments.isEmpty() || !pendingMediaAttachments.isEmpty()) return false;
         if (message.getAttachments() == null) return true;
         for (org.nikanikoo.flux.data.models.MessageAttachment attachment : message.getAttachments()) {
             String type = attachment.getType();
@@ -1482,28 +1492,81 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         }
     }
 
-    private void showEditMessageDialog(Message message) {
-        EditText input = new EditText(requireContext());
-        input.setText(message.getText());
-        input.setHint(R.string.edit_message_hint);
-        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE
-                | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
-        input.setMinLines(2);
-        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.edit_message_title)
-                .setView(input)
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(R.string.save, (dialog, which) -> {
-                    String text = input.getText() != null ? input.getText().toString() : "";
-                    ArrayList<String> ids = new ArrayList<>();
-                    if (message.getAttachments() != null) {
-                        for (org.nikanikoo.flux.data.models.MessageAttachment attachment : message.getAttachments()) {
-                            if (!TextUtils.isEmpty(attachment.getAttachmentId())) ids.add(attachment.getAttachmentId());
-                        }
+    private void startMessageEditing(Message message) {
+        if (!canEditMessage(message)) return;
+        editingMessage = message;
+        clearReplyTarget();
+        editMessageHeader.setVisibility(View.VISIBLE);
+        attachButton.setVisibility(View.GONE);
+        stickerButton.setVisibility(View.GONE);
+        sendButton.setImageResource(R.drawable.ic_check);
+        sendButton.setContentDescription(getString(R.string.save));
+        messageInput.setHint(R.string.edit_message_hint);
+        messageInput.setText(message.getText() == null ? "" : message.getText());
+        messageInput.setSelection(messageInput.length());
+        messageInput.requestFocus();
+        messageInput.post(() -> {
+            if (!isAdded() || getActivity() == null || !messageInput.isAttachedToWindow()) return;
+            android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager)
+                    requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) imm.showSoftInput(messageInput,
+                    android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
+        });
+    }
+
+    private void cancelMessageEditing() {
+        if (editingMessage == null) return;
+        editingMessage = null;
+        editMessageHeader.setVisibility(View.GONE);
+        attachButton.setVisibility(View.VISIBLE);
+        stickerButton.setVisibility(View.VISIBLE);
+        sendButton.setImageResource(R.drawable.ic_send);
+        sendButton.setContentDescription(getString(R.string.chat_send));
+        messageInput.setHint(R.string.chat_message_hint);
+        messageInput.setText("");
+        android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager)
+                requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) imm.hideSoftInputFromWindow(messageInput.getWindowToken(), 0);
+    }
+
+    private void saveEditedMessage() {
+        Message message = editingMessage;
+        if (message == null || !sendButton.isEnabled()) return;
+        String text = messageInput.getText() != null ? messageInput.getText().toString().trim() : "";
+        ArrayList<String> ids = new ArrayList<>();
+        if (message.getAttachments() != null) {
+            for (org.nikanikoo.flux.data.models.MessageAttachment attachment : message.getAttachments()) {
+                if (!TextUtils.isEmpty(attachment.getAttachmentId())) ids.add(attachment.getAttachmentId());
+            }
+        }
+        sendButton.setEnabled(false);
+        messageInput.setEnabled(false);
+        messagesManager.editMessage(peerId, message.getId(), text, TextUtils.join(",", ids),
+                new MessagesManager.MessageActionCallback() {
+                    @Override
+                    public void onSuccess() {
+                        if (getActivity() == null) return;
+                        getActivity().runOnUiThread(() -> {
+                            sendButton.setEnabled(true);
+                            messageInput.setEnabled(true);
+                            cancelMessageEditing();
+                            Toast.makeText(requireContext(), R.string.message_edited, Toast.LENGTH_SHORT).show();
+                            loadMessages(true);
+                            refreshConversationsList();
+                        });
                     }
-                    messagesManager.editMessage(peerId, message.getId(), text, TextUtils.join(",", ids),
-                            messageActionCallback(R.string.message_edited));
-                }).show();
+
+                    @Override
+                    public void onError(String error) {
+                        if (getActivity() == null) return;
+                        getActivity().runOnUiThread(() -> {
+                            sendButton.setEnabled(true);
+                            messageInput.setEnabled(true);
+                            Toast.makeText(requireContext(), getString(R.string.chat_send_error, error),
+                                    Toast.LENGTH_LONG).show();
+                        });
+                    }
+                });
     }
 
     private void confirmDeleteMessage(Message message) {
