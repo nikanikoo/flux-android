@@ -116,6 +116,8 @@
         android:layout_gravity="bottom|end"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="88dp"
+        android:clipChildren="false"
+        android:clipToPadding="false"
         android:visibility="gone">
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -135,8 +137,10 @@
             android:layout_gravity="top|end"
             android:translationX="4dp"
             android:translationY="-4dp"
+            android:elevation="8dp"
             android:minWidth="24dp"
             android:gravity="center"
+            android:includeFontPadding="false"
             android:paddingStart="6dp"
             android:paddingEnd="6dp"
             android:background="@drawable/unread_badge"
