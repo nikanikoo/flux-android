@@ -111,8 +111,8 @@
 
     <FrameLayout
         android:id="@+id/jump_latest_container"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
         android:layout_gravity="bottom|end"
         android:layout_marginEnd="16dp"
         android:layout_marginBottom="88dp"
@@ -124,9 +124,14 @@
             android:id="@+id/jump_latest_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_gravity="bottom|start"
             android:contentDescription="@string/chat_jump_latest"
             android:src="@drawable/ic_keyboard_arrow_down"
             app:fabSize="normal"
+            app:elevation="0dp"
+            app:pressedTranslationZ="0dp"
+            app:hoveredFocusedTranslationZ="0dp"
+            android:stateListAnimator="@null"
             app:backgroundTint="?attr/colorSurfaceContainerHigh"
             app:tint="?attr/colorOnSurface" />
 
@@ -135,9 +140,9 @@
             android:layout_width="wrap_content"
             android:layout_height="24dp"
             android:layout_gravity="top|end"
-            android:translationX="4dp"
-            android:translationY="-4dp"
-            android:elevation="8dp"
+            android:translationX="0dp"
+            android:translationY="0dp"
+            android:elevation="2dp"
             android:minWidth="24dp"
             android:gravity="center"
             android:includeFontPadding="false"
