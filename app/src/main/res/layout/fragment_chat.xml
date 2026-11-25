@@ -132,8 +132,8 @@
             app:pressedTranslationZ="0dp"
             app:hoveredFocusedTranslationZ="0dp"
             android:stateListAnimator="@null"
-            app:backgroundTint="?attr/colorSurfaceContainerHigh"
-            app:tint="?attr/colorOnSurface" />
+            app:backgroundTint="?attr/colorPrimaryContainer"
+            app:tint="?attr/colorOnPrimaryContainer" />
 
         <TextView
             android:id="@+id/unread_count_badge"
