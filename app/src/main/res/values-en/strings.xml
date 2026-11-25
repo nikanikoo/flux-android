@@ -184,6 +184,8 @@
 
     <!-- Messages -->
     <string name="messages_title">Messages</string>
+    <string name="new_conversation_selected_count">Selected: %1$d</string>
+    <string name="friends_list_loading">Loading friends…</string>
     <string name="message_document_default_name">Document</string>
     <string name="message_document_preview">Preview</string>
     <string name="message_document_file">File</string>

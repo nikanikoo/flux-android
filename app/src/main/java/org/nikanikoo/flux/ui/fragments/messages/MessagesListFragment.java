@@ -10,6 +10,7 @@ import android.view.ViewGroup;
 import org.nikanikoo.flux.data.models.Conversation;
 import org.nikanikoo.flux.data.models.Message;
 import org.nikanikoo.flux.ui.adapters.messages.ConversationsAdapter;
+import org.nikanikoo.flux.ui.adapters.friends.ConversationFriendPickerAdapter;
 import org.nikanikoo.flux.data.managers.MessagesManager;
 import org.nikanikoo.flux.data.managers.FriendsManager;
 import org.nikanikoo.flux.data.models.Friend;
@@ -33,6 +34,9 @@ import android.widget.Toast;
 import android.widget.EditText;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.TextView;
+import android.view.Gravity;
+import com.google.android.material.button.MaterialButton;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -643,7 +647,7 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
     }
 
     private void loadFriendsForNewConversation() {
-        FriendsManager.getInstance(requireContext()).getFriends(1000, 0, new FriendsManager.FriendsCallback() {
+        FriendsManager.getInstance(requireContext()).getFriends(org.nikanikoo.flux.Constants.Api.FRIENDS_PER_PAGE, 0, new FriendsManager.FriendsCallback() {
             @Override
             public void onSuccess(List<Friend> friends) {
                 if (!isAdded()) return;
@@ -662,26 +666,100 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
     }
 
     private void showFriendPicker(List<Friend> friends) {
-        String[] names = new String[friends.size()];
-        boolean[] selected = new boolean[friends.size()];
-        for (int i = 0; i < friends.size(); i++) names[i] = friends.get(i).getFullName().trim();
+        Set<Integer> selectedIds = new HashSet<>();
+        List<Friend> allFriends = new ArrayList<>(friends);
+        sortFriendsAlphabetically(allFriends);
 
-        new MaterialAlertDialogBuilder(requireContext())
+        LinearLayout content = new LinearLayout(requireContext());
+        content.setOrientation(LinearLayout.VERTICAL);
+        int horizontalPadding = dp(20);
+        content.setPadding(horizontalPadding, dp(8), horizontalPadding, dp(8));
+        TextView selectedCount = new TextView(requireContext());
+        selectedCount.setText(getString(R.string.new_conversation_selected_count, 0));
+        selectedCount.setPadding(0, dp(4), 0, dp(8));
+        content.addView(selectedCount);
+
+        RecyclerView friendList = new RecyclerView(requireContext());
+        friendList.setLayoutManager(new LinearLayoutManager(requireContext()));
+        ConversationFriendPickerAdapter[] pickerAdapterRef = new ConversationFriendPickerAdapter[1];
+        ConversationFriendPickerAdapter pickerAdapter = new ConversationFriendPickerAdapter(
+                requireContext(), selectedIds, friend -> {
+                    if (!selectedIds.add(friend.getId())) selectedIds.remove(friend.getId());
+                    if (pickerAdapterRef[0] != null) pickerAdapterRef[0].notifyDataSetChanged();
+                    selectedCount.setText(getString(R.string.new_conversation_selected_count, selectedIds.size()));
+                });
+        pickerAdapterRef[0] = pickerAdapter;
+        pickerAdapter.setFriends(allFriends);
+        friendList.setAdapter(pickerAdapter);
+        content.addView(friendList, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(420)));
+
+        TextView loading = new TextView(requireContext());
+        loading.setText(R.string.friends_list_loading);
+        loading.setGravity(Gravity.CENTER);
+        loading.setPadding(0, dp(8), 0, dp(8));
+        content.addView(loading);
+
+        MaterialButton cancel = new MaterialButton(requireContext());
+        cancel.setText(R.string.cancel);
+        MaterialButton proceed = new MaterialButton(requireContext());
+        proceed.setText(R.string.continue_action);
+        LinearLayout buttons = new LinearLayout(requireContext());
+        buttons.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+        buttons.addView(cancel);
+        buttons.addView(proceed);
+        content.addView(buttons);
+
+        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(R.string.new_conversation)
-                .setMultiChoiceItems(names, selected, (dialog, which, checked) -> selected[which] = checked)
-                .setNegativeButton(R.string.cancel, null)
-                .setPositiveButton(R.string.continue_action, (dialog, which) -> {
-                    List<Friend> chosen = new ArrayList<>();
-                    for (int i = 0; i < selected.length; i++) if (selected[i]) chosen.add(friends.get(i));
-                    if (chosen.isEmpty()) {
-                        Toast.makeText(requireContext(), R.string.select_at_least_one_friend, Toast.LENGTH_SHORT).show();
-                    } else if (chosen.size() == 1) {
-                        openConversation(chosen.get(0).getId(), chosen.get(0).getFullName());
-                    } else {
-                        createGroupConversation(chosen);
+                .setView(content)
+                .create();
+        cancel.setOnClickListener(v -> dialog.dismiss());
+        proceed.setOnClickListener(v -> {
+            if (selectedIds.isEmpty()) {
+                Toast.makeText(requireContext(), R.string.select_at_least_one_friend, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            List<Friend> chosen = new ArrayList<>();
+            for (Friend friend : allFriends) if (selectedIds.contains(friend.getId())) chosen.add(friend);
+            dialog.dismiss();
+            if (chosen.size() == 1) openConversation(chosen.get(0).getId(), chosen.get(0).getFullName());
+            else createGroupConversation(chosen);
+        });
+        dialog.show();
+        loadFriendPickerPage(allFriends, pickerAdapter, loading, dialog,
+                org.nikanikoo.flux.Constants.Api.FRIENDS_PER_PAGE);
+    }
+
+    private void sortFriendsAlphabetically(List<Friend> friends) {
+        java.text.Collator collator = java.text.Collator.getInstance(java.util.Locale.getDefault());
+        friends.sort((left, right) -> collator.compare(left.getFullName(), right.getFullName()));
+    }
+
+    private void loadFriendPickerPage(List<Friend> allFriends, ConversationFriendPickerAdapter adapter,
+                                     TextView loading, androidx.appcompat.app.AlertDialog dialog, int offset) {
+        FriendsManager.getInstance(requireContext()).getFriends(
+                org.nikanikoo.flux.Constants.Api.FRIENDS_PER_PAGE, offset, new FriendsManager.FriendsCallback() {
+                    @Override public void onSuccess(List<Friend> page) {
+                        if (!dialog.isShowing() || !isAdded()) return;
+                        Set<Integer> knownIds = new HashSet<>();
+                        for (Friend friend : allFriends) knownIds.add(friend.getId());
+                        for (Friend friend : page) if (knownIds.add(friend.getId())) allFriends.add(friend);
+                        sortFriendsAlphabetically(allFriends);
+                        adapter.setFriends(allFriends);
+                        if (page.size() == org.nikanikoo.flux.Constants.Api.FRIENDS_PER_PAGE) {
+                            loadFriendPickerPage(allFriends, adapter, loading, dialog,
+                                    offset + org.nikanikoo.flux.Constants.Api.FRIENDS_PER_PAGE);
+                        } else {
+                            loading.setVisibility(View.GONE);
+                        }
                     }
-                })
-                .show();
+                    @Override public void onError(String error) {
+                        if (!dialog.isShowing() || !isAdded()) return;
+                        loading.setVisibility(View.GONE);
+                        Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
+                    }
+                });
     }
 
     private void createGroupConversation(List<Friend> friends) {

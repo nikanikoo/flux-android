@@ -179,6 +179,8 @@
 
     <!-- Messages -->
     <string name="messages_title">Повідомлення</string>
+    <string name="new_conversation_selected_count">Вибрано: %1$d</string>
+    <string name="friends_list_loading">Завантажуємо друзів…</string>
     <string name="message_document_default_name">Документ</string>
     <string name="message_document_preview">Попередній перегляд</string>
     <string name="message_document_file">Файл</string>
