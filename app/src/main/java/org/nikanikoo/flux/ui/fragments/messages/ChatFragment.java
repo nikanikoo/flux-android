@@ -145,6 +145,8 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     private LongPollManager longPollManager;
     private Handler typingTimeoutHandler;
     private Runnable typingTimeoutRunnable;
+    private final java.util.Map<Integer, String> typingNamesByUserId = new java.util.HashMap<>();
+    private final java.util.Set<Integer> typingNameRequests = new java.util.HashSet<>();
     private long lastTypingSendTime = 0;
 
     public static ChatFragment newInstance(int peerId, String title) {
@@ -1987,11 +1989,38 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         Log.d("ChatFragment", "onUserTyping received: peerId=" + peerId + ", userId=" + userId + ", currentPeerId=" + this.peerId);
         if (this.peerId == peerId && getActivity() != null) {
             getActivity().runOnUiThread(() -> {
-                setActionBarSubtitle(getString(R.string.chat_typing));
-                
+                String cachedName = typingNamesByUserId.get(userId);
+                boolean group = peerId > GROUP_PEER_ID_OFFSET;
+                setActionBarSubtitle(group && cachedName != null
+                        ? getString(R.string.chat_typing_with_name, cachedName)
+                        : getString(R.string.chat_typing));
+
                 if (typingTimeoutHandler != null && typingTimeoutRunnable != null) {
                     typingTimeoutHandler.removeCallbacks(typingTimeoutRunnable);
                     typingTimeoutHandler.postDelayed(typingTimeoutRunnable, 6000);
+                }
+                if (group && userId > 0 && cachedName == null && typingNameRequests.add(userId)) {
+                    int requestPeerId = peerId;
+                    messagesManager.getUserInfo(userId, new MessagesManager.UserInfoCallback() {
+                        @Override
+                        public void onSuccess(String userName, String userPhoto) {
+                            typingNameRequests.remove(userId);
+                            typingNamesByUserId.put(userId, userName);
+                            if (!isAdded() || requestPeerId != ChatFragment.this.peerId) return;
+                            requireActivity().runOnUiThread(() -> {
+                                setActionBarSubtitle(getString(R.string.chat_typing_with_name, userName));
+                                if (typingTimeoutHandler != null && typingTimeoutRunnable != null) {
+                                    typingTimeoutHandler.removeCallbacks(typingTimeoutRunnable);
+                                    typingTimeoutHandler.postDelayed(typingTimeoutRunnable, 6000);
+                                }
+                            });
+                        }
+
+                        @Override
+                        public void onError(String error) {
+                            typingNameRequests.remove(userId);
+                        }
+                    });
                 }
             });
         }
