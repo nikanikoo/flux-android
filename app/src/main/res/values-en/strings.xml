@@ -522,6 +522,12 @@
     <string name="profile_gender">Gender:</string>
     <string name="profile_date_registered">Registration date:</string>
     <string name="profile_status_offline">Offline</string>
+    <string name="chat_last_seen">Last seen %1$s</string>
+    <string name="chat_last_seen_now">Last seen just now</string>
+    <plurals name="chat_members_count">
+        <item quantity="one">%d participant</item>
+        <item quantity="other">%d participants</item>
+    </plurals>
     <string name="profile_last_activity">Last activity:</string>
     <string name="profile_city">City:</string>
     <string name="instance_info">INFORMATION</string>

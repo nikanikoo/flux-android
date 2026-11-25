@@ -609,6 +609,14 @@
     <string name="profile_gender">Пол:</string>
     <string name="profile_date_registered">Дата регистрации:</string>
     <string name="profile_status_offline">Не в сети</string>
+    <string name="chat_last_seen">Был(а) в сети %1$s</string>
+    <string name="chat_last_seen_now">Был(а) в сети только что</string>
+    <plurals name="chat_members_count">
+        <item quantity="one">%d участник</item>
+        <item quantity="few">%d участника</item>
+        <item quantity="many">%d участников</item>
+        <item quantity="other">%d участников</item>
+    </plurals>
     <string name="profile_last_activity">Последняя активность:</string>
     <string name="profile_city">Город:</string>
     <string name="profile_email">Почта:</string>

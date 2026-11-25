@@ -63,6 +63,7 @@ public class ChatActivity extends AppCompatActivity {
     private String toolbarTitle;
     private boolean toolbarOnline;
     private String toolbarTypingText;
+    private String toolbarBaseSubtitle = "";
     private ImageView toolbarAvatar;
     private ImageView toolbarVerified;
     private TextView toolbarTitleView;
@@ -81,6 +82,8 @@ public class ChatActivity extends AppCompatActivity {
         if (userId == peerId) {
             runOnUiThread(() -> {
                 toolbarOnline = online;
+                toolbarBaseSubtitle = online ? getString(R.string.profile_status_online)
+                        : getString(R.string.chat_last_seen_now);
                 updateToolbarSubtitle();
             });
         }
@@ -468,8 +471,16 @@ public class ChatActivity extends AppCompatActivity {
                     JSONObject settings = conversation != null ? conversation.optJSONObject("chat_settings") : null;
                     JSONObject photo = settings != null ? settings.optJSONObject("photo") : null;
                     String url = photo != null ? photo.optString("photo_50", photo.optString("photo_200", "")) : "";
+                    int membersCount = settings != null
+                            ? settings.optInt("members_count", conversation != null ? conversation.optInt("users_count", 0) : 0)
+                            : 0;
                     runOnUiThread(() -> {
-                        if (!toolbarHeaderActive) showToolbarAvatar(url);
+                        if (toolbarHeaderActive) return;
+                        toolbarBaseSubtitle = membersCount > 0
+                                ? getResources().getQuantityString(R.plurals.chat_members_count, membersCount, membersCount)
+                                : "";
+                        updateToolbarSubtitle();
+                        showToolbarAvatar(url);
                     });
                 }
                 @Override public void onError(String error) { }
@@ -479,7 +490,7 @@ public class ChatActivity extends AppCompatActivity {
 
         java.util.Map<String, String> params = new java.util.HashMap<>();
         params.put("user_ids", String.valueOf(peerId));
-        params.put("fields", "photo_50,online,verified");
+        params.put("fields", "photo_50,online,verified,last_seen");
         OpenVKApi.getInstance(this).callMethod("users.get", params, new OpenVKApi.ApiCallback() {
             @Override public void onSuccess(JSONObject response) {
                 org.json.JSONArray users = response.optJSONArray("response");
@@ -488,7 +499,9 @@ public class ChatActivity extends AppCompatActivity {
                 String url = user.optString("photo_50", "");
                 runOnUiThread(() -> {
                     if (toolbarHeaderActive) return;
-                    toolbarOnline = user.optInt("online", 0) == 1;
+                    toolbarOnline = isUserOnline(user);
+                    toolbarBaseSubtitle = toolbarOnline ? getString(R.string.profile_status_online)
+                            : formatLastSeen(user);
                     if (toolbarVerified != null) {
                         toolbarVerified.setVisibility(isVerified(user)
                                 ? android.view.View.VISIBLE : android.view.View.GONE);
@@ -499,6 +512,22 @@ public class ChatActivity extends AppCompatActivity {
             }
             @Override public void onError(String error) { }
         });
+    }
+
+    private String formatLastSeen(JSONObject user) {
+        JSONObject lastSeen = user.optJSONObject("last_seen");
+        long timestamp = lastSeen != null ? lastSeen.optLong("time", 0) : user.optLong("last_seen", 0);
+        if (timestamp <= 0) return getString(R.string.profile_status_offline);
+        CharSequence relative = android.text.format.DateUtils.getRelativeTimeSpanString(
+                timestamp * 1000L, System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS);
+        return getString(R.string.chat_last_seen, relative);
+    }
+
+    private boolean isUserOnline(JSONObject user) {
+        Object online = user.opt("online");
+        if (online instanceof Boolean) return (Boolean) online;
+        if (online instanceof Number) return ((Number) online).intValue() == 1;
+        return online != null && "1".equals(online.toString());
     }
 
     private boolean isVerified(JSONObject user) {
@@ -529,8 +558,8 @@ public class ChatActivity extends AppCompatActivity {
 
     private void updateToolbarSubtitle() {
         if (toolbarSubtitleView == null) return;
-        String status = toolbarTypingText != null && !toolbarTypingText.isEmpty() ? toolbarTypingText
-                : toolbarOnline ? getString(R.string.profile_status_online) : "";
+        String status = toolbarTypingText != null && !toolbarTypingText.isEmpty()
+                ? toolbarTypingText : toolbarBaseSubtitle;
         toolbarSubtitleView.setText(status);
         toolbarSubtitleView.setVisibility(status.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE);
     }

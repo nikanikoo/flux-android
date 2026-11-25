@@ -458,6 +458,14 @@
     <string name="profile_gender">Стать:</string>
     <string name="profile_date_registered">Дата реєстрації:</string>
     <string name="profile_status_offline">Не в мережі</string>
+    <string name="chat_last_seen">Був/була в мережі %1$s</string>
+    <string name="chat_last_seen_now">Був/була в мережі щойно</string>
+    <plurals name="chat_members_count">
+        <item quantity="one">%d учасник</item>
+        <item quantity="few">%d учасники</item>
+        <item quantity="many">%d учасників</item>
+        <item quantity="other">%d учасника</item>
+    </plurals>
     <string name="profile_last_activity">Остання активність:</string>
     <string name="profile_city">Місто:</string>
     <string name="profile_email">Мрія:</string>
