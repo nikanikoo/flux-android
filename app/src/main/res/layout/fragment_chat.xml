@@ -380,7 +380,6 @@
             android:clickable="true"
             android:focusable="true"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:padding="6dp"
             android:layout_marginStart="4dp"
             app:tint="?attr/colorPrimary" />
 
