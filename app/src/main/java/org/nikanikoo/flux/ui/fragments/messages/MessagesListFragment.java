@@ -47,7 +47,7 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
     private static List<Conversation> sCachedConversations = null;
     private static boolean sIsConversationsLoaded = false;
     private int activePeerId = -1;
-    private final Map<Integer, String> typingNamesByPeerId = new HashMap<>();
+    private final Map<Integer, String> typingNamesByUserId = new HashMap<>();
     private final Set<Integer> typingNameRequests = new HashSet<>();
 
     @Override
@@ -138,17 +138,21 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
                     return;
                 }
 
-                String cachedName = typingNamesByPeerId.get(peerId);
+                if (userId <= 0) {
+                    adapter.setUserTyping(peerId, getString(R.string.chat_typing));
+                    return;
+                }
+                String cachedName = typingNamesByUserId.get(userId);
                 if (cachedName != null) {
                     adapter.setUserTyping(peerId, getString(R.string.chat_typing_with_name, cachedName));
                 } else {
                     adapter.setUserTyping(peerId, getString(R.string.chat_typing));
-                    if (typingNameRequests.add(peerId)) {
+                    if (typingNameRequests.add(userId)) {
                         messagesManager.getUserInfo(userId, new MessagesManager.UserInfoCallback() {
                             @Override
                             public void onSuccess(String userName, String userPhoto) {
-                                typingNameRequests.remove(peerId);
-                                typingNamesByPeerId.put(peerId, userName);
+                                typingNameRequests.remove(userId);
+                                typingNamesByUserId.put(userId, userName);
                                 if (isAdded() && adapter != null) {
                                     adapter.setUserTyping(peerId, getString(R.string.chat_typing_with_name, userName));
                                 }
@@ -156,7 +160,7 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
 
                             @Override
                             public void onError(String error) {
-                                typingNameRequests.remove(peerId);
+                                typingNameRequests.remove(userId);
                             }
                         });
                     }
