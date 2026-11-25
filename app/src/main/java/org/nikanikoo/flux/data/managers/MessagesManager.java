@@ -1275,6 +1275,10 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                 conversation.setPeerPhoto(photo);
                 conversation.setOnline(isOnline);
                 conversation.setPeerVerified(isVerified);
+                conversation.setGroupChat(peerType == 2);
+                JSONObject chatSettings = conversationObj.optJSONObject("chat_settings");
+                String chatState = chatSettings != null ? chatSettings.optString("state", "") : "";
+                conversation.setLeft("left".equals(chatState));
 
                 conversations.add(conversation);
                 Logger.d(TAG, "Добавлен диалог: " + title);

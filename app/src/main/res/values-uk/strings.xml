@@ -179,6 +179,11 @@
 
     <!-- Messages -->
     <string name="messages_title">Повідомлення</string>
+    <string name="chat_leave_action">Вийти з бесіди</string>
+    <string name="chat_return_action">Повернутися до бесіди</string>
+    <string name="chat_leave_confirm">Вийти з бесіди «%1$s»?</string>
+    <string name="chat_return_confirm">Повернутися до бесіди «%1$s»?</string>
+    <string name="chat_return_error">Не вдалося визначити ваш обліковий запис</string>
     <string name="messages_connecting">Підключення...</string>
     <string name="messages_updating">Оновлення...</string>
     <string name="messages_loading_error">Помилка завантаження діалогів:\u0020</string>

@@ -913,6 +913,11 @@
     <string name="chat_typing_with_name">%1$s печатает…</string>
     <string name="chat_delete_conversation">Удалить переписку</string>
     <string name="chat_delete_conversation_confirm">Удалить переписку с «%1$s»?</string>
+    <string name="chat_leave_action">Выйти из беседы</string>
+    <string name="chat_return_action">Вернуться в беседу</string>
+    <string name="chat_leave_confirm">Выйти из беседы «%1$s»?</string>
+    <string name="chat_return_confirm">Вернуться в беседу «%1$s»?</string>
+    <string name="chat_return_error">Не удалось определить ваш аккаунт</string>
     <string name="appearance_avatars_group">Аватары</string>
     <string name="appearance_round_avatars">Круглые аватары</string>
     <string name="chat_jump_latest">Переместиться к непрочитанным сообщениям</string>

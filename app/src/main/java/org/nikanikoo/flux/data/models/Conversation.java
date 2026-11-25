@@ -11,6 +11,8 @@ public class Conversation {
     private boolean isOnline;
     private boolean peerVerified;
     private Boolean notificationsEnabled;
+    private boolean groupChat;
+    private boolean left;
 
     public Conversation(int id, int peerId, String title, String lastMessage,
                        long lastMessageDate, int unreadCount) {
@@ -33,6 +35,8 @@ public class Conversation {
     public boolean isOnline() { return isOnline; }
     public boolean isPeerVerified() { return peerVerified; }
     public Boolean areNotificationsEnabled() { return notificationsEnabled; }
+    public boolean isGroupChat() { return groupChat; }
+    public boolean hasLeft() { return left; }
 
     // Setters
     public void setPeerPhoto(String peerPhoto) { this.peerPhoto = peerPhoto; }
@@ -44,4 +48,6 @@ public class Conversation {
     public void setNotificationsEnabled(boolean notificationsEnabled) {
         this.notificationsEnabled = notificationsEnabled;
     }
+    public void setGroupChat(boolean groupChat) { this.groupChat = groupChat; }
+    public void setLeft(boolean left) { this.left = left; }
 }

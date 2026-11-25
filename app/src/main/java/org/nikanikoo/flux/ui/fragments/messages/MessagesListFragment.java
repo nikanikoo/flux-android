@@ -528,14 +528,56 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
 
     @Override
     public void onConversationLongClick(Conversation conversation) {
+        int actionTitle = conversation.isGroupChat()
+                ? (conversation.hasLeft() ? R.string.chat_return_action : R.string.chat_leave_action)
+                : R.string.chat_delete_conversation;
         new MaterialAlertDialogBuilder(requireContext())
                 .setTitle(conversation.getTitle())
                 .setItems(new CharSequence[]{getString(R.string.chat_notifications_menu),
-                        getString(R.string.chat_delete_conversation)}, (dialog, which) -> {
+                        getString(actionTitle)}, (dialog, which) -> {
                     if (which == 0) showConversationNotificationOptions(conversation);
+                    else if (conversation.isGroupChat()) confirmLeaveOrReturnConversation(conversation);
                     else confirmDeleteConversation(conversation);
                 })
                 .show();
+    }
+
+    private void confirmLeaveOrReturnConversation(Conversation conversation) {
+        boolean returning = conversation.hasLeft();
+        int prompt = returning ? R.string.chat_return_confirm : R.string.chat_leave_confirm;
+        int action = returning ? R.string.chat_return_action : R.string.chat_leave_action;
+        new MaterialAlertDialogBuilder(requireContext())
+                .setMessage(getString(prompt, conversation.getTitle()))
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(action, (dialog, which) -> {
+                    if (returning) {
+                        org.nikanikoo.flux.security.AccountManager.Account account =
+                                org.nikanikoo.flux.security.AccountManager.getInstance(requireContext()).getCurrentAccount();
+                        int userId = 0;
+                        if (account != null && account.userId != null) {
+                            try { userId = Integer.parseInt(account.userId); } catch (NumberFormatException ignored) { }
+                        }
+                        if (userId <= 0) {
+                            Toast.makeText(requireContext(), R.string.chat_return_error, Toast.LENGTH_LONG).show();
+                            return;
+                        }
+                        messagesManager.addChatUser(conversation.getPeerId(), userId, chatMembershipCallback());
+                    } else {
+                        messagesManager.removeChatUser(conversation.getPeerId(), 0, chatMembershipCallback());
+                    }
+                })
+                .show();
+    }
+
+    private org.nikanikoo.flux.data.managers.api.OpenVKApi.ApiCallback chatMembershipCallback() {
+        return new org.nikanikoo.flux.data.managers.api.OpenVKApi.ApiCallback() {
+            @Override public void onSuccess(org.json.JSONObject response) {
+                if (isAdded()) refreshConversations();
+            }
+            @Override public void onError(String error) {
+                if (isAdded()) Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
+            }
+        };
     }
 
     private void showConversationNotificationOptions(Conversation conversation) {
