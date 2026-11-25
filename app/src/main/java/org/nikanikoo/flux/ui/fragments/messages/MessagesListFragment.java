@@ -768,7 +768,18 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
             if (userIds.length() > 0) userIds.append(',');
             userIds.append(friend.getId());
         }
-        messagesManager.createChat(userIds.toString(), new org.nikanikoo.flux.data.managers.api.OpenVKApi.ApiCallback() {
+        org.nikanikoo.flux.security.AccountManager.Account account =
+                org.nikanikoo.flux.security.AccountManager.getInstance(requireContext()).getCurrentAccount();
+        int currentUserId = 0;
+        if (account != null && account.userId != null) {
+            try { currentUserId = Integer.parseInt(account.userId); } catch (NumberFormatException ignored) { }
+        }
+        if (currentUserId <= 0) {
+            Toast.makeText(requireContext(), R.string.chat_return_error, Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        messagesManager.createChat(String.valueOf(currentUserId), new org.nikanikoo.flux.data.managers.api.OpenVKApi.ApiCallback() {
             @Override
             public void onSuccess(org.json.JSONObject response) {
                 if (!isAdded()) return;
@@ -777,7 +788,26 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
                     Toast.makeText(requireContext(), R.string.chat_create_error, Toast.LENGTH_LONG).show();
                     return;
                 }
-                showNewGroupDetailsDialog(chatId);
+                int peerId = 2000000000 + chatId;
+                messagesManager.addChatUsers(peerId, userIds.toString(), new org.nikanikoo.flux.data.managers.api.OpenVKApi.ApiCallback() {
+                    @Override public void onSuccess(org.json.JSONObject inviteResponse) {
+                        if (isAdded()) showNewGroupDetailsDialog(chatId);
+                    }
+
+                    @Override public void onError(String error) {
+                        messagesManager.deleteConversation(peerId, new org.nikanikoo.flux.data.managers.api.OpenVKApi.ApiCallback() {
+                            @Override public void onSuccess(org.json.JSONObject cleanupResponse) {
+                                if (isAdded()) {
+                                    refreshConversations();
+                                    Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
+                                }
+                            }
+                            @Override public void onError(String cleanupError) {
+                                if (isAdded()) Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
+                            }
+                        });
+                    }
+                });
             }
 
             @Override
