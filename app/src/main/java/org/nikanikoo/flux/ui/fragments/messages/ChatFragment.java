@@ -35,6 +35,8 @@ import org.nikanikoo.flux.ui.custom.EndlessScrollListener;
 import org.nikanikoo.flux.ui.custom.PaginationHelper;
 import org.nikanikoo.flux.Constants;
 import org.nikanikoo.flux.data.models.Message;
+import org.nikanikoo.flux.data.models.MessageAttachment;
+import org.nikanikoo.flux.data.models.MessageReference;
 import org.nikanikoo.flux.services.LongPollManager;
 import org.nikanikoo.flux.services.MessageNotificationManager;
 import org.nikanikoo.flux.ui.adapters.messages.MessagesAdapter;
@@ -119,6 +121,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     private int recyclerBaseTopPadding;
     private int pendingReplyMessageId;
     private int replyingToMessageId;
+    private int pendingOptimisticMessageCount;
     private int lastMarkedReadMessageId;
     private int pendingReadMessageId;
     private int unreadCount;
@@ -1075,28 +1078,38 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         }
         
         // Отключаем кнопку отправки
-        sendButton.setEnabled(false);
-        messageInput.setEnabled(false);
-        
-        messagesManager.sendMessage(peerId, messageText, attachment, replyingToMessageId, stickerId,
+        int replyMessageId = replyingToMessageId;
+        String replyAuthor = replyingToAuthor;
+        String replyText = replyingToText;
+        List<String> photoAttachments = new ArrayList<>(pendingPhotoAttachments);
+        List<Uri> photoUris = new ArrayList<>(pendingPhotoUris);
+        List<String> mediaAttachments = new ArrayList<>(pendingMediaAttachments);
+        List<String> mediaTitles = new ArrayList<>(pendingMediaTitles);
+        List<String> mediaPreviews = new ArrayList<>(pendingMediaPreviews);
+        Message optimisticMessage = createOptimisticMessage(messageText, attachment, stickerId,
+                replyMessageId, replyAuthor, replyText);
+        if (adapter != null) {
+            adapter.addMessage(optimisticMessage);
+            if (recyclerView != null) recyclerView.scrollToPosition(adapter.getItemCount() - 1);
+        }
+        pendingOptimisticMessageCount++;
+        messageInput.setText("");
+        if (attachment != null && !attachment.isEmpty()) clearPendingAttachment();
+        if (replyMessageId > 0) clearReplyTarget();
+
+        messagesManager.sendMessage(peerId, messageText, attachment, replyMessageId, stickerId,
                 new MessagesManager.SendMessageCallback() {
             @Override
             public void onSuccess(int messageId) {
                 if (getActivity() != null) {
                     getActivity().runOnUiThread(() -> {
-                        messageInput.setText("");
-                        clearReplyTarget();
-                        sendButton.setEnabled(true);
-                        messageInput.setEnabled(true);
-                        if (attachment != null && attachment.equals(getPendingAttachmentString())) {
-                            clearPendingAttachment();
-                        }
+                        pendingOptimisticMessageCount = Math.max(0, pendingOptimisticMessageCount - 1);
                         
                         // Перезагружаем сообщения чтобы показать отправленное
-                        loadMessages(true);
+                        if (pendingOptimisticMessageCount == 0) loadMessages(true);
                         
                         // Обновляем список чатов
-                        refreshConversationsList();
+                        if (pendingOptimisticMessageCount == 0) refreshConversationsList();
                     });
                 }
             }
@@ -1105,13 +1118,61 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
             public void onError(String error) {
                 if (getActivity() != null) {
                     getActivity().runOnUiThread(() -> {
+                        pendingOptimisticMessageCount = Math.max(0, pendingOptimisticMessageCount - 1);
+                        if (pendingOptimisticMessageCount == 0) {
+                            loadMessages(true);
+                            refreshConversationsList();
+                        }
+                        if (adapter != null) adapter.removeMessageById(optimisticMessage.getId());
+                        if (messageInput.getText().length() == 0) messageInput.setText(messageText);
+                        if (attachment != null && !attachment.isEmpty() && pendingPhotoAttachments.isEmpty()
+                                && pendingMediaAttachments.isEmpty()) {
+                            pendingPhotoAttachments.addAll(photoAttachments);
+                            pendingPhotoUris.addAll(photoUris);
+                            pendingMediaAttachments.addAll(mediaAttachments);
+                            pendingMediaTitles.addAll(mediaTitles);
+                            pendingMediaPreviews.addAll(mediaPreviews);
+                            updatePendingAttachmentPreview();
+                        }
+                        if (replyMessageId > 0 && replyingToMessageId == 0) {
+                            replyingToMessageId = replyMessageId;
+                            replyingToAuthor = replyAuthor;
+                            replyingToText = replyText;
+                            updateReplyPreview();
+                        }
                         Toast.makeText(requireContext(), getString(R.string.chat_send_error, error), Toast.LENGTH_LONG).show();
-                        sendButton.setEnabled(true);
-                        messageInput.setEnabled(true);
                     });
                 }
             }
         });
+    }
+
+    private Message createOptimisticMessage(String text, String attachment, int stickerId,
+                                            int replyMessageId, String replyAuthor, String replyText) {
+        org.nikanikoo.flux.data.models.UserProfile profile =
+                org.nikanikoo.flux.data.managers.ProfileManager.getInstance(requireContext()).getCachedProfileSync();
+        int userId = profile != null ? profile.getId() : 0;
+        int localId = -Math.max(1, (int) (System.nanoTime() & 0x7fffffff));
+        Message message = new Message(localId, userId, userId, text, System.currentTimeMillis() / 1000L,
+                true, false);
+        message.setPending(true);
+        if (profile != null) {
+            message.setUserName(profile.getFullName());
+            message.setUserPhoto(profile.getPhoto50());
+            message.setUserVerified(profile.isVerified());
+        }
+        if (replyMessageId > 0) message.setReply(new MessageReference(replyMessageId, replyAuthor, replyText));
+        List<MessageAttachment> attachments = new ArrayList<>();
+        if (attachment != null && !attachment.isEmpty()) {
+            attachments.add(new MessageAttachment("pending", "", getString(R.string.message_waiting_to_send), ""));
+        }
+        if (stickerId > 0) {
+            String stickerUrl = OpenVKApi.getInstance(requireContext()).getBaseUrl()
+                    + "/images/stickers/" + stickerId + "/128b.png";
+            attachments.add(new MessageAttachment("sticker", stickerUrl, "", ""));
+        }
+        message.setAttachments(attachments);
+        return message;
     }
 
     private void updatePendingAttachmentPreview() {

@@ -1190,6 +1190,18 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         return RecyclerView.NO_POSITION;
     }
 
+    public void removeMessageById(int messageId) {
+        int position = findMessagePosition(messageId);
+        if (position == RecyclerView.NO_POSITION) return;
+        items.remove(position);
+        notifyItemRemoved(position);
+        if (position > 0 && items.get(position - 1) instanceof DateHeader) {
+            items.remove(position - 1);
+            notifyItemRemoved(position - 1);
+        }
+        rebuildChatAudioPlaylist();
+    }
+
     public int markOutgoingMessagesReadThrough(int conversationMessageId) {
         if (conversationMessageId <= 0) return 0;
         int updated = 0;
