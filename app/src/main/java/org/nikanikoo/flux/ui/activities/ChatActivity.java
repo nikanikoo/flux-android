@@ -62,7 +62,7 @@ public class ChatActivity extends AppCompatActivity {
     private String peerName;
     private String toolbarTitle;
     private boolean toolbarOnline;
-    private boolean toolbarTyping;
+    private String toolbarTypingText;
     private ImageView toolbarAvatar;
     private ImageView toolbarVerified;
     private TextView toolbarTitleView;
@@ -122,7 +122,7 @@ public class ChatActivity extends AppCompatActivity {
             } else if (isChatScreenVisible()) {
                 toolbarHeaderActive = false;
                 toolbarTitle = peerName != null ? peerName : getString(R.string.chat_title);
-                toolbarTyping = false;
+                toolbarTypingText = null;
                 if (getSupportActionBar() != null) {
                     getSupportActionBar().setDisplayShowTitleEnabled(false);
                     getSupportActionBar().setDisplayShowCustomEnabled(true);
@@ -519,13 +519,17 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     public void setChatTyping(boolean typing) {
-        toolbarTyping = typing;
+        setChatTypingText(typing ? getString(R.string.chat_typing) : null);
+    }
+
+    public void setChatTypingText(String typingText) {
+        toolbarTypingText = typingText;
         updateToolbarSubtitle();
     }
 
     private void updateToolbarSubtitle() {
         if (toolbarSubtitleView == null) return;
-        String status = toolbarTyping ? getString(R.string.chat_typing)
+        String status = toolbarTypingText != null && !toolbarTypingText.isEmpty() ? toolbarTypingText
                 : toolbarOnline ? getString(R.string.profile_status_online) : "";
         toolbarSubtitleView.setText(status);
         toolbarSubtitleView.setVisibility(status.isEmpty() ? android.view.View.GONE : android.view.View.VISIBLE);
@@ -541,7 +545,7 @@ public class ChatActivity extends AppCompatActivity {
         toolbarTitle = displayName != null && !displayName.trim().isEmpty()
                 ? displayName : getString(R.string.profile_title);
         toolbarOnline = false;
-        toolbarTyping = false;
+        toolbarTypingText = null;
         if (toolbarHeader != null) toolbarHeader.setOnClickListener(null);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayShowCustomEnabled(false);

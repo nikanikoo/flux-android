@@ -2159,7 +2159,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                 actionBar.setSubtitle(subtitleText);
             }
         } else if (getActivity() instanceof ChatActivity) {
-            ((ChatActivity) getActivity()).setChatTyping(subtitleText != null);
+            ((ChatActivity) getActivity()).setChatTypingText(subtitleText);
         }
     }
 }
