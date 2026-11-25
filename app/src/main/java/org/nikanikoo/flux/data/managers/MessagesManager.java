@@ -935,6 +935,7 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                     navigationAccessKey, attachmentId);
             messageAttachment.setAnimationUrl(animationUrl);
             messageAttachment.setAudio(parsedAudio);
+            if ("doc".equals(type)) messageAttachment.setFileSize(data.optLong("size", 0));
             parsed.add(messageAttachment);
         }
         return parsed;

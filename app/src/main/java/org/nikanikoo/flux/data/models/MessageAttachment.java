@@ -14,6 +14,7 @@ public class MessageAttachment {
     private final String accessKey;
     private final String attachmentId;
     private String animationUrl;
+    private long fileSize;
 
     public MessageAttachment(String type, String imageUrl, String title, String subtitle) {
         this(type, imageUrl, title, subtitle, null);
@@ -63,6 +64,8 @@ public class MessageAttachment {
     public String getAccessKey() { return accessKey; }
     public String getAttachmentId() { return attachmentId; }
     public String getAnimationUrl() { return animationUrl; }
+    public long getFileSize() { return fileSize; }
+    public void setFileSize(long fileSize) { this.fileSize = fileSize; }
     public void setAnimationUrl(String animationUrl) { this.animationUrl = animationUrl; }
     public void setAudio(Audio audio) { this.audio = audio; }
     public boolean isGifDocument() {

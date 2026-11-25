@@ -218,6 +218,9 @@
 
     <!-- Messages -->
     <string name="messages_title">Сообщения</string>
+    <string name="message_document_default_name">Документ</string>
+    <string name="message_document_preview">Предпросмотр</string>
+    <string name="message_document_file">Файл</string>
     <string name="messages_connecting">Подключение...</string>
     <string name="messages_updating">Обновление...</string>
     <string name="messages_loading_error">Ошибка загрузки диалогов:\u0020</string>

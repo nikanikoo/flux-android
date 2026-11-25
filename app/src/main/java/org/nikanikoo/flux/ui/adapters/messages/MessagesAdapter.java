@@ -641,47 +641,79 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
     private void addDocumentCard(LinearLayout container, MessageAttachment attachment, int messageTextColor) {
         LinearLayout card = new LinearLayout(context);
-        card.setOrientation(LinearLayout.VERTICAL);
-        int padding = dp(10);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        int padding = dp(12);
         card.setPadding(padding, padding, padding, padding);
         GradientDrawable background = new GradientDrawable();
-        background.setColor(0x1F000000);
-        background.setCornerRadius(dp(10));
+        background.setColor(resolveThemeColor(com.google.android.material.R.attr.colorSurfaceContainerLow,
+                ContextCompat.getColor(context, android.R.color.darker_gray)));
+        background.setCornerRadius(dp(14));
         card.setBackground(background);
         LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                dp(260), ViewGroup.LayoutParams.WRAP_CONTENT);
         cardParams.topMargin = dp(8);
-        card.setLayoutParams(cardParams);
+        container.addView(card, cardParams);
 
-        TextView name = new TextView(context);
-        name.setText(attachment.getTitle().isEmpty() ? "Документ" : attachment.getTitle());
-        name.setTextColor(messageTextColor);
-        name.setTypeface(null, attachment.isGifDocument()
-                ? android.graphics.Typeface.NORMAL : android.graphics.Typeface.BOLD);
-        name.setTextSize(TypedValue.COMPLEX_UNIT_SP, attachment.isGifDocument() ? 16 : 14);
-        card.addView(name);
-
+        String extension = attachment.getSubtitle() == null ? "" : attachment.getSubtitle().trim().toUpperCase(Locale.ROOT);
         if (attachment.getImageUrl() != null && !attachment.getImageUrl().isEmpty()) {
-            ImageView preview = new ImageView(context);
-            preview.setLayoutParams(new LinearLayout.LayoutParams(dp(220), dp(130)));
-            preview.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            Picasso.get().load(attachment.getImageUrl()).fit().centerInside()
-                    .placeholder(android.R.drawable.ic_menu_gallery)
-                    .error(android.R.drawable.ic_menu_gallery).into(preview);
-            LinearLayout.LayoutParams previewParams = (LinearLayout.LayoutParams) preview.getLayoutParams();
-            previewParams.topMargin = dp(6);
-            card.addView(preview, previewParams);
+            ShapeableImageView preview = new ShapeableImageView(context);
+            preview.setShapeAppearanceModel(ShapeAppearanceModel.builder().setAllCornerSizes(dp(9)).build());
+            preview.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            Picasso.get().load(attachment.getImageUrl()).resize(dp(56), dp(56)).centerCrop()
+                    .placeholder(R.drawable.ic_image_placeholder).error(R.drawable.ic_image_placeholder).into(preview);
+            card.addView(preview, new LinearLayout.LayoutParams(dp(56), dp(56)));
+        } else {
+            TextView typeBadge = new TextView(context);
+            typeBadge.setText(extension.isEmpty() ? "FILE" : extension);
+            typeBadge.setTextColor(resolveThemeColor(androidx.appcompat.R.attr.colorPrimary,
+                    ContextCompat.getColor(context, android.R.color.holo_blue_dark)));
+            typeBadge.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+            typeBadge.setTypeface(null, android.graphics.Typeface.BOLD);
+            typeBadge.setGravity(android.view.Gravity.CENTER);
+            GradientDrawable badgeBackground = new GradientDrawable();
+            badgeBackground.setColor(resolveThemeColor(com.google.android.material.R.attr.colorSurfaceContainerHigh,
+                    ContextCompat.getColor(context, android.R.color.darker_gray)));
+            badgeBackground.setCornerRadius(dp(10));
+            typeBadge.setBackground(badgeBackground);
+            card.addView(typeBadge, new LinearLayout.LayoutParams(dp(56), dp(56)));
         }
 
+        LinearLayout labels = new LinearLayout(context);
+        labels.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams labelsParams = new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        labelsParams.leftMargin = dp(12);
+        card.addView(labels, labelsParams);
+
+        TextView name = new TextView(context);
+        name.setText(attachment.getTitle() == null || attachment.getTitle().trim().isEmpty()
+                ? context.getString(R.string.message_document_default_name) : attachment.getTitle().trim());
+        name.setTextColor(messageTextColor);
+        name.setTypeface(null, android.graphics.Typeface.BOLD);
+        name.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        name.setMaxLines(2);
+        name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        labels.addView(name);
+
+        String fileInfo = extension;
+        if (attachment.getFileSize() > 0) {
+            String size = android.text.format.Formatter.formatShortFileSize(context, attachment.getFileSize());
+            fileInfo = fileInfo.isEmpty() ? size : fileInfo + " · " + size;
+        }
+        if (fileInfo.isEmpty() && attachment.getImageUrl() != null && !attachment.getImageUrl().isEmpty()) {
+            fileInfo = context.getString(R.string.message_document_preview);
+        }
         TextView details = new TextView(context);
-        details.setText(attachment.getSubtitle().isEmpty() ? "Открыть документ" : attachment.getSubtitle().toUpperCase(Locale.getDefault()) + " · Открыть документ");
-        details.setTextColor(messageTextColor);
-        details.setAlpha(0.8f);
+        details.setText(fileInfo.isEmpty() ? context.getString(R.string.message_document_file) : fileInfo);
+        details.setTextColor(resolveThemeColor(androidx.appcompat.R.attr.colorPrimary,
+                ContextCompat.getColor(context, android.R.color.holo_blue_dark)));
         details.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
         LinearLayout.LayoutParams detailsParams = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        detailsParams.topMargin = dp(4);
-        card.addView(details, detailsParams);
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        detailsParams.topMargin = dp(3);
+        labels.addView(details, detailsParams);
+
         card.setOnClickListener(v -> {
             if (attachment.isGifDocument()) {
                 org.nikanikoo.flux.ui.activities.PhotoViewerActivity.startGif(
@@ -691,9 +723,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 openUrl(attachment.getUrl());
             }
         });
-        container.addView(card);
     }
-
     private void addLinkCard(LinearLayout container, MessageAttachment attachment, int messageTextColor) {
         LinearLayout card = new LinearLayout(context);
         card.setOrientation(LinearLayout.VERTICAL);
@@ -878,6 +908,11 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
     private int dp(int value) {
         return (int) (value * context.getResources().getDisplayMetrics().density + 0.5f);
+    }
+
+    private int resolveThemeColor(int attribute, int fallback) {
+        TypedValue value = new TypedValue();
+        return context.getTheme().resolveAttribute(attribute, value, true) ? value.data : fallback;
     }
 
     /**
