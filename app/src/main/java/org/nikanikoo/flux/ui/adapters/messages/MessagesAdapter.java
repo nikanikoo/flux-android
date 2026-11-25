@@ -39,6 +39,7 @@ import org.nikanikoo.flux.FluxApplication;
 import org.nikanikoo.flux.data.models.Message;
 import org.nikanikoo.flux.data.models.MessageAttachment;
 import org.nikanikoo.flux.data.models.MessageReference;
+import org.nikanikoo.flux.data.models.Audio;
 import org.nikanikoo.flux.data.managers.api.OpenVKApi;
 import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.ui.views.AudioAttachmentView;
@@ -68,6 +69,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     private OnMessageClickListener listener;
     private TextView selectedMessageText;
     private boolean groupChat;
+    private final List<Audio> chatAudioPlaylist = new ArrayList<>();
 
     public interface OnMessageClickListener {
         void onAvatarClick(int userId, String userName);
@@ -460,7 +462,9 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                         ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
                 audioParams.topMargin = dp(8);
                 container.addView(audioContainer, audioParams);
-                AudioAttachmentView.addMessageAudioAttachment(context, audioContainer, attachment.getAudio());
+                int playlistPosition = chatAudioPlaylist.indexOf(attachment.getAudio());
+                AudioAttachmentView.addMessageAudioAttachment(context, audioContainer, attachment.getAudio(),
+                        chatAudioPlaylist, playlistPosition);
             } else if ("gift".equals(attachment.getType())) {
                 addGiftPreview(container, attachment, messageTextColor);
             } else if ("sticker".equals(attachment.getType())) {
@@ -880,6 +884,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     public void setMessages(List<Message> newMessages) {
         this.items.clear();
         this.items.addAll(groupMessagesByDate(newMessages));
+        rebuildChatAudioPlaylist();
         notifyDataSetChanged();
         System.out.println("MessagesAdapter: Set " + newMessages.size() + " messages");
     }
@@ -917,6 +922,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 
                 if (!itemsToInsert.isEmpty()) {
                     this.items.addAll(0, itemsToInsert);
+                    rebuildChatAudioPlaylist();
                     notifyItemRangeInserted(0, itemsToInsert.size());
                     System.out.println("MessagesAdapter: Added " + itemsToInsert.size() + " items to top");
                 }
@@ -961,10 +967,26 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 }
 
                 this.items.add(message);
+                rebuildChatAudioPlaylist();
                 notifyItemInserted(position);
                 System.out.println("MessagesAdapter: Added single message with ID " + message.getId());
             } else {
                 System.out.println("MessagesAdapter: Message with ID " + message.getId() + " already exists, skipping");
+            }
+        }
+    }
+
+    private void rebuildChatAudioPlaylist() {
+        chatAudioPlaylist.clear();
+        for (Object item : items) {
+            if (!(item instanceof Message)) continue;
+            List<MessageAttachment> attachments = ((Message) item).getAttachments();
+            if (attachments == null) continue;
+            for (MessageAttachment attachment : attachments) {
+                if (attachment != null && "audio".equals(attachment.getType())
+                        && attachment.getAudio() != null) {
+                    chatAudioPlaylist.add(attachment.getAudio());
+                }
             }
         }
     }

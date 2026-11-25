@@ -88,6 +88,11 @@ public class AudioAttachmentView {
     }
 
     public static void addMessageAudioAttachment(Context context, LinearLayout container, Audio audio) {
+        addMessageAudioAttachment(context, container, audio, Collections.singletonList(audio), 0);
+    }
+
+    public static void addMessageAudioAttachment(Context context, LinearLayout container, Audio audio,
+                                                 List<Audio> playlist, int startPosition) {
         if (audio == null) return;
         container.removeAllViews();
         container.setVisibility(View.VISIBLE);
@@ -116,8 +121,12 @@ public class AudioAttachmentView {
                         if (coverPlaceholder != null) coverPlaceholder.setVisibility(View.VISIBLE);
                     }
                 });
+        List<Audio> playbackQueue = playlist != null && !playlist.isEmpty()
+                ? playlist : Collections.singletonList(audio);
+        int queuePosition = startPosition >= 0 && startPosition < playbackQueue.size()
+                ? startPosition : 0;
         audioCard.setOnClickListener(v -> AudioPlayerHelper.playOrToggleTrack(
-                context, Collections.singletonList(audio), 0));
+                context, playbackQueue, queuePosition));
         container.addView(audioView);
     }
 
