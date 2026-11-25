@@ -64,6 +64,7 @@ public class ChatActivity extends AppCompatActivity {
     private boolean toolbarOnline;
     private boolean toolbarTyping;
     private ImageView toolbarAvatar;
+    private ImageView toolbarVerified;
     private TextView toolbarTitleView;
     private TextView toolbarSubtitleView;
     private boolean chatNotificationsMuted;
@@ -432,6 +433,7 @@ public class ChatActivity extends AppCompatActivity {
                                 androidx.appcompat.app.ActionBar.LayoutParams.MATCH_PARENT,
                                 android.view.Gravity.START | android.view.Gravity.CENTER_VERTICAL));
                 toolbarAvatar = toolbarHeader.findViewById(R.id.chat_toolbar_avatar);
+                toolbarVerified = toolbarHeader.findViewById(R.id.chat_toolbar_verified);
                 toolbarTitleView = toolbarHeader.findViewById(R.id.chat_toolbar_title);
                 toolbarSubtitleView = toolbarHeader.findViewById(R.id.chat_toolbar_subtitle);
                 toolbarHeader.setOnClickListener(v -> openChatHeaderOptions());
@@ -452,6 +454,7 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     private void loadToolbarHeader() {
+        if (toolbarVerified != null) toolbarVerified.setVisibility(android.view.View.GONE);
         if (peerId > 2000000000) {
             java.util.Map<String, String> params = new java.util.HashMap<>();
             params.put("peer_ids", String.valueOf(peerId));
@@ -476,7 +479,7 @@ public class ChatActivity extends AppCompatActivity {
 
         java.util.Map<String, String> params = new java.util.HashMap<>();
         params.put("user_ids", String.valueOf(peerId));
-        params.put("fields", "photo_50,online");
+        params.put("fields", "photo_50,online,verified");
         OpenVKApi.getInstance(this).callMethod("users.get", params, new OpenVKApi.ApiCallback() {
             @Override public void onSuccess(JSONObject response) {
                 org.json.JSONArray users = response.optJSONArray("response");
@@ -486,12 +489,23 @@ public class ChatActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     if (toolbarHeaderActive) return;
                     toolbarOnline = user.optInt("online", 0) == 1;
+                    if (toolbarVerified != null) {
+                        toolbarVerified.setVisibility(isVerified(user)
+                                ? android.view.View.VISIBLE : android.view.View.GONE);
+                    }
                     updateToolbarSubtitle();
                     showToolbarAvatar(url);
                 });
             }
             @Override public void onError(String error) { }
         });
+    }
+
+    private boolean isVerified(JSONObject user) {
+        Object value = user.opt("verified");
+        if (value instanceof Boolean) return (Boolean) value;
+        if (value instanceof Number) return ((Number) value).intValue() == 1;
+        return value != null && "1".equals(value.toString());
     }
 
     private void showToolbarAvatar(String url) {
