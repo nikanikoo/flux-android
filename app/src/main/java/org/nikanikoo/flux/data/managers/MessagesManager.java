@@ -1086,6 +1086,17 @@ public class MessagesManager extends BaseManager<MessagesManager> {
         });
     }
 
+    public void deleteMessages(int peerId, String messageIds, MessageActionCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_id", String.valueOf(peerId));
+        params.put("message_ids", messageIds);
+        params.put("delete_for_all", "0");
+        api.callMethod("messages.delete", params, new OpenVKApi.ApiCallback() {
+            @Override public void onSuccess(JSONObject response) { callback.onSuccess(); }
+            @Override public void onError(String error) { callback.onError(error); }
+        });
+    }
+
     public void forwardMessage(int peerId, int messageId, MessageActionCallback callback) {
         Map<String, String> params = new HashMap<>();
         params.put("peer_id", String.valueOf(peerId));
@@ -1101,6 +1112,17 @@ public class MessagesManager extends BaseManager<MessagesManager> {
             public void onError(String error) {
                 callback.onError(error);
             }
+        });
+    }
+
+    public void forwardMessages(int peerId, String messageIds, MessageActionCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_id", String.valueOf(peerId));
+        params.put("forward_messages", messageIds);
+        params.put("random_id", String.valueOf(System.currentTimeMillis()));
+        api.callMethod("messages.send", params, new OpenVKApi.ApiCallback() {
+            @Override public void onSuccess(JSONObject response) { callback.onSuccess(); }
+            @Override public void onError(String error) { callback.onError(error); }
         });
     }
 

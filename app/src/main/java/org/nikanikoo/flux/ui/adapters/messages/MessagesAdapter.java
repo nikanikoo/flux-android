@@ -62,6 +62,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
@@ -78,6 +80,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     private boolean groupChat;
     private final List<Audio> chatAudioPlaylist = new ArrayList<>();
     private final Set<Integer> messageIds = new HashSet<>();
+    private final Map<Integer, Message> selectedMessages = new LinkedHashMap<>();
 
     public interface OnMessageClickListener {
         void onAvatarClick(int userId, String userName);
@@ -86,6 +89,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         void onReplySwipe(Message message);
         void onWallPostClick(MessageAttachment attachment);
         void onFailedMessageClick(Message message);
+        void onSelectedMessagesChanged(List<Message> messages);
     }
 
     public MessagesAdapter(Context context, List<Message> messages) {
@@ -383,8 +387,13 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
     private void bindMessageOptions(View bubble, TextView messageText, Message message) {
         bubble.setTag(message);
+        applySelectionStyle(bubble, selectedMessages.containsKey(message.getId()));
         View.OnClickListener openOptions = v -> {
             if (message.isPending()) return;
+            if (!selectedMessages.isEmpty()) {
+                toggleMessageSelection(message);
+                return;
+            }
             clearTrackedSelection();
             clearTextSelection(messageText);
             if (listener != null) {
@@ -393,6 +402,13 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         };
         bubble.setOnClickListener(openOptions);
         messageText.setOnClickListener(openOptions);
+        View.OnLongClickListener selectMessage = v -> {
+            if (message.isPending() || message.isSendFailed()) return true;
+            toggleMessageSelection(message);
+            return true;
+        };
+        bubble.setOnLongClickListener(selectMessage);
+        messageText.setOnLongClickListener(selectMessage);
         messageText.setOnTouchListener(new View.OnTouchListener() {
             private float downX;
             private float downY;
@@ -444,6 +460,42 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 return false;
             }
         });
+    }
+
+    private void toggleMessageSelection(Message message) {
+        if (selectedMessages.containsKey(message.getId())) selectedMessages.remove(message.getId());
+        else selectedMessages.put(message.getId(), message);
+        int position = findMessagePosition(message.getId());
+        if (position != RecyclerView.NO_POSITION) notifyItemChanged(position);
+        if (listener != null) listener.onSelectedMessagesChanged(new ArrayList<>(selectedMessages.values()));
+    }
+
+    private void applySelectionStyle(View bubble, boolean selected) {
+        if (!selected) {
+            bubble.setForeground(null);
+            return;
+        }
+        GradientDrawable outline = new GradientDrawable();
+        outline.setColor(Color.TRANSPARENT);
+        outline.setCornerRadius(dp(20));
+        outline.setStroke(dp(2), resolveThemeColor(androidx.appcompat.R.attr.colorPrimary,
+                ContextCompat.getColor(context, android.R.color.holo_blue_dark)));
+        bubble.setForeground(outline);
+    }
+
+    public List<Message> getSelectedMessages() {
+        return new ArrayList<>(selectedMessages.values());
+    }
+
+    public void clearMessageSelection() {
+        if (selectedMessages.isEmpty()) return;
+        List<Integer> ids = new ArrayList<>(selectedMessages.keySet());
+        selectedMessages.clear();
+        for (Integer id : ids) {
+            int position = findMessagePosition(id);
+            if (position != RecyclerView.NO_POSITION) notifyItemChanged(position);
+        }
+        if (listener != null) listener.onSelectedMessagesChanged(new ArrayList<>());
     }
 
     private boolean hasClickableSpanAt(TextView textView, float touchX, float touchY) {

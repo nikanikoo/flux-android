@@ -189,6 +189,9 @@
     <string name="message_document_default_name">Document</string>
     <string name="message_document_preview">Preview</string>
     <string name="message_document_file">File</string>
+    <string name="selected_messages_count">Selected: %1$d</string>
+    <string name="delete_selected_messages_confirm">Delete selected messages (%1$d)?</string>
+    <string name="messages_deleted">Messages deleted</string>
     <string name="chat_leave_action">Leave conversation</string>
     <string name="chat_return_action">Return to conversation</string>
     <string name="chat_leave_confirm">Leave “%1$s”?</string>

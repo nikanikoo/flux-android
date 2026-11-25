@@ -221,6 +221,9 @@
     <string name="message_document_default_name">Документ</string>
     <string name="message_document_preview">Предпросмотр</string>
     <string name="message_document_file">Файл</string>
+    <string name="selected_messages_count">Выбрано: %1$d</string>
+    <string name="delete_selected_messages_confirm">Удалить выбранные сообщения (%1$d)?</string>
+    <string name="messages_deleted">Сообщения удалены</string>
     <string name="messages_connecting">Подключение...</string>
     <string name="messages_updating">Обновление...</string>
     <string name="messages_loading_error">Ошибка загрузки диалогов:\u0020</string>

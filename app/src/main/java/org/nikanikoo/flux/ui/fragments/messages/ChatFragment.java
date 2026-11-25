@@ -101,6 +101,11 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     private View pendingAttachmentPreview;
     private Message editingMessage;
     private View chatComposer;
+    private View selectedMessagesBar;
+    private View messageComposerRow;
+    private TextView selectedMessagesCount;
+    private List<Message> selectedMessages = new ArrayList<>();
+    private int composerRowVisibility = View.VISIBLE;
     private android.widget.LinearLayout pendingAttachmentList;
     private View pinnedMessageCard;
     private TextView pinnedMessagePreview;
@@ -286,6 +291,12 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         sendButton = view.findViewById(R.id.send_button);
         attachButton = view.findViewById(R.id.attach_button);
         stickerButton = view.findViewById(R.id.sticker_button);
+        selectedMessagesBar = view.findViewById(R.id.selected_messages_bar);
+        selectedMessagesCount = view.findViewById(R.id.selected_messages_count);
+        messageComposerRow = view.findViewById(R.id.message_composer_row);
+        view.findViewById(R.id.selected_messages_forward).setOnClickListener(v -> forwardSelectedMessages());
+        view.findViewById(R.id.selected_messages_delete).setOnClickListener(v -> confirmDeleteSelectedMessages());
+        view.findViewById(R.id.selected_messages_cancel).setOnClickListener(v -> adapter.clearMessageSelection());
         editMessageHeader = view.findViewById(R.id.message_edit_header);
         view.findViewById(R.id.cancel_message_edit).setOnClickListener(v -> cancelMessageEditing());
         pendingAttachmentPreview = view.findViewById(R.id.pending_attachment_preview);
@@ -1491,6 +1502,89 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         int yOffset = showAbove ? -anchor.getHeight() - menuHeight : 0;
 
         menu.showAsDropDown(anchor, 0, yOffset, message.isOut() ? Gravity.END : Gravity.START);
+    }
+
+    @Override
+    public void onSelectedMessagesChanged(List<Message> messages) {
+        boolean wasSelecting = !selectedMessages.isEmpty();
+        selectedMessages = messages == null ? new ArrayList<>() : new ArrayList<>(messages);
+        boolean selecting = !selectedMessages.isEmpty();
+        if (selecting && !wasSelecting) {
+            composerRowVisibility = messageComposerRow.getVisibility();
+            messageComposerRow.setVisibility(View.GONE);
+            if (messageInput != null) messageInput.clearFocus();
+        } else if (!selecting && wasSelecting && messageComposerRow != null) {
+            messageComposerRow.setVisibility(composerRowVisibility);
+        }
+        if (selectedMessagesBar != null) selectedMessagesBar.setVisibility(selecting ? View.VISIBLE : View.GONE);
+        if (selectedMessagesCount != null) {
+            selectedMessagesCount.setText(getString(R.string.selected_messages_count, selectedMessages.size()));
+        }
+        updateRecyclerBottomPadding(false);
+    }
+
+    private void confirmDeleteSelectedMessages() {
+        if (selectedMessages.isEmpty()) return;
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setMessage(getString(R.string.delete_selected_messages_confirm, selectedMessages.size()))
+                .setNegativeButton(android.R.string.cancel, null)
+                .setPositiveButton(R.string.delete, (dialog, which) -> {
+                    List<Integer> ids = new ArrayList<>();
+                    for (Message message : selectedMessages) ids.add(message.getId());
+                    String messageIds = TextUtils.join(",", ids);
+                    messagesManager.deleteMessages(peerId, messageIds, new MessagesManager.MessageActionCallback() {
+                        @Override public void onSuccess() {
+                            if (!isAdded()) return;
+                            adapter.clearMessageSelection();
+                            Toast.makeText(requireContext(), R.string.messages_deleted, Toast.LENGTH_SHORT).show();
+                            loadMessages(true);
+                            refreshConversationsList();
+                        }
+                        @Override public void onError(String error) { showMessageActionError(error); }
+                    });
+                })
+                .show();
+    }
+
+    private void forwardSelectedMessages() {
+        if (selectedMessages.isEmpty()) return;
+        messagesManager.getConversations(100, 0, new MessagesManager.ConversationsCallback() {
+            @Override public void onSuccess(List<Conversation> conversations) {
+                if (!isAdded()) return;
+                List<Conversation> targets = new ArrayList<>();
+                List<String> labels = new ArrayList<>();
+                for (Conversation conversation : conversations) {
+                    if (conversation.getPeerId() == peerId) continue;
+                    targets.add(conversation);
+                    labels.add(conversation.getTitle());
+                }
+                if (targets.isEmpty()) {
+                    Toast.makeText(requireContext(), R.string.no_conversations, Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                        .setTitle(R.string.choose_forward_conversation)
+                        .setItems(labels.toArray(new String[0]), (dialog, which) -> {
+                            List<Integer> ids = new ArrayList<>();
+                            for (Message message : selectedMessages) ids.add(message.getId());
+                            String messageIds = TextUtils.join(",", ids);
+                            messagesManager.forwardMessages(targets.get(which).getPeerId(), messageIds,
+                                    new MessagesManager.MessageActionCallback() {
+                                        @Override public void onSuccess() {
+                                            if (!isAdded()) return;
+                                            adapter.clearMessageSelection();
+                                            Toast.makeText(requireContext(), R.string.forward_message_success,
+                                                    Toast.LENGTH_SHORT).show();
+                                            refreshConversationsList();
+                                        }
+                                        @Override public void onError(String error) { showMessageActionError(error); }
+                                    });
+                        })
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .show();
+            }
+            @Override public void onError(String error) { showMessageActionError(error); }
+        });
     }
 
     private void addMessageAction(LinearLayout menuContent, PopupWindow menu, int titleRes,
