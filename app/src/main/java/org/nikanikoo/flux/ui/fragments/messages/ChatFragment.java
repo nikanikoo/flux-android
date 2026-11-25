@@ -1593,7 +1593,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         LinearLayout row = new LinearLayout(context);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setPadding(dp(12), 0, dp(12), 0);
+        row.setPadding(dp(12), dp(4), dp(12), dp(4));
         row.setClickable(true);
         row.setFocusable(true);
 
@@ -1609,11 +1609,18 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         ImageView icon = new ImageView(context);
         icon.setImageDrawable(ContextCompat.getDrawable(context, iconRes));
         DrawableCompat.setTint(DrawableCompat.wrap(icon.getDrawable()), iconTint);
-        row.addView(icon, new LinearLayout.LayoutParams(dp(20), dp(20)));
+        GradientDrawable iconBackground = new GradientDrawable();
+        iconBackground.setShape(GradientDrawable.RECTANGLE);
+        iconBackground.setCornerRadius(dp(12));
+        iconBackground.setColor(resolveThemeColor(com.google.android.material.R.attr.colorSecondaryContainer));
+        icon.setBackground(iconBackground);
+        icon.setPadding(dp(10), dp(10), dp(10), dp(10));
+        row.addView(icon, new LinearLayout.LayoutParams(dp(44), dp(44)));
 
         TextView title = new TextView(context);
         title.setText(titleRes);
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        title.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
         title.setTextColor(resolveThemeColor(destructive
                 ? android.R.attr.colorError
                 : com.google.android.material.R.attr.colorOnSurface));
@@ -1627,7 +1634,7 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
             action.run();
         });
         menuContent.addView(row, new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(48)));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(56)));
     }
 
     private int resolveThemeColor(int attribute) {
