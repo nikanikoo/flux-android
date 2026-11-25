@@ -76,6 +76,15 @@
                         android:fontFamily="sans-serif-medium" />
 
                     <ImageView
+                        android:id="@+id/favorites_indicator"
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:layout_marginStart="5dp"
+                        android:src="@drawable/ic_favorite_filled"
+                        android:contentDescription="@string/chat_favorites"
+                        android:visibility="gone" />
+
+                    <ImageView
                         android:id="@+id/notifications_muted_indicator"
                         android:layout_width="16dp"
                         android:layout_height="16dp"

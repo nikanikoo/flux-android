@@ -72,6 +72,9 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
         Conversation conversation = conversations.get(position);
         
         holder.titleText.setText(conversation.getTitle());
+        holder.favoritesIndicator.setVisibility(
+                context.getString(R.string.chat_favorites).contentEquals(conversation.getTitle())
+                        ? View.VISIBLE : View.GONE);
         Boolean notificationsEnabled = conversation.areNotificationsEnabled();
         holder.notificationsMutedIndicator.setVisibility(Boolean.FALSE.equals(notificationsEnabled)
                 ? View.VISIBLE : View.GONE);
@@ -267,6 +270,7 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
         TextView unreadBadge;
         View onlineIndicator;
         ImageView peerVerified;
+        ImageView favoritesIndicator;
 
         ConversationViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -278,6 +282,7 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
             unreadBadge = itemView.findViewById(R.id.unread_badge);
             onlineIndicator = itemView.findViewById(R.id.online_indicator);
             peerVerified = itemView.findViewById(R.id.peer_verified);
+            favoritesIndicator = itemView.findViewById(R.id.favorites_indicator);
         }
     }
 }
