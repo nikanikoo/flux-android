@@ -47,6 +47,7 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
 
     private static List<Conversation> sCachedConversations = null;
     private static boolean sIsConversationsLoaded = false;
+    private static String sCachedAccountId;
     private int activePeerId = -1;
     private final Map<Integer, String> typingNamesByUserId = new HashMap<>();
     private final Set<Integer> typingNameRequests = new HashSet<>();
@@ -58,6 +59,12 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        String currentAccountId = getCurrentAccountId();
+        if (sCachedAccountId != null && !sCachedAccountId.equals(currentAccountId)) {
+            sCachedConversations = null;
+            sIsConversationsLoaded = false;
+        }
+        sCachedAccountId = currentAccountId;
         // Инициализируем список и менеджер один раз при создании фрагмента
         if (conversations == null) {
             conversations = new ArrayList<>();
@@ -304,6 +311,13 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
     private void cacheConversations() {
         sCachedConversations = new ArrayList<>(conversations);
         sIsConversationsLoaded = true;
+        sCachedAccountId = getCurrentAccountId();
+    }
+
+    private String getCurrentAccountId() {
+        org.nikanikoo.flux.security.AccountManager.Account account =
+                org.nikanikoo.flux.security.AccountManager.getInstance(requireContext()).getCurrentAccount();
+        return account != null ? account.id : null;
     }
     
     private void setupToolbarTitle() {
@@ -351,6 +365,7 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
 
         sCachedConversations = null;
         sIsConversationsLoaded = false;
+        sCachedAccountId = getCurrentAccountId();
         conversationsOffset = 0;
         isLoadingMoreConversations = false;
         hasMoreConversations = true;
@@ -423,6 +438,7 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
                         
                         sCachedConversations = new ArrayList<>(conversations);
                         sIsConversationsLoaded = true;
+                        sCachedAccountId = getCurrentAccountId();
                         
                         swipeRefreshLayout.setRefreshing(false);
                     });
@@ -468,6 +484,7 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
                     hasMoreConversations = fetchedCount >= CONVERSATIONS_PAGE_SIZE;
                     isLoadingMoreConversations = false;
                     sCachedConversations = new ArrayList<>(conversations);
+                    sCachedAccountId = getCurrentAccountId();
                 });
             }
 
