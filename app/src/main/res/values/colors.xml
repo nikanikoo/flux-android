@@ -55,6 +55,8 @@
     <color name="icon_color">#757575</color>
     <color name="primary_color">#415E91</color>
     <color name="toolbar_background_transparent">#80000000</color>
+    <color name="gift_card_background">#FFF1C2</color>
+    <color name="gift_card_text">#57420F</color>
     
     <!-- Dark theme colors (required for values-night) -->
     <color name="md_theme_dark_primary">#ABC7FF</color>

@@ -526,6 +526,12 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         LinearLayout giftContent = new LinearLayout(context);
         giftContent.setOrientation(LinearLayout.VERTICAL);
         giftContent.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
+        int giftPadding = dp(8);
+        giftContent.setPadding(giftPadding, giftPadding, giftPadding, giftPadding);
+        GradientDrawable giftBackground = new GradientDrawable();
+        giftBackground.setColor(ContextCompat.getColor(context, R.color.gift_card_background));
+        giftBackground.setCornerRadius(dp(14));
+        giftContent.setBackground(giftBackground);
 
         if (attachment.getImageUrl() != null && !attachment.getImageUrl().isEmpty()) {
             ImageView image = new ImageView(context);
@@ -542,7 +548,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         if (attachment.getTitle() != null && !attachment.getTitle().trim().isEmpty()) {
             TextView comment = new TextView(context);
             comment.setText(ValidationUtils.SanitizeText(attachment.getTitle().trim()));
-            comment.setTextColor(messageTextColor);
+            comment.setTextColor(ContextCompat.getColor(context, R.color.gift_card_text));
             comment.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
             comment.setGravity(android.view.Gravity.CENTER);
             LinearLayout.LayoutParams commentParams = new LinearLayout.LayoutParams(
