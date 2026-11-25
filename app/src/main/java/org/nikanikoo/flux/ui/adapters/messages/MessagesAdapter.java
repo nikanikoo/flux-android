@@ -567,16 +567,6 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         frameParams.topMargin = dp(6);
         stickerFrame.setLayoutParams(frameParams);
 
-        ImageView fallback = new ImageView(context);
-        fallback.setLayoutParams(new FrameLayout.LayoutParams(dp(128), dp(128)));
-        fallback.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        fallback.setContentDescription(context.getString(R.string.message_sticker_image));
-        Picasso.get().load(imageUrl)
-                .placeholder(R.drawable.ic_image_placeholder)
-                .error(R.drawable.ic_image_error)
-                .fit().centerInside().into(fallback);
-        stickerFrame.addView(fallback);
-
         String animationUrl = attachment.getAnimationUrl();
         if (animationUrl != null && !animationUrl.isEmpty()) {
             if (!animationUrl.startsWith("http://") && !animationUrl.startsWith("https://")) {
@@ -590,6 +580,16 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             animation.setAnimationFromUrl(animationUrl);
             animation.playAnimation();
             stickerFrame.addView(animation);
+        } else {
+            ImageView stickerImage = new ImageView(context);
+            stickerImage.setLayoutParams(new FrameLayout.LayoutParams(dp(128), dp(128)));
+            stickerImage.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            stickerImage.setContentDescription(context.getString(R.string.message_sticker_image));
+            Picasso.get().load(imageUrl)
+                    .placeholder(R.drawable.ic_image_placeholder)
+                    .error(R.drawable.ic_image_error)
+                    .fit().centerInside().into(stickerImage);
+            stickerFrame.addView(stickerImage);
         }
         container.addView(stickerFrame, frameParams);
     }
