@@ -375,6 +375,7 @@
             android:id="@+id/send_button"
             android:layout_width="40dp"
             android:layout_height="40dp"
+            android:padding="6dp"
             android:src="@drawable/ic_send"
             android:clickable="true"
             android:focusable="true"
