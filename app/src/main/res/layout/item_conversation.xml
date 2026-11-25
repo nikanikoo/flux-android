@@ -32,7 +32,6 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:scaleType="centerCrop"
-                android:background="@drawable/avatar_circle"
                 android:src="@drawable/camera_200"
                 android:clickable="true"
                 android:focusable="true"
