@@ -786,6 +786,7 @@
     <string name="comment_sticker_image">Sticker in comment</string>
     <string name="attach_sticker_action">Sticker</string>
     <string name="stickers_picker_title">Choose a sticker</string>
+    <string name="stickers_default_pack">Stickers</string>
     <string name="stickers_loading">Loading your purchased stickers…</string>
     <string name="stickers_empty">You have no purchased stickers yet</string>
     <string name="stickers_load_error">Could not load stickers: %1$s</string>

@@ -870,6 +870,7 @@
     <string name="comment_sticker_image">Стикер в комментарии</string>
     <string name="attach_sticker_action">Стикер</string>
     <string name="stickers_picker_title">Выберите стикер</string>
+    <string name="stickers_default_pack">Стикеры</string>
     <string name="stickers_loading">Загружаем купленные стикеры…</string>
     <string name="stickers_empty">У вас пока нет купленных стикеров</string>
     <string name="stickers_load_error">Не удалось загрузить стикеры: %1$s</string>
