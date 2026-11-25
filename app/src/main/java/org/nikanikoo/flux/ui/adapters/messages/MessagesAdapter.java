@@ -359,16 +359,14 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 float topRight = regular;
                 float bottomRight = regular;
                 float bottomLeft = regular;
-                boolean singleMessage = !continuation && !continuesWithNext;
-                boolean middleMessage = continuation && continuesWithNext;
                 if (message.isOut()) {
                     if (continuation) topRight = joined;
-                    if (singleMessage || middleMessage) bottomRight = tail;
-                    else if (continuesWithNext) bottomRight = joined;
+                    if (continuesWithNext) bottomRight = joined;
+                    else bottomRight = tail;
                 } else {
                     if (continuation) topLeft = joined;
-                    if (singleMessage || middleMessage) bottomLeft = tail;
-                    else if (continuesWithNext) bottomLeft = joined;
+                    if (continuesWithNext) bottomLeft = joined;
+                    else bottomLeft = tail;
                 }
                 groupedBackground.setCornerRadii(new float[] {
                         topLeft, topLeft, topRight, topRight,
