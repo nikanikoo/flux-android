@@ -38,6 +38,7 @@ import org.nikanikoo.flux.services.LongPollManager;
 import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.ui.fragments.messages.ChatFragment;
 import org.nikanikoo.flux.ui.fragments.profile.ProfileFragment;
+import org.nikanikoo.flux.ui.fragments.profile.GroupProfileFragment;
 import org.nikanikoo.flux.utils.LocaleManager;
 import org.nikanikoo.flux.utils.ThemeManager;
 
@@ -113,6 +114,10 @@ public class ChatActivity extends AppCompatActivity {
                 int profileUserId = args != null ? args.getInt("user_id", 0) : 0;
                 String profileUserName = args != null ? args.getString("user_name") : null;
                 if (profileUserId > 0) showProfileToolbar(profileUserName);
+            } else if (currentFragment instanceof GroupProfileFragment) {
+                Bundle args = currentFragment.getArguments();
+                String groupName = args != null ? args.getString("group_name") : null;
+                showProfileToolbar(groupName);
             } else if (isChatScreenVisible()) {
                 toolbarHeaderActive = false;
                 toolbarTitle = peerName != null ? peerName : getString(R.string.chat_title);
