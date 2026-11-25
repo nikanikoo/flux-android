@@ -8,11 +8,11 @@ import android.view.Gravity;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.core.content.ContextCompat;
+import androidx.core.widget.NestedScrollView;
 
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
@@ -42,7 +42,9 @@ public final class StickerStoreDialog {
         content.addView(title, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, dp(context, 48)));
 
-        ScrollView scroll = new ScrollView(context);
+        NestedScrollView scroll = new NestedScrollView(context);
+        scroll.setFillViewport(true);
+        scroll.setNestedScrollingEnabled(true);
         LinearLayout packsList = new LinearLayout(context);
         packsList.setOrientation(LinearLayout.VERTICAL);
         TextView loading = new TextView(context);
@@ -55,6 +57,8 @@ public final class StickerStoreDialog {
                 LinearLayout.LayoutParams.MATCH_PARENT, dp(context, 420)));
         dialog.setContentView(content);
         dialog.show();
+        // Let the catalog consume vertical gestures instead of collapsing the sheet.
+        dialog.getBehavior().setDraggable(false);
 
         StickersManager manager = StickersManager.getInstance(context);
         manager.getAllPacks(new StickersManager.StickerPacksCallback() {
