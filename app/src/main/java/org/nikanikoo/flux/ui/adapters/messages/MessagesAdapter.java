@@ -199,7 +199,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         holder.messageText.setLinkTextColor(holder.messageText.getCurrentTextColor());
         bindSenderName(holder.senderName, message, continuation);
         adjustSenderSpacingForWallPost(holder.senderName, message, hasText);
-        bindMessageOptions(holder.bubble, holder.messageText, message);
+        bindMessageOptions(holder.itemView, holder.bubble, holder.messageText, message);
         bindReferences(holder.replyPreview, message);
         bindAttachments(holder.attachments, message.getAttachments(), holder.messageText.getCurrentTextColor());
         
@@ -228,7 +228,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         holder.messageText.setLinkTextColor(holder.messageText.getCurrentTextColor());
         bindSenderName(holder.senderName, message, continuation);
         adjustSenderSpacingForWallPost(holder.senderName, message, hasText);
-        bindMessageOptions(holder.bubble, holder.messageText, message);
+        bindMessageOptions(holder.itemView, holder.bubble, holder.messageText, message);
         bindReferences(holder.replyPreview, message);
         bindAttachments(holder.attachments, message.getAttachments(), holder.messageText.getCurrentTextColor());
         
@@ -383,9 +383,9 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         }
     }
 
-    private void bindMessageOptions(View bubble, TextView messageText, Message message) {
+    private void bindMessageOptions(View row, View bubble, TextView messageText, Message message) {
         bubble.setTag(message);
-        applySelectionStyle(bubble, selectedMessages.containsKey(message.getId()));
+        applySelectionStyle(row, selectedMessages.containsKey(message.getId()));
         View.OnClickListener openOptions = v -> {
             if (message.isPending()) return;
             if (!selectedMessages.isEmpty()) {
@@ -468,17 +468,14 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         if (listener != null) listener.onSelectedMessagesChanged(new ArrayList<>(selectedMessages.values()));
     }
 
-    private void applySelectionStyle(View bubble, boolean selected) {
+    private void applySelectionStyle(View row, boolean selected) {
         if (!selected) {
-            bubble.setForeground(null);
+            row.setBackgroundColor(Color.TRANSPARENT);
             return;
         }
-        GradientDrawable outline = new GradientDrawable();
-        outline.setColor(Color.TRANSPARENT);
-        outline.setCornerRadius(dp(20));
-        outline.setStroke(dp(2), resolveThemeColor(androidx.appcompat.R.attr.colorPrimary,
-                ContextCompat.getColor(context, android.R.color.holo_blue_dark)));
-        bubble.setForeground(outline);
+        int primary = resolveThemeColor(androidx.appcompat.R.attr.colorPrimary,
+                ContextCompat.getColor(context, android.R.color.holo_blue_dark));
+        row.setBackgroundColor(androidx.core.graphics.ColorUtils.setAlphaComponent(primary, 36));
     }
 
     public List<Message> getSelectedMessages() {
