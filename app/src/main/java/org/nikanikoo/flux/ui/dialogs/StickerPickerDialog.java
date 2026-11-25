@@ -46,7 +46,7 @@ public final class StickerPickerDialog {
         LinearLayout content = new LinearLayout(context);
         content.setOrientation(LinearLayout.VERTICAL);
         int horizontalPadding = dp(context, 16);
-        content.setPadding(horizontalPadding, dp(context, 8), horizontalPadding, dp(context, 12));
+        content.setPadding(horizontalPadding, dp(context, 20), horizontalPadding, dp(context, 12));
 
         LinearLayout header = new LinearLayout(context);
         header.setGravity(Gravity.CENTER_VERTICAL);
@@ -56,7 +56,7 @@ public final class StickerPickerDialog {
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 18);
         title.setTypeface(null, android.graphics.Typeface.BOLD);
         title.setTextColor(resolveColor(context, com.google.android.material.R.attr.colorOnSurface));
-        header.addView(title, new LinearLayout.LayoutParams(0, dp(context, 48), 1f));
+        header.addView(title, new LinearLayout.LayoutParams(0, dp(context, 56), 1f));
 
         MaterialButton storeButton = new MaterialButton(context, null,
                 com.google.android.material.R.attr.materialButtonOutlinedStyle);
@@ -94,7 +94,7 @@ public final class StickerPickerDialog {
         grid.setPadding(0, dp(context, 4), 0, dp(context, 8));
         int screenWidthDp = Math.round(context.getResources().getDisplayMetrics().widthPixels
                 / context.getResources().getDisplayMetrics().density);
-        int columns = Math.min(6, Math.max(4, screenWidthDp / 64));
+        int columns = Math.min(5, Math.max(3, screenWidthDp / 76));
         grid.setLayoutManager(new GridLayoutManager(context, columns));
         StickerGridAdapter stickerAdapter = new StickerGridAdapter(context, sticker -> {
             dialog.dismiss();
@@ -224,7 +224,7 @@ public final class StickerPickerDialog {
                     .setAllCornerSizes(dp(context, 14)).build());
             image.setForeground(ContextCompat.getDrawable(context, android.R.drawable.list_selector_background));
             RecyclerView.LayoutParams params = new RecyclerView.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, dp(context, 64));
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(context, 80));
             params.setMargins(dp(context, 2), dp(context, 2), dp(context, 2), dp(context, 2));
             image.setLayoutParams(params);
             image.setClickable(true);
