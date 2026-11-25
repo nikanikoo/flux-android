@@ -27,6 +27,9 @@ import android.widget.ImageView;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 import android.widget.LinearLayout;
+import android.webkit.WebView;
+import android.webkit.WebSettings;
+import android.webkit.WebViewClient;
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.drawable.DrawableCompat;
@@ -328,7 +331,8 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         if (mediaOnly) {
             for (MessageAttachment attachment : attachments) {
                 String type = attachment.getType();
-                if (!"sticker".equals(type) && !"photo".equals(type) && !"video".equals(type)) {
+                if (!"sticker".equals(type) && !"photo".equals(type) && !"video".equals(type)
+                        && !attachment.isGifDocument()) {
                     mediaOnly = false;
                     break;
                 }
@@ -479,6 +483,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     }
 
     private void bindAttachments(LinearLayout container, List<MessageAttachment> attachments, int messageTextColor) {
+        releaseWebViews(container);
         container.removeAllViews();
         if (attachments == null) return;
         for (MessageAttachment attachment : attachments) {
@@ -640,6 +645,11 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     }
 
     private void addDocumentCard(LinearLayout container, MessageAttachment attachment, int messageTextColor) {
+        if (attachment.isGifDocument()) {
+            addAnimatedGif(container, attachment);
+            return;
+        }
+
         LinearLayout card = new LinearLayout(context);
         card.setOrientation(LinearLayout.HORIZONTAL);
         card.setGravity(android.view.Gravity.CENTER_VERTICAL);
@@ -724,6 +734,76 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             }
         });
     }
+
+    private void addAnimatedGif(LinearLayout container, MessageAttachment attachment) {
+        String url = attachment.getUrl();
+        if (url == null || url.trim().isEmpty()) {
+            addDocumentCardFallback(container, attachment);
+            return;
+        }
+        WebView gif = new WebView(context);
+        gif.setBackgroundColor(Color.TRANSPARENT);
+        gif.setWebViewClient(new WebViewClient());
+        gif.setVerticalScrollBarEnabled(false);
+        gif.setHorizontalScrollBarEnabled(false);
+        gif.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        gif.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        WebSettings settings = gif.getSettings();
+        settings.setJavaScriptEnabled(false);
+        settings.setDomStorageEnabled(false);
+        settings.setAllowFileAccess(false);
+        settings.setAllowContentAccess(false);
+        settings.setSupportZoom(false);
+        settings.setUseWideViewPort(true);
+        settings.setLoadWithOverviewMode(true);
+
+        int width = dp(240);
+        int height = dp(180);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(width, height);
+        params.topMargin = dp(6);
+        container.addView(gif, params);
+
+        String escapedUrl = url.replace("&", "&amp;").replace("\"", "&quot;")
+                .replace("<", "&lt;").replace(">", "&gt;");
+        String html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>"
+                + "<style>html,body{margin:0;width:100%;height:100%;background:transparent;overflow:hidden}"
+                + "body{display:flex;align-items:center;justify-content:center}img{max-width:100%;max-height:100%;object-fit:contain}</style>"
+                + "</head><body><img src=\"" + escapedUrl + "\"></body></html>";
+        android.net.Uri uri = android.net.Uri.parse(url);
+        String baseUrl = uri.getScheme() != null && uri.getAuthority() != null
+                ? uri.getScheme() + "://" + uri.getAuthority() + "/" : null;
+        gif.loadDataWithBaseURL(baseUrl, html, "text/html", "UTF-8", null);
+        gif.setOnClickListener(v -> org.nikanikoo.flux.ui.activities.PhotoViewerActivity.startGif(
+                context, url, attachment.getTitle(), attachment.getOwnerId(),
+                attachment.getId(), attachment.getAccessKey()));
+    }
+
+    private void addDocumentCardFallback(LinearLayout container, MessageAttachment attachment) {
+        TextView label = new TextView(context);
+        label.setText(attachment.getTitle());
+        label.setTextColor(resolveThemeColor(com.google.android.material.R.attr.colorOnSurface,
+                ContextCompat.getColor(context, android.R.color.black)));
+        label.setPadding(dp(12), dp(8), dp(12), dp(8));
+        container.addView(label);
+    }
+
+    private void releaseWebViews(View view) {
+        if (view instanceof WebView) {
+            WebView webView = (WebView) view;
+            if (webView.getParent() instanceof ViewGroup) {
+                ((ViewGroup) webView.getParent()).removeView(webView);
+            }
+            webView.stopLoading();
+            webView.loadUrl("about:blank");
+            webView.destroy();
+            return;
+        }
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = group.getChildCount() - 1; i >= 0; i--) releaseWebViews(group.getChildAt(i));
+        }
+    }
+
     private void addLinkCard(LinearLayout container, MessageAttachment attachment, int messageTextColor) {
         LinearLayout card = new LinearLayout(context);
         card.setOrientation(LinearLayout.VERTICAL);
@@ -1294,6 +1374,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
     @Override
     public void onViewRecycled(@NonNull RecyclerView.ViewHolder holder) {
+        releaseWebViews(holder.itemView);
         super.onViewRecycled(holder);
         cancelLottieAnimations(holder.itemView);
         if (holder instanceof OutgoingMessageViewHolder) {
