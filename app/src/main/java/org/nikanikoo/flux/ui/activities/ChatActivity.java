@@ -430,10 +430,20 @@ public class ChatActivity extends AppCompatActivity {
                 toolbarTitleView = toolbarHeader.findViewById(R.id.chat_toolbar_title);
                 toolbarSubtitleView = toolbarHeader.findViewById(R.id.chat_toolbar_subtitle);
                 toolbarHeader.setOnClickListener(v -> openChatHeaderOptions());
+                toolbarAvatar.setOnClickListener(v -> openPeerProfile());
                 updateToolbarTitle();
                 getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             }
         }
+    }
+
+    private void openPeerProfile() {
+        if (peerId <= 0 || peerId > 2000000000 || toolbarHeaderActive) return;
+        ProfileFragment profileFragment = ProfileFragment.newInstanceWithId(peerId, peerName);
+        getSupportFragmentManager().beginTransaction()
+                .replace(R.id.chat_container, profileFragment)
+                .addToBackStack("profile_" + peerId)
+                .commit();
     }
 
     private void loadToolbarHeader() {
