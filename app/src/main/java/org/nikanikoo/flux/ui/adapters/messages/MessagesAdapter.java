@@ -57,6 +57,8 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.HashSet;
+import java.util.Set;
 
 public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
@@ -72,6 +74,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     private TextView selectedMessageText;
     private boolean groupChat;
     private final List<Audio> chatAudioPlaylist = new ArrayList<>();
+    private final Set<Integer> messageIds = new HashSet<>();
 
     public interface OnMessageClickListener {
         void onAvatarClick(int userId, String userName);
@@ -925,23 +928,22 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
     public void setMessages(List<Message> newMessages) {
         List<Message> mergedMessages = new ArrayList<>();
-        if (newMessages != null) mergedMessages.addAll(newMessages);
+        Set<Integer> mergedIds = new HashSet<>();
+        if (newMessages != null) {
+            for (Message message : newMessages) {
+                if (message != null && mergedIds.add(message.getId())) mergedMessages.add(message);
+            }
+        }
         for (Object item : items) {
             if (!(item instanceof Message)) continue;
             Message localMessage = (Message) item;
             if (!localMessage.isPending() && !localMessage.isSendFailed()) continue;
-            boolean exists = false;
-            for (Message loaded : mergedMessages) {
-                if (loaded.getId() == localMessage.getId()) {
-                    exists = true;
-                    break;
-                }
-            }
-            if (!exists) mergedMessages.add(localMessage);
+            if (mergedIds.add(localMessage.getId())) mergedMessages.add(localMessage);
         }
         mergedMessages.sort((left, right) -> Long.compare(left.getDate(), right.getDate()));
         this.items.clear();
         this.items.addAll(groupMessagesByDate(mergedMessages));
+        rebuildMessageIds();
         rebuildChatAudioPlaylist();
         notifyDataSetChanged();
         System.out.println("MessagesAdapter: Set " + mergedMessages.size() + " messages");
@@ -952,14 +954,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             // Дедупликация по ID сообщения
             List<Message> uniqueMessages = new ArrayList<>();
             for (Message newMsg : newMessages) {
-                boolean isDuplicate = false;
-                for (Object existingMsg : this.items) {
-                    if (existingMsg instanceof Message && ((Message) existingMsg).getId() == newMsg.getId()) {
-                        isDuplicate = true;
-                        break;
-                    }
-                }
-                if (!isDuplicate) {
+                if (newMsg != null && messageIds.add(newMsg.getId())) {
                     uniqueMessages.add(newMsg);
                 }
             }
@@ -1025,7 +1020,8 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 }
 
                 this.items.add(message);
-                rebuildChatAudioPlaylist();
+                messageIds.add(message.getId());
+                appendAudioFromMessage(message);
                 notifyItemInserted(position);
                 System.out.println("MessagesAdapter: Added single message with ID " + message.getId());
             } else {
@@ -1037,15 +1033,25 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     private void rebuildChatAudioPlaylist() {
         chatAudioPlaylist.clear();
         for (Object item : items) {
-            if (!(item instanceof Message)) continue;
-            List<MessageAttachment> attachments = ((Message) item).getAttachments();
-            if (attachments == null) continue;
-            for (MessageAttachment attachment : attachments) {
-                if (attachment != null && "audio".equals(attachment.getType())
-                        && attachment.getAudio() != null) {
-                    chatAudioPlaylist.add(attachment.getAudio());
-                }
+            if (item instanceof Message) appendAudioFromMessage((Message) item);
+        }
+    }
+
+    private void appendAudioFromMessage(Message message) {
+        List<MessageAttachment> attachments = message.getAttachments();
+        if (attachments == null) return;
+        for (MessageAttachment attachment : attachments) {
+            if (attachment != null && "audio".equals(attachment.getType())
+                    && attachment.getAudio() != null) {
+                chatAudioPlaylist.add(attachment.getAudio());
             }
+        }
+    }
+
+    private void rebuildMessageIds() {
+        messageIds.clear();
+        for (Object item : items) {
+            if (item instanceof Message) messageIds.add(((Message) item).getId());
         }
     }
 
@@ -1224,6 +1230,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         int position = findMessagePosition(messageId);
         if (position == RecyclerView.NO_POSITION) return;
         items.remove(position);
+        messageIds.remove(messageId);
         notifyItemRemoved(position);
         if (position > 0 && items.get(position - 1) instanceof DateHeader) {
             items.remove(position - 1);
