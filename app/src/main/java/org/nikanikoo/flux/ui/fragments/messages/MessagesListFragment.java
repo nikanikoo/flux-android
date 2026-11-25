@@ -1,6 +1,7 @@
 package org.nikanikoo.flux.ui.fragments.messages;
 
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -23,10 +24,15 @@ import org.nikanikoo.flux.services.LongPollManager;
 
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import android.widget.Toast;
+import android.widget.EditText;
+import android.widget.Button;
+import android.widget.LinearLayout;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -55,10 +61,13 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
     private int conversationsOffset;
     private boolean isLoadingMoreConversations;
     private boolean hasMoreConversations = true;
+    private ActivityResultLauncher<String> groupPhotoPicker;
+    private int pendingGroupPhotoChatId;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        groupPhotoPicker = registerForActivityResult(new ActivityResultContracts.GetContent(), this::onGroupPhotoPicked);
         String currentAccountId = getCurrentAccountId();
         if (sCachedAccountId != null && !sCachedAccountId.equals(currentAccountId)) {
             sCachedConversations = null;
@@ -638,7 +647,7 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
                     Toast.makeText(requireContext(), R.string.chat_create_error, Toast.LENGTH_LONG).show();
                     return;
                 }
-                openConversation(2000000000 + chatId, getString(R.string.chat_title_default));
+                showNewGroupDetailsDialog(chatId);
             }
 
             @Override
@@ -646,6 +655,74 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
                 if (isAdded()) Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
             }
         });
+    }
+
+    private void showNewGroupDetailsDialog(int chatId) {
+        LinearLayout content = new LinearLayout(requireContext());
+        content.setOrientation(LinearLayout.VERTICAL);
+        int horizontalPadding = dp(24);
+        content.setPadding(horizontalPadding, dp(8), horizontalPadding, 0);
+
+        EditText titleInput = new EditText(requireContext());
+        titleInput.setSingleLine(true);
+        titleInput.setHint(R.string.chat_rename_hint);
+        content.addView(titleInput, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        Button photoButton = new Button(requireContext());
+        photoButton.setText(R.string.chat_change_photo_action);
+        photoButton.setOnClickListener(v -> {
+            pendingGroupPhotoChatId = chatId;
+            groupPhotoPicker.launch("image/*");
+        });
+        content.addView(photoButton);
+
+        int peerId = 2000000000 + chatId;
+        String defaultTitle = getString(R.string.chat_title_default);
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.chat_title_default)
+                .setView(content)
+                .setNegativeButton(R.string.cancel, (dialog, which) -> openConversation(peerId, defaultTitle))
+                .setPositiveButton(R.string.continue_action, (dialog, which) -> {
+                    String title = titleInput.getText().toString().trim();
+                    if (title.isEmpty()) {
+                        openConversation(peerId, defaultTitle);
+                        return;
+                    }
+                    messagesManager.editChat(chatId, title, new org.nikanikoo.flux.data.managers.api.OpenVKApi.ApiCallback() {
+                        @Override public void onSuccess(org.json.JSONObject response) {
+                            if (isAdded()) requireActivity().runOnUiThread(() -> openConversation(peerId, title));
+                        }
+                        @Override public void onError(String error) {
+                            if (isAdded()) requireActivity().runOnUiThread(() -> {
+                                Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
+                                openConversation(peerId, defaultTitle);
+                            });
+                        }
+                    });
+                });
+        builder.setOnCancelListener(dialog -> openConversation(peerId, defaultTitle)).show();
+    }
+
+    private void onGroupPhotoPicked(Uri uri) {
+        int chatId = pendingGroupPhotoChatId;
+        pendingGroupPhotoChatId = 0;
+        if (uri == null || chatId <= 0) return;
+        org.nikanikoo.flux.data.managers.PhotoUploadManager.getInstance(requireContext())
+                .uploadChatPhoto(uri, chatId, new org.nikanikoo.flux.data.managers.api.OpenVKApi.ApiCallback() {
+                    @Override public void onSuccess(org.json.JSONObject response) {
+                        if (isAdded()) requireActivity().runOnUiThread(() ->
+                                Toast.makeText(requireContext(), R.string.chat_action_success, Toast.LENGTH_SHORT).show());
+                    }
+                    @Override public void onError(String error) {
+                        if (isAdded()) requireActivity().runOnUiThread(() ->
+                                Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show());
+                    }
+                });
+    }
+
+    private int dp(int value) {
+        return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
     }
 
     private void openConversation(int peerId, String title) {
