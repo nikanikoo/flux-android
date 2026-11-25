@@ -50,6 +50,34 @@ public class LongPollManager {
     private volatile OnTypingEventListener typingEventListener;
     private volatile OnOnlineEventListener onlineEventListener;
     private volatile OnNotificationSettingsEventListener notificationSettingsEventListener;
+    private final List<OnConnectionStateListener> connectionStateListeners =
+            java.util.Collections.synchronizedList(new ArrayList<>());
+    private volatile ConnectionState connectionState = ConnectionState.DISCONNECTED;
+
+    public enum ConnectionState { DISCONNECTED, CONNECTING, CONNECTED, UPDATING }
+
+    public interface OnConnectionStateListener {
+        void onConnectionStateChanged(ConnectionState state);
+    }
+
+    public void addConnectionStateListener(OnConnectionStateListener listener) {
+        if (listener == null) return;
+        connectionStateListeners.add(listener);
+        mainHandler.post(() -> listener.onConnectionStateChanged(connectionState));
+    }
+
+    public void removeConnectionStateListener(OnConnectionStateListener listener) {
+        connectionStateListeners.remove(listener);
+    }
+
+    private void setConnectionState(ConnectionState state) {
+        connectionState = state;
+        synchronized (connectionStateListeners) {
+            for (OnConnectionStateListener listener : new ArrayList<>(connectionStateListeners)) {
+                mainHandler.post(() -> listener.onConnectionStateChanged(state));
+            }
+        }
+    }
 
     private final Map<Integer, Long> processedEvents = new ConcurrentHashMap<>();
     private static final int MAX_PROCESSED_EVENTS = 1000;
@@ -190,6 +218,7 @@ public class LongPollManager {
         }
         
         Logger.d(TAG, "Запуск LongPoll");
+        setConnectionState(ConnectionState.CONNECTING);
         isRunning.set(true);
         getLongPollServer();
     }
@@ -197,6 +226,7 @@ public class LongPollManager {
     public void stop() {
         Logger.d(TAG, "Остановка LongPoll");
         isRunning.set(false);
+        setConnectionState(ConnectionState.DISCONNECTED);
     }
 
     private void getLongPollServer() {
@@ -294,6 +324,7 @@ public class LongPollManager {
                     Logger.e(TAG, "Error in LongPoll loop", e);
                     
                     if (isRunning.get()) {
+                        setConnectionState(ConnectionState.UPDATING);
                         Log.d(TAG, "Pausing before retry...");
                         // Пауза перед повторной попыткой
                         try {
@@ -344,6 +375,7 @@ public class LongPollManager {
             // Проверяем на пустой массив []
             if ("[]".equals(responseBody.trim())) {
                 Log.d(TAG, "First request returned empty array - this is normal, ts is synchronized");
+                setConnectionState(ConnectionState.CONNECTED);
                 return;
             }
             
@@ -383,6 +415,7 @@ public class LongPollManager {
             }
             
             Log.d(TAG, "First request synchronized: ts=" + ts + ", pts=" + pts);
+        setConnectionState(ConnectionState.CONNECTED);
         }
     }
     
@@ -771,6 +804,7 @@ public class LongPollManager {
     
     // Планирование повторной попытки
     private void scheduleRetry(long delayMs) {
+        if (isRunning.get()) setConnectionState(ConnectionState.UPDATING);
         if (isRunning.get()) {
             mainHandler.postDelayed(this::getLongPollServer, delayMs);
         }

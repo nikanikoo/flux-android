@@ -218,6 +218,8 @@
 
     <!-- Messages -->
     <string name="messages_title">Сообщения</string>
+    <string name="messages_connecting">Подключение...</string>
+    <string name="messages_updating">Обновление...</string>
     <string name="messages_loading_error">Ошибка загрузки диалогов:\u0020</string>
     <string name="chat_title">Чат</string>
     <string name="chat_message_hint">Введите сообщение</string>

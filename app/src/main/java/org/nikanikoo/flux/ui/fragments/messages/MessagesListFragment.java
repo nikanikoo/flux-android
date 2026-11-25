@@ -63,6 +63,13 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
     private boolean hasMoreConversations = true;
     private ActivityResultLauncher<String> groupPhotoPicker;
     private int pendingGroupPhotoChatId;
+    private final LongPollManager.OnConnectionStateListener connectionStateListener = state -> {
+        if (!isAdded() || !(getActivity() instanceof MainActivity)) return;
+        String subtitle = "";
+        if (state == LongPollManager.ConnectionState.CONNECTING) subtitle = getString(R.string.messages_connecting);
+        else if (state == LongPollManager.ConnectionState.UPDATING) subtitle = getString(R.string.messages_updating);
+        ((MainActivity) getActivity()).setToolbarSubtitle(subtitle);
+    };
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -119,6 +126,7 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
         setupToolbarTitle();
         if (LongPollManager.getInstance(requireContext()) != null) {
             LongPollManager.getInstance(requireContext()).setTypingEventListener(this);
+            LongPollManager.getInstance(requireContext()).addConnectionStateListener(connectionStateListener);
         }
         
         if (activePeerId != -1) {
@@ -138,7 +146,9 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
         super.onPause();
         if (LongPollManager.getInstance(requireContext()) != null) {
             LongPollManager.getInstance(requireContext()).setTypingEventListener(null);
+            LongPollManager.getInstance(requireContext()).removeConnectionStateListener(connectionStateListener);
         }
+        if (getActivity() instanceof MainActivity) ((MainActivity) getActivity()).setToolbarSubtitle("");
     }
     
     @Override

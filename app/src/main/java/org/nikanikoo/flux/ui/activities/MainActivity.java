@@ -827,6 +827,10 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
             }
         }
     }
+
+    public void setToolbarSubtitle(String subtitle) {
+        if (getSupportActionBar() != null) getSupportActionBar().setSubtitle(subtitle);
+    }
     
     public void setToolbarTitleClickable(String title, View.OnClickListener clickListener) {
         if (getSupportActionBar() != null) {

@@ -184,6 +184,8 @@
 
     <!-- Messages -->
     <string name="messages_title">Messages</string>
+    <string name="messages_connecting">Connecting...</string>
+    <string name="messages_updating">Reconnecting...</string>
     <string name="messages_loading_error">"Error loading dialogues: "</string>
     <string name="chat_title">Chat</string>
     <string name="chat_message_hint">Enter message...</string>

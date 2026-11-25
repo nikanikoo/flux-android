@@ -179,6 +179,8 @@
 
     <!-- Messages -->
     <string name="messages_title">Повідомлення</string>
+    <string name="messages_connecting">Підключення...</string>
+    <string name="messages_updating">Оновлення...</string>
     <string name="messages_loading_error">Помилка завантаження діалогів:\u0020</string>
     <string name="chat_title">Чат</string>
     <string name="chat_notifications_menu">Сповіщення чату</string>
