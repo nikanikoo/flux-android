@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Set;
 
 public class MessagesListFragment extends BaseFragment implements ConversationsAdapter.OnConversationClickListener, LongPollManager.OnTypingEventListener {
+    private static final int CONVERSATIONS_PAGE_SIZE = 20;
     
     private RecyclerView recyclerView;
     private ConversationsAdapter adapter;
@@ -49,6 +50,10 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
     private int activePeerId = -1;
     private final Map<Integer, String> typingNamesByUserId = new HashMap<>();
     private final Set<Integer> typingNameRequests = new HashSet<>();
+    private LinearLayoutManager conversationsLayoutManager;
+    private int conversationsOffset;
+    private boolean isLoadingMoreConversations;
+    private boolean hasMoreConversations = true;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -320,8 +325,20 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
     private void setupRecyclerView() {
         adapter = new ConversationsAdapter(requireContext(), conversations);
         adapter.setOnConversationClickListener(this);
-        recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+        conversationsLayoutManager = new LinearLayoutManager(requireContext());
+        recyclerView.setLayoutManager(conversationsLayoutManager);
         recyclerView.setAdapter(adapter);
+        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(RecyclerView view, int dx, int dy) {
+                super.onScrolled(view, dx, dy);
+                if (dy > 0 && conversationsLayoutManager != null
+                        && conversationsLayoutManager.findLastVisibleItemPosition()
+                        >= adapter.getItemCount() - 5) {
+                    loadMoreConversations();
+                }
+            }
+        });
     }
 
     /**
@@ -334,16 +351,21 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
 
         sCachedConversations = null;
         sIsConversationsLoaded = false;
+        conversationsOffset = 0;
+        isLoadingMoreConversations = false;
+        hasMoreConversations = true;
         
         swipeRefreshLayout.setRefreshing(true);
         
-        messagesManager.getConversations(20, 0, new MessagesManager.ConversationsCallback() {
+        messagesManager.getConversations(CONVERSATIONS_PAGE_SIZE, 0, new MessagesManager.ConversationsCallback() {
             @Override
             public void onSuccess(List<Conversation> loadedConversations) {
                 if (getActivity() != null && isViewCreated) {
                     getActivity().runOnUiThread(() -> {
+                        if (getActivity() == null || !isViewCreated) return;
                         hideError();
                         conversations.clear();
+                        int fetchedCount = loadedConversations.size();
                         
                         org.nikanikoo.flux.data.managers.ProfileManager profileManager = 
                             org.nikanikoo.flux.data.managers.ProfileManager.getInstance(requireContext());
@@ -391,6 +413,8 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
                             conversations.add(selfConv);
                         }
                         conversations.addAll(loadedConversations);
+                        conversationsOffset = fetchedCount;
+                        hasMoreConversations = fetchedCount >= CONVERSATIONS_PAGE_SIZE;
                         
                         if (adapter != null) {
                             adapter.updateConversations(conversations);
@@ -413,6 +437,43 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
                         swipeRefreshLayout.setRefreshing(false);
                     });
                 }
+            }
+        });
+    }
+
+    private void loadMoreConversations() {
+        if (!isViewCreated || isLoadingMoreConversations || !hasMoreConversations
+                || conversations.isEmpty()) return;
+
+        isLoadingMoreConversations = true;
+        final int requestedOffset = conversationsOffset;
+        messagesManager.getConversations(CONVERSATIONS_PAGE_SIZE, requestedOffset,
+                new MessagesManager.ConversationsCallback() {
+            @Override
+            public void onSuccess(List<Conversation> loadedConversations) {
+                if (getActivity() == null || !isViewCreated) return;
+                getActivity().runOnUiThread(() -> {
+                    if (!isViewCreated) return;
+                    int fetchedCount = loadedConversations != null ? loadedConversations.size() : 0;
+                    if (loadedConversations != null) {
+                        org.nikanikoo.flux.data.models.UserProfile myProfile =
+                                org.nikanikoo.flux.data.managers.ProfileManager.getInstance(requireContext())
+                                        .getCachedProfileSync();
+                        if (myProfile != null) {
+                            loadedConversations.removeIf(conversation -> conversation.getPeerId() == myProfile.getId());
+                        }
+                        adapter.addConversations(loadedConversations);
+                    }
+                    conversationsOffset = requestedOffset + fetchedCount;
+                    hasMoreConversations = fetchedCount >= CONVERSATIONS_PAGE_SIZE;
+                    isLoadingMoreConversations = false;
+                    sCachedConversations = new ArrayList<>(conversations);
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                isLoadingMoreConversations = false;
             }
         });
     }
