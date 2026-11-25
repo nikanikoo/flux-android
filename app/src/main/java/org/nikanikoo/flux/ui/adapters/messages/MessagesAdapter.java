@@ -34,6 +34,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.squareup.picasso.Picasso;
 import com.airbnb.lottie.LottieAnimationView;
 import com.airbnb.lottie.LottieDrawable;
+import com.google.android.material.imageview.ShapeableImageView;
+import com.google.android.material.shape.ShapeAppearanceModel;
 
 import org.nikanikoo.flux.FluxApplication;
 import org.nikanikoo.flux.data.models.Message;
@@ -240,10 +242,12 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
     private void bindSenderName(TextView senderNameView, Message message, boolean continuation) {
         if (continuation) {
+            senderNameView.setCompoundDrawables(null, null, null, null);
             senderNameView.setVisibility(View.GONE);
             return;
         }
         if (!groupChat) {
+            senderNameView.setCompoundDrawables(null, null, null, null);
             senderNameView.setVisibility(View.GONE);
             return;
         }
@@ -253,6 +257,18 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             senderName = context.getString(message.isOut() ? R.string.you : R.string.chat_unknown_user);
         }
         senderNameView.setText(senderName);
+        if (message.isUserVerified()) {
+            android.graphics.drawable.Drawable badge = ContextCompat.getDrawable(context, R.drawable.ic_verified);
+            if (badge != null) {
+                badge = DrawableCompat.wrap(badge.mutate());
+                DrawableCompat.setTint(badge, senderNameView.getCurrentTextColor());
+                badge.setBounds(0, 0, dp(16), dp(16));
+            }
+            senderNameView.setCompoundDrawablePadding(dp(4));
+            senderNameView.setCompoundDrawables(null, null, badge, null);
+        } else {
+            senderNameView.setCompoundDrawables(null, null, null, null);
+        }
         senderNameView.setVisibility(View.VISIBLE);
     }
 
@@ -450,7 +466,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         if (attachments == null) return;
         for (MessageAttachment attachment : attachments) {
             if ("wall".equals(attachment.getType())) {
-                addWallCard(container, attachment);
+                addWallCard(container, attachment, messageTextColor);
             } else if ("link".equals(attachment.getType())) {
                 addLinkCard(container, attachment, messageTextColor);
             } else if ("doc".equals(attachment.getType())) {
@@ -477,7 +493,9 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 videoParams.topMargin = dp(8);
                 container.addView(videoView, videoParams);
             } else if (attachment.getImageUrl() != null && !attachment.getImageUrl().isEmpty()) {
-                ImageView image = new ImageView(context);
+                ShapeableImageView image = new ShapeableImageView(context);
+                image.setShapeAppearanceModel(ShapeAppearanceModel.builder()
+                        .setAllCornerSizes(dp(10)).build());
                 LinearLayout.LayoutParams imageParams = new LinearLayout.LayoutParams(dp(220), dp(160));
                 imageParams.topMargin = dp(8);
                 image.setLayoutParams(imageParams);
@@ -775,7 +793,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
      * @param container контейнер вложений в сообщении
      * @param attachment пост
      */
-    private void addWallCard(LinearLayout container, MessageAttachment attachment) {
+    private void addWallCard(LinearLayout container, MessageAttachment attachment, int messageTextColor) {
         LinearLayout card = new LinearLayout(context);
         card.setOrientation(LinearLayout.VERTICAL);
         int padding = dp(10);
@@ -793,12 +811,14 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         author.setText(attachment.getTitle().isEmpty() ? "Запись" : attachment.getTitle());
         author.setTypeface(null, android.graphics.Typeface.BOLD);
         author.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        author.setTextColor(messageTextColor);
         card.addView(author);
 
         if (attachment.getSubtitle() != null && !attachment.getSubtitle().isEmpty()) {
             TextView body = new TextView(context);
             body.setText(attachment.getSubtitle());
             body.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+            body.setTextColor(messageTextColor);
             body.setMaxLines(5);
             body.setEllipsize(android.text.TextUtils.TruncateAt.END);
             LinearLayout.LayoutParams bodyParams = new LinearLayout.LayoutParams(
@@ -808,7 +828,9 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         }
 
         if (attachment.getImageUrl() != null && !attachment.getImageUrl().isEmpty()) {
-            ImageView preview = new ImageView(context);
+            ShapeableImageView preview = new ShapeableImageView(context);
+            preview.setShapeAppearanceModel(ShapeAppearanceModel.builder()
+                    .setAllCornerSizes(dp(10)).build());
             preview.setLayoutParams(new LinearLayout.LayoutParams(dp(220), dp(130)));
             preview.setScaleType(ImageView.ScaleType.CENTER_CROP);
             Picasso.get().load(attachment.getImageUrl()).fit().centerCrop()
