@@ -470,7 +470,13 @@ public class ChatActivity extends AppCompatActivity {
                     JSONObject conversation = item != null ? item.optJSONObject("conversation") : null;
                     JSONObject settings = conversation != null ? conversation.optJSONObject("chat_settings") : null;
                     JSONObject photo = settings != null ? settings.optJSONObject("photo") : null;
-                    String url = photo != null ? photo.optString("photo_50", photo.optString("photo_200", "")) : "";
+                    String url = "";
+                    if (photo != null) {
+                        url = photo.optString("photo_50", "");
+                        if (url.isEmpty()) url = photo.optString("photo_100", "");
+                        if (url.isEmpty()) url = photo.optString("photo_200", "");
+                    }
+                    final String avatarUrl = url;
                     int membersCount = settings != null
                             ? settings.optInt("members_count", conversation != null ? conversation.optInt("users_count", 0) : 0)
                             : 0;
@@ -480,7 +486,7 @@ public class ChatActivity extends AppCompatActivity {
                                 ? getResources().getQuantityString(R.plurals.chat_members_count, membersCount, membersCount)
                                 : "";
                         updateToolbarSubtitle();
-                        showToolbarAvatar(url);
+                        showToolbarAvatar(avatarUrl);
                     });
                 }
                 @Override public void onError(String error) { }
