@@ -193,6 +193,8 @@
     <string name="chat_send">Надіслати</string>
     <string name="chat_loading_error">Помилка завантаження повідомлень:\u0020</string>
     <string name="chat_send_error">Помилка надсилання:\u0020</string>
+    <string name="message_send_failed">Не вдалося надіслати повідомлення</string>
+    <string name="message_send_retry">Надіслати повторно</string>
     <string name="message_incoming">Вхідне повідомлення</string>
     <string name="message_outgoing">Вихідне повідомлення</string>
     <string name="message_time">%s</string>

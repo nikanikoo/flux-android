@@ -190,6 +190,8 @@
     <string name="chat_send">Send</string>
     <string name="chat_loading_error">"Error loading messages: "</string>
     <string name="chat_send_error">Error sending: %1$s</string>
+    <string name="message_send_failed">Message not sent</string>
+    <string name="message_send_retry">Send again</string>
     <string name="message_waiting_for_network">Waiting for a network connection</string>
     <string name="message_waiting_to_send">Waiting to send</string>
     <string name="pending_photo">Attached photo</string>

@@ -1081,11 +1081,6 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         int replyMessageId = replyingToMessageId;
         String replyAuthor = replyingToAuthor;
         String replyText = replyingToText;
-        List<String> photoAttachments = new ArrayList<>(pendingPhotoAttachments);
-        List<Uri> photoUris = new ArrayList<>(pendingPhotoUris);
-        List<String> mediaAttachments = new ArrayList<>(pendingMediaAttachments);
-        List<String> mediaTitles = new ArrayList<>(pendingMediaTitles);
-        List<String> mediaPreviews = new ArrayList<>(pendingMediaPreviews);
         Message optimisticMessage = createOptimisticMessage(messageText, attachment, stickerId,
                 replyMessageId, replyAuthor, replyText);
         if (adapter != null) {
@@ -1104,6 +1099,9 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                 if (getActivity() != null) {
                     getActivity().runOnUiThread(() -> {
                         pendingOptimisticMessageCount = Math.max(0, pendingOptimisticMessageCount - 1);
+                        optimisticMessage.setId(messageId);
+                        optimisticMessage.setPending(false);
+                        if (adapter != null) adapter.notifyMessageChanged(optimisticMessage);
                         
                         // Перезагружаем сообщения чтобы показать отправленное
                         if (pendingOptimisticMessageCount == 0) loadMessages(true);
@@ -1119,26 +1117,13 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                 if (getActivity() != null) {
                     getActivity().runOnUiThread(() -> {
                         pendingOptimisticMessageCount = Math.max(0, pendingOptimisticMessageCount - 1);
+                        optimisticMessage.setPending(false);
+                        optimisticMessage.setSendFailed(true);
+                        optimisticMessage.setAttachments(attachmentStatusAttachments(optimisticMessage, true));
+                        if (adapter != null) adapter.notifyMessageChanged(optimisticMessage);
                         if (pendingOptimisticMessageCount == 0) {
                             loadMessages(true);
                             refreshConversationsList();
-                        }
-                        if (adapter != null) adapter.removeMessageById(optimisticMessage.getId());
-                        if (messageInput.getText().length() == 0) messageInput.setText(messageText);
-                        if (attachment != null && !attachment.isEmpty() && pendingPhotoAttachments.isEmpty()
-                                && pendingMediaAttachments.isEmpty()) {
-                            pendingPhotoAttachments.addAll(photoAttachments);
-                            pendingPhotoUris.addAll(photoUris);
-                            pendingMediaAttachments.addAll(mediaAttachments);
-                            pendingMediaTitles.addAll(mediaTitles);
-                            pendingMediaPreviews.addAll(mediaPreviews);
-                            updatePendingAttachmentPreview();
-                        }
-                        if (replyMessageId > 0 && replyingToMessageId == 0) {
-                            replyingToMessageId = replyMessageId;
-                            replyingToAuthor = replyAuthor;
-                            replyingToText = replyText;
-                            updateReplyPreview();
                         }
                         Toast.makeText(requireContext(), getString(R.string.chat_send_error, error), Toast.LENGTH_LONG).show();
                     });
@@ -1156,6 +1141,8 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         Message message = new Message(localId, userId, userId, text, System.currentTimeMillis() / 1000L,
                 true, false);
         message.setPending(true);
+        message.setPendingAttachment(attachment);
+        message.setPendingStickerId(stickerId);
         if (profile != null) {
             message.setUserName(profile.getFullName());
             message.setUserPhoto(profile.getPhoto50());
@@ -1173,6 +1160,20 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
         }
         message.setAttachments(attachments);
         return message;
+    }
+
+    private List<MessageAttachment> attachmentStatusAttachments(Message message, boolean failed) {
+        List<MessageAttachment> attachments = new ArrayList<>();
+        if (message.getPendingAttachment() != null && !message.getPendingAttachment().isEmpty()) {
+            attachments.add(new MessageAttachment("pending", "", getString(failed
+                    ? R.string.message_send_failed : R.string.message_waiting_to_send), ""));
+        }
+        if (message.getPendingStickerId() > 0) {
+            String stickerUrl = OpenVKApi.getInstance(requireContext()).getBaseUrl()
+                    + "/images/stickers/" + message.getPendingStickerId() + "/128b.png";
+            attachments.add(new MessageAttachment("sticker", stickerUrl, "", ""));
+        }
+        return attachments;
     }
 
     private void updatePendingAttachmentPreview() {
@@ -1357,6 +1358,56 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
     public void onReplyClick(int messageId) {
         pendingReplyMessageId = messageId;
         tryScrollToPendingReply();
+    }
+
+    @Override
+    public void onFailedMessageClick(Message message) {
+        if (message == null || !message.isSendFailed()) return;
+        new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.message_send_failed)
+                .setItems(new CharSequence[]{getString(R.string.message_send_retry), getString(R.string.delete)},
+                        (dialog, which) -> {
+                            if (which == 0) retryFailedMessage(message);
+                            else {
+                                if (adapter != null) adapter.removeMessageById(message.getId());
+                                refreshConversationsList();
+                            }
+                        })
+                .show();
+    }
+
+    private void retryFailedMessage(Message message) {
+        message.setSendFailed(false);
+        message.setPending(true);
+        message.setAttachments(attachmentStatusAttachments(message, false));
+        if (adapter != null) adapter.notifyMessageChanged(message);
+        MessageReference reply = message.getReply();
+        messagesManager.sendMessage(peerId, message.getText(), message.getPendingAttachment(),
+                reply != null ? reply.getId() : 0, message.getPendingStickerId(),
+                new MessagesManager.SendMessageCallback() {
+                    @Override public void onSuccess(int messageId) {
+                        if (!isAdded()) return;
+                        requireActivity().runOnUiThread(() -> {
+                            message.setId(messageId);
+                            message.setPending(false);
+                            if (adapter != null) adapter.notifyMessageChanged(message);
+                            loadMessages(true);
+                            refreshConversationsList();
+                        });
+                    }
+
+                    @Override public void onError(String error) {
+                        if (!isAdded()) return;
+                        requireActivity().runOnUiThread(() -> {
+                            message.setPending(false);
+                            message.setSendFailed(true);
+                            message.setAttachments(attachmentStatusAttachments(message, true));
+                            if (adapter != null) adapter.notifyMessageChanged(message);
+                            Toast.makeText(requireContext(), getString(R.string.chat_send_error, error),
+                                    Toast.LENGTH_LONG).show();
+                        });
+                    }
+                });
     }
 
     @Override

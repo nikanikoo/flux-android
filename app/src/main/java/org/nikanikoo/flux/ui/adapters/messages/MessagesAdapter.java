@@ -79,6 +79,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         void onMessageOptions(View anchor, Message message);
         void onReplySwipe(Message message);
         void onWallPostClick(MessageAttachment attachment);
+        void onFailedMessageClick(Message message);
     }
 
     public MessagesAdapter(Context context, List<Message> messages) {
@@ -165,9 +166,22 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         holder.messageText.setText(formattedText);
         holder.timeText.setText(formatMessageTime(message));
         holder.metadataFallback.setVisibility(View.VISIBLE);
-        holder.readStatus.setVisibility(message.isReadState() || message.isPending() ? View.VISIBLE : View.GONE);
-        if (message.isPending()) holder.readStatus.setImageResource(android.R.drawable.ic_popup_sync);
-        else holder.readStatus.setImageResource(android.R.drawable.ic_menu_view);
+        boolean showStatus = message.isReadState() || message.isPending() || message.isSendFailed();
+        holder.readStatus.setVisibility(showStatus ? View.VISIBLE : View.GONE);
+        if (message.isSendFailed()) {
+            holder.readStatus.setImageResource(android.R.drawable.stat_notify_error);
+            android.util.TypedValue errorColor = new android.util.TypedValue();
+            context.getTheme().resolveAttribute(android.R.attr.colorError, errorColor, true);
+            holder.readStatus.setColorFilter(errorColor.data);
+            holder.readStatus.setOnClickListener(v -> {
+                if (listener != null) listener.onFailedMessageClick(message);
+            });
+        } else {
+            holder.readStatus.setColorFilter(null);
+            holder.readStatus.setOnClickListener(null);
+            if (message.isPending()) holder.readStatus.setImageResource(android.R.drawable.ic_popup_sync);
+            else holder.readStatus.setImageResource(android.R.drawable.ic_menu_view);
+        }
         Linkify.addLinks(holder.messageText, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES);
         holder.messageText.setMovementMethod(SafeLinkMovementMethod.getInstance());
         
@@ -910,11 +924,27 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     }
 
     public void setMessages(List<Message> newMessages) {
+        List<Message> mergedMessages = new ArrayList<>();
+        if (newMessages != null) mergedMessages.addAll(newMessages);
+        for (Object item : items) {
+            if (!(item instanceof Message)) continue;
+            Message localMessage = (Message) item;
+            if (!localMessage.isPending() && !localMessage.isSendFailed()) continue;
+            boolean exists = false;
+            for (Message loaded : mergedMessages) {
+                if (loaded.getId() == localMessage.getId()) {
+                    exists = true;
+                    break;
+                }
+            }
+            if (!exists) mergedMessages.add(localMessage);
+        }
+        mergedMessages.sort((left, right) -> Long.compare(left.getDate(), right.getDate()));
         this.items.clear();
-        this.items.addAll(groupMessagesByDate(newMessages));
+        this.items.addAll(groupMessagesByDate(mergedMessages));
         rebuildChatAudioPlaylist();
         notifyDataSetChanged();
-        System.out.println("MessagesAdapter: Set " + newMessages.size() + " messages");
+        System.out.println("MessagesAdapter: Set " + mergedMessages.size() + " messages");
     }
 
     public void addMessagesToTop(List<Message> newMessages) {

@@ -13,6 +13,9 @@ public class Message {
     private boolean out;
     private boolean readState;
     private boolean pending;
+    private boolean sendFailed;
+    private String pendingAttachment = "";
+    private int pendingStickerId;
     private String userName;
     private String userPhoto;
     private boolean userVerified;
@@ -43,6 +46,9 @@ public class Message {
     public boolean isOut() { return out; }
     public boolean isReadState() { return readState; }
     public boolean isPending() { return pending; }
+    public boolean isSendFailed() { return sendFailed; }
+    public String getPendingAttachment() { return pendingAttachment; }
+    public int getPendingStickerId() { return pendingStickerId; }
     public String getUserName() { return userName; }
     public String getUserPhoto() { return userPhoto; }
     public boolean isUserVerified() { return userVerified; }
@@ -66,6 +72,10 @@ public class Message {
     public void setUserPhoto(String userPhoto) { this.userPhoto = userPhoto; }
     public void setReadState(boolean readState) { this.readState = readState; }
     public void setPending(boolean pending) { this.pending = pending; }
+    public void setSendFailed(boolean sendFailed) { this.sendFailed = sendFailed; }
+    public void setPendingAttachment(String attachment) { this.pendingAttachment = attachment != null ? attachment : ""; }
+    public void setPendingStickerId(int stickerId) { this.pendingStickerId = stickerId; }
+    public void setId(int id) { this.id = id; }
     public void setConversationMessageId(int conversationMessageId) { this.conversationMessageId = conversationMessageId; }
     public void setUserVerified(boolean userVerified) { this.userVerified = userVerified; }
     public void setActionType(String actionType) { this.actionType = actionType; }
