@@ -8,6 +8,8 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+import com.google.android.material.imageview.ShapeableImageView;
+import com.google.android.material.shape.ShapeAppearanceModel;
 import com.squareup.picasso.Picasso;
 
 import org.nikanikoo.flux.data.managers.MessagesManager;
@@ -70,6 +72,14 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
     @Override
     public void onBindViewHolder(@NonNull ConversationViewHolder holder, int position) {
         Conversation conversation = conversations.get(position);
+
+        if (holder.avatarImage instanceof ShapeableImageView) {
+            boolean roundAvatars = context.getSharedPreferences("appearance_settings", Context.MODE_PRIVATE)
+                    .getBoolean(org.nikanikoo.flux.ui.fragments.settings.AppearanceSettingsFragment.KEY_ROUND_AVATARS, true);
+            float radius = dp(roundAvatars ? 28 : 8);
+            ((ShapeableImageView) holder.avatarImage).setShapeAppearanceModel(
+                    ShapeAppearanceModel.builder().setAllCornerSizes(radius).build());
+        }
         
         holder.titleText.setText(conversation.getTitle());
         holder.favoritesIndicator.setVisibility(
@@ -168,6 +178,10 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
     @Override
     public int getItemCount() {
         return conversations.size();
+    }
+
+    private int dp(int value) {
+        return (int) (value * context.getResources().getDisplayMetrics().density + 0.5f);
     }
 
     public void updateConversations(List<Conversation> newConversations) {

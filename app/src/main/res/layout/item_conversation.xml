@@ -30,8 +30,7 @@
                 android:src="@drawable/camera_200"
                 android:clickable="true"
                 android:focusable="true"
-                android:foreground="?attr/selectableItemBackgroundBorderless"
-                app:shapeAppearanceOverlay="@style/CircleImageView" />
+                android:foreground="?attr/selectableItemBackgroundBorderless" />
 
             <View
                 android:id="@+id/online_indicator"

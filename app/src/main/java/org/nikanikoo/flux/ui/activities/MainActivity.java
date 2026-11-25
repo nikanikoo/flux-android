@@ -508,6 +508,11 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
             recreate();
             return;
         }
+
+        if (navigationController != null && profileManager != null) {
+            org.nikanikoo.flux.data.models.UserProfile cachedProfile = profileManager.getCachedProfileSync();
+            if (cachedProfile != null) navigationController.updateUserInfo(cachedProfile);
+        }
         
         if (longPollManager != null) {
             longPollManager.start();
