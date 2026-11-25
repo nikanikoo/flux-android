@@ -170,6 +170,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         // Устанавливаем цвет ссылок таким же, как у обычного текста
         holder.messageText.setLinkTextColor(holder.messageText.getCurrentTextColor());
         bindSenderName(holder.senderName, message, continuation);
+        adjustSenderSpacingForWallPost(holder.senderName, message, hasText);
         bindMessageOptions(holder.bubble, holder.messageText, message);
         bindReferences(holder.replyPreview, message);
         bindAttachments(holder.attachments, message.getAttachments(), holder.messageText.getCurrentTextColor());
@@ -198,6 +199,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         // Устанавливаем цвет ссылок таким же, как у обычного текста
         holder.messageText.setLinkTextColor(holder.messageText.getCurrentTextColor());
         bindSenderName(holder.senderName, message, continuation);
+        adjustSenderSpacingForWallPost(holder.senderName, message, hasText);
         bindMessageOptions(holder.bubble, holder.messageText, message);
         bindReferences(holder.replyPreview, message);
         bindAttachments(holder.attachments, message.getAttachments(), holder.messageText.getCurrentTextColor());
@@ -220,6 +222,14 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 listener.onAvatarClick(message.getFromId(), message.getUserName());
             }
         });
+    }
+
+    private void adjustSenderSpacingForWallPost(TextView senderName, Message message, boolean hasText) {
+        boolean hasWallPost = message.getAttachments() != null
+                && message.getAttachments().stream().anyMatch(a -> "wall".equals(a.getType()));
+        ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) senderName.getLayoutParams();
+        params.bottomMargin = !hasText && hasWallPost ? 0 : dp(4);
+        senderName.setLayoutParams(params);
     }
 
     private String formatMessageTime(Message message) {
