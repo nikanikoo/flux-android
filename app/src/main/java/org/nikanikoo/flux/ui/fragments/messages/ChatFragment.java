@@ -410,13 +410,11 @@ public class ChatFragment extends Fragment implements MessagesAdapter.OnMessageC
                     float deltaX = event.getX() - startX;
                     float maxOffset = dp(72);
                     messageRow.setTranslationX(Math.max(-maxOffset, Math.min(maxOffset, deltaX)));
-                    if (!replyTriggered && Math.abs(deltaX) >= swipeThreshold) {
-                        replyTriggered = true;
-                        onReplySwipe(message);
-                    }
                 } else if (event.getActionMasked() == MotionEvent.ACTION_UP
                         || event.getActionMasked() == MotionEvent.ACTION_CANCEL) {
-                    if (!replyTriggered && Math.abs(event.getX() - startX) >= swipeThreshold) {
+                    if (event.getActionMasked() == MotionEvent.ACTION_UP
+                            && !replyTriggered
+                            && Math.abs(event.getX() - startX) >= swipeThreshold) {
                         replyTriggered = true;
                         onReplySwipe(message);
                     }
