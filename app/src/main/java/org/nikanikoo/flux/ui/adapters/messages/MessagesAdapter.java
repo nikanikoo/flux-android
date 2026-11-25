@@ -823,9 +823,16 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         String baseUrl = uri.getScheme() != null && uri.getAuthority() != null
                 ? uri.getScheme() + "://" + uri.getAuthority() + "/" : null;
         gif.loadDataWithBaseURL(baseUrl, html, "text/html", "UTF-8", null);
-        gif.setOnClickListener(v -> org.nikanikoo.flux.ui.activities.PhotoViewerActivity.startGif(
-                context, url, attachment.getTitle(), attachment.getOwnerId(),
-                attachment.getId(), attachment.getAccessKey()));
+        gif.setOnTouchListener((view, event) -> {
+            if (event.getAction() == android.view.MotionEvent.ACTION_UP) {
+                org.nikanikoo.flux.ui.activities.PhotoViewerActivity.startGif(
+                        context, url, attachment.getTitle(), attachment.getOwnerId(),
+                        attachment.getId(), attachment.getAccessKey());
+                view.performClick();
+                return true;
+            }
+            return true;
+        });
     }
 
     private void addDocumentCardFallback(LinearLayout container, MessageAttachment attachment) {
