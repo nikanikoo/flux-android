@@ -1,14 +1,19 @@
 package org.nikanikoo.flux.ui.fragments.messages;
 
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
 import org.nikanikoo.flux.data.models.Conversation;
+import org.nikanikoo.flux.data.models.Message;
 import org.nikanikoo.flux.ui.adapters.messages.ConversationsAdapter;
+import org.nikanikoo.flux.ui.adapters.friends.ConversationFriendPickerAdapter;
 import org.nikanikoo.flux.data.managers.MessagesManager;
+import org.nikanikoo.flux.data.managers.FriendsManager;
+import org.nikanikoo.flux.data.models.Friend;
 import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.ui.activities.ChatActivity;
 import org.nikanikoo.flux.ui.activities.MainActivity;
@@ -20,11 +25,27 @@ import org.nikanikoo.flux.services.LongPollManager;
 
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import android.widget.Toast;
+import android.widget.EditText;
+import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import android.view.Gravity;
+import com.google.android.material.button.MaterialButton;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class MessagesListFragment extends BaseFragment implements ConversationsAdapter.OnConversationClickListener, LongPollManager.OnTypingEventListener {
+    private static final int CONVERSATIONS_PAGE_SIZE = 20;
     
     private RecyclerView recyclerView;
     private ConversationsAdapter adapter;
@@ -36,11 +57,34 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
 
     private static List<Conversation> sCachedConversations = null;
     private static boolean sIsConversationsLoaded = false;
+    private static String sCachedAccountId;
     private int activePeerId = -1;
+    private final Map<Integer, String> typingNamesByUserId = new HashMap<>();
+    private final Set<Integer> typingNameRequests = new HashSet<>();
+    private LinearLayoutManager conversationsLayoutManager;
+    private int conversationsOffset;
+    private boolean isLoadingMoreConversations;
+    private boolean hasMoreConversations = true;
+    private ActivityResultLauncher<String> groupPhotoPicker;
+    private int pendingGroupPhotoChatId;
+    private final LongPollManager.OnConnectionStateListener connectionStateListener = state -> {
+        if (!isAdded() || !(getActivity() instanceof MainActivity)) return;
+        String subtitle = "";
+        if (state == LongPollManager.ConnectionState.CONNECTING) subtitle = getString(R.string.messages_connecting);
+        else if (state == LongPollManager.ConnectionState.UPDATING) subtitle = getString(R.string.messages_updating);
+        ((MainActivity) getActivity()).setToolbarSubtitle(subtitle);
+    };
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        groupPhotoPicker = registerForActivityResult(new ActivityResultContracts.GetContent(), this::onGroupPhotoPicked);
+        String currentAccountId = getCurrentAccountId();
+        if (sCachedAccountId != null && !sCachedAccountId.equals(currentAccountId)) {
+            sCachedConversations = null;
+            sIsConversationsLoaded = false;
+        }
+        sCachedAccountId = currentAccountId;
         // Инициализируем список и менеджер один раз при создании фрагмента
         if (conversations == null) {
             conversations = new ArrayList<>();
@@ -63,7 +107,7 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
         initViews(view);
         setupRecyclerView();
         setupToolbarTitle();
-        setupErrorView(view, R.id.swipe_refresh);
+        setupErrorView(view, R.id.messages_swipe_refresh);
         setRetryCallback(() -> refreshConversations());
 
         isViewCreated = true;
@@ -86,42 +130,14 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
         setupToolbarTitle();
         if (LongPollManager.getInstance(requireContext()) != null) {
             LongPollManager.getInstance(requireContext()).setTypingEventListener(this);
+            LongPollManager.getInstance(requireContext()).addConnectionStateListener(connectionStateListener);
         }
         
         if (activePeerId != -1) {
-            final int peerIdToUpdate = activePeerId;
             activePeerId = -1;
-            
-            messagesManager.getHistory(peerIdToUpdate, 1, 0, new MessagesManager.MessagesCallback() {
-                @Override
-                public void onSuccess(List<org.nikanikoo.flux.data.models.Message> messagesList) {
-                    if (getActivity() != null && isViewCreated && messagesList != null && !messagesList.isEmpty()) {
-                        getActivity().runOnUiThread(() -> {
-                            org.nikanikoo.flux.data.models.Message lastMsg = messagesList.get(0);
-                            
-                            handleNewMessageLocally(peerIdToUpdate, lastMsg.getText(), lastMsg.getDate(), lastMsg.isOut());
-                            
-                            for (int i = 0; i < conversations.size(); i++) {
-                                Conversation c = conversations.get(i);
-                                if (c.getPeerId() == peerIdToUpdate) {
-                                    c.setUnreadCount(0);
-                                    if (adapter != null) {
-                                        adapter.notifyItemChanged(i);
-                                    }
-                                    break;
-                                }
-                            }
-                        });
-                    }
-                }
-
-                @Override
-                public void onError(String error) {
-                    if (adapter != null) {
-                        adapter.notifyDataSetChanged();
-                    }
-                }
-            });
+            // Reload the ordered conversation list so a chat that received a new
+            // message while open returns to its correct position as well as preview.
+            refreshConversations();
         } else {
             if (adapter != null) {
                 adapter.notifyDataSetChanged();
@@ -134,7 +150,9 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
         super.onPause();
         if (LongPollManager.getInstance(requireContext()) != null) {
             LongPollManager.getInstance(requireContext()).setTypingEventListener(null);
+            LongPollManager.getInstance(requireContext()).removeConnectionStateListener(connectionStateListener);
         }
+        if (getActivity() instanceof MainActivity) ((MainActivity) getActivity()).setToolbarSubtitle("");
     }
     
     @Override
@@ -150,15 +168,69 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
     public void onUserTyping(int peerId, int userId) {
         if (getActivity() != null && isViewCreated && adapter != null) {
             getActivity().runOnUiThread(() -> {
-                adapter.setUserTyping(peerId, true);
+                if (peerId <= 2000000000) {
+                    adapter.setUserTyping(peerId, getString(R.string.chat_typing));
+                    return;
+                }
+
+                if (userId <= 0) {
+                    adapter.setUserTyping(peerId, getString(R.string.chat_typing));
+                    return;
+                }
+                String cachedName = typingNamesByUserId.get(userId);
+                if (cachedName != null) {
+                    adapter.setUserTyping(peerId, getString(R.string.chat_typing_with_name, cachedName));
+                } else {
+                    adapter.setUserTyping(peerId, getString(R.string.chat_typing));
+                    if (typingNameRequests.add(userId)) {
+                        messagesManager.getUserInfo(userId, new MessagesManager.UserInfoCallback() {
+                            @Override
+                            public void onSuccess(String userName, String userPhoto) {
+                                typingNameRequests.remove(userId);
+                                typingNamesByUserId.put(userId, userName);
+                                if (isAdded() && adapter != null) {
+                                    adapter.setUserTyping(peerId, getString(R.string.chat_typing_with_name, userName));
+                                }
+                            }
+
+                            @Override
+                            public void onError(String error) {
+                                typingNameRequests.remove(userId);
+                            }
+                        });
+                    }
+                }
             });
         }
     }
 
-    public void onNewMessageReceived(int peerId, String text, long timestamp, boolean isOut) {
+    public void onNewMessageReceived(int messageId, int peerId, String text, long timestamp, boolean isOut) {
         if (getActivity() != null && isViewCreated) {
-            getActivity().runOnUiThread(() -> {
+            if (messageId <= 0) {
                 handleNewMessageLocally(peerId, text, timestamp, isOut);
+                return;
+            }
+
+            messagesManager.getMessageById(messageId, peerId, new MessagesManager.MessagesCallback() {
+                @Override
+                public void onSuccess(List<Message> messages) {
+                    if (getActivity() == null || !isViewCreated) return;
+                    if (messages == null || messages.isEmpty()) {
+                        handleNewMessageLocally(peerId, text, timestamp, isOut);
+                        return;
+                    }
+
+                    Message message = messages.get(0);
+                    handleNewMessageLocally(peerId, messagesManager.createConversationPreview(message),
+                            message.getDate(), message.isOut());
+                }
+
+                @Override
+                public void onError(String error) {
+                    if (getActivity() != null && isViewCreated) {
+                        handleNewMessageLocally(peerId, text, timestamp, isOut);
+                    }
+                }
             });
         }
     }
@@ -210,6 +282,7 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
         }
         
         if (targetConversation != null) {
+            if (timestamp < targetConversation.getLastMessageDate()) return;
             targetConversation.setLastMessage(text);
             targetConversation.setLastMessageDate(timestamp);
             if (!isOut) {
@@ -224,6 +297,7 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
             int myId = myProfile != null ? myProfile.getId() : 0;
             
             if (peerId == myId) {
+                cacheConversations();
                 if (adapter != null) {
                     adapter.notifyItemChanged(foundIndex);
                 }
@@ -251,9 +325,22 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
                     adapter.notifyItemChanged(insertIndex);
                 }
             }
+            cacheConversations();
         } else {
             refreshConversations();
         }
+    }
+
+    private void cacheConversations() {
+        sCachedConversations = new ArrayList<>(conversations);
+        sIsConversationsLoaded = true;
+        sCachedAccountId = getCurrentAccountId();
+    }
+
+    private String getCurrentAccountId() {
+        org.nikanikoo.flux.security.AccountManager.Account account =
+                org.nikanikoo.flux.security.AccountManager.getInstance(requireContext()).getCurrentAccount();
+        return account != null ? account.id : null;
     }
     
     private void setupToolbarTitle() {
@@ -265,7 +352,9 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
 
     private void initViews(View view) {
         recyclerView = view.findViewById(R.id.recycler_view);
-        swipeRefreshLayout = view.findViewById(R.id.swipe_refresh);
+        swipeRefreshLayout = view.findViewById(R.id.messages_swipe_refresh);
+        FloatingActionButton newConversationButton = view.findViewById(R.id.fab_new_conversation);
+        newConversationButton.setOnClickListener(v -> loadFriendsForNewConversation());
         
         swipeRefreshLayout.setOnRefreshListener(this::refreshConversations);
     }
@@ -273,8 +362,20 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
     private void setupRecyclerView() {
         adapter = new ConversationsAdapter(requireContext(), conversations);
         adapter.setOnConversationClickListener(this);
-        recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+        conversationsLayoutManager = new LinearLayoutManager(requireContext());
+        recyclerView.setLayoutManager(conversationsLayoutManager);
         recyclerView.setAdapter(adapter);
+        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(RecyclerView view, int dx, int dy) {
+                super.onScrolled(view, dx, dy);
+                if (dy > 0 && conversationsLayoutManager != null
+                        && conversationsLayoutManager.findLastVisibleItemPosition()
+                        >= adapter.getItemCount() - 5) {
+                    loadMoreConversations();
+                }
+            }
+        });
     }
 
     /**
@@ -287,16 +388,22 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
 
         sCachedConversations = null;
         sIsConversationsLoaded = false;
+        sCachedAccountId = getCurrentAccountId();
+        conversationsOffset = 0;
+        isLoadingMoreConversations = false;
+        hasMoreConversations = true;
         
         swipeRefreshLayout.setRefreshing(true);
         
-        messagesManager.getConversations(20, 0, new MessagesManager.ConversationsCallback() {
+        messagesManager.getConversations(CONVERSATIONS_PAGE_SIZE, 0, new MessagesManager.ConversationsCallback() {
             @Override
             public void onSuccess(List<Conversation> loadedConversations) {
                 if (getActivity() != null && isViewCreated) {
                     getActivity().runOnUiThread(() -> {
+                        if (getActivity() == null || !isViewCreated) return;
                         hideError();
                         conversations.clear();
+                        int fetchedCount = loadedConversations.size();
                         
                         org.nikanikoo.flux.data.managers.ProfileManager profileManager = 
                             org.nikanikoo.flux.data.managers.ProfileManager.getInstance(requireContext());
@@ -344,6 +451,8 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
                             conversations.add(selfConv);
                         }
                         conversations.addAll(loadedConversations);
+                        conversationsOffset = fetchedCount;
+                        hasMoreConversations = fetchedCount >= CONVERSATIONS_PAGE_SIZE;
                         
                         if (adapter != null) {
                             adapter.updateConversations(conversations);
@@ -352,6 +461,7 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
                         
                         sCachedConversations = new ArrayList<>(conversations);
                         sIsConversationsLoaded = true;
+                        sCachedAccountId = getCurrentAccountId();
                         
                         swipeRefreshLayout.setRefreshing(false);
                     });
@@ -369,6 +479,44 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
             }
         });
     }
+
+    private void loadMoreConversations() {
+        if (!isViewCreated || isLoadingMoreConversations || !hasMoreConversations
+                || conversations.isEmpty()) return;
+
+        isLoadingMoreConversations = true;
+        final int requestedOffset = conversationsOffset;
+        messagesManager.getConversations(CONVERSATIONS_PAGE_SIZE, requestedOffset,
+                new MessagesManager.ConversationsCallback() {
+            @Override
+            public void onSuccess(List<Conversation> loadedConversations) {
+                if (getActivity() == null || !isViewCreated) return;
+                getActivity().runOnUiThread(() -> {
+                    if (!isViewCreated) return;
+                    int fetchedCount = loadedConversations != null ? loadedConversations.size() : 0;
+                    if (loadedConversations != null) {
+                        org.nikanikoo.flux.data.models.UserProfile myProfile =
+                                org.nikanikoo.flux.data.managers.ProfileManager.getInstance(requireContext())
+                                        .getCachedProfileSync();
+                        if (myProfile != null) {
+                            loadedConversations.removeIf(conversation -> conversation.getPeerId() == myProfile.getId());
+                        }
+                        adapter.addConversations(loadedConversations);
+                    }
+                    conversationsOffset = requestedOffset + fetchedCount;
+                    hasMoreConversations = fetchedCount >= CONVERSATIONS_PAGE_SIZE;
+                    isLoadingMoreConversations = false;
+                    sCachedConversations = new ArrayList<>(conversations);
+                    sCachedAccountId = getCurrentAccountId();
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                isLoadingMoreConversations = false;
+            }
+        });
+    }
  
     @Override
     public void onConversationClick(Conversation conversation) {
@@ -379,6 +527,369 @@ public class MessagesListFragment extends BaseFragment implements ConversationsA
         intent.putExtra(ChatActivity.EXTRA_PEER_ID, conversation.getPeerId());
         intent.putExtra(ChatActivity.EXTRA_PEER_NAME, conversation.getTitle());
         intent.putExtra(ChatActivity.EXTRA_FROM_ID, conversation.getPeerId());
+        startActivity(intent);
+    }
+
+    @Override
+    public void onConversationLongClick(Conversation conversation) {
+        int actionTitle = conversation.isGroupChat()
+                ? (conversation.hasLeft() ? R.string.chat_return_action : R.string.chat_leave_action)
+                : R.string.chat_delete_conversation;
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(conversation.getTitle())
+                .setItems(new CharSequence[]{getString(R.string.chat_notifications_menu),
+                        getString(actionTitle)}, (dialog, which) -> {
+                    if (which == 0) showConversationNotificationOptions(conversation);
+                    else if (conversation.isGroupChat()) confirmLeaveOrReturnConversation(conversation);
+                    else confirmDeleteConversation(conversation);
+                })
+                .show();
+    }
+
+    private void confirmLeaveOrReturnConversation(Conversation conversation) {
+        boolean returning = conversation.hasLeft();
+        int prompt = returning ? R.string.chat_return_confirm : R.string.chat_leave_confirm;
+        int action = returning ? R.string.chat_return_action : R.string.chat_leave_action;
+        new MaterialAlertDialogBuilder(requireContext())
+                .setMessage(getString(prompt, conversation.getTitle()))
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(action, (dialog, which) -> {
+                    if (returning) {
+                        org.nikanikoo.flux.security.AccountManager.Account account =
+                                org.nikanikoo.flux.security.AccountManager.getInstance(requireContext()).getCurrentAccount();
+                        int userId = 0;
+                        if (account != null && account.userId != null) {
+                            try { userId = Integer.parseInt(account.userId); } catch (NumberFormatException ignored) { }
+                        }
+                        if (userId <= 0) {
+                            Toast.makeText(requireContext(), R.string.chat_return_error, Toast.LENGTH_LONG).show();
+                            return;
+                        }
+                        messagesManager.addChatUser(conversation.getPeerId(), userId, chatMembershipCallback());
+                    } else {
+                        messagesManager.removeChatUser(conversation.getPeerId(), 0, chatMembershipCallback());
+                    }
+                })
+                .show();
+    }
+
+    private org.nikanikoo.flux.data.managers.api.OpenVKApi.ApiCallback chatMembershipCallback() {
+        return new org.nikanikoo.flux.data.managers.api.OpenVKApi.ApiCallback() {
+            @Override public void onSuccess(org.json.JSONObject response) {
+                if (isAdded()) refreshConversations();
+            }
+            @Override public void onError(String error) {
+                if (isAdded()) Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
+            }
+        };
+    }
+
+    private void showConversationNotificationOptions(Conversation conversation) {
+        messagesManager.refreshPushSettings(conversation.getPeerId(), new MessagesManager.PushSettingsCallback() {
+            @Override
+            public void onSuccess(MessagesManager.PushSettings settings) {
+                if (!isAdded()) return;
+                List<String> options = new ArrayList<>();
+                List<Integer> durations = new ArrayList<>();
+                if (!settings.areNotificationsEnabled()) {
+                    options.add(getString(R.string.chat_notifications_enable));
+                    durations.add(0);
+                }
+                options.add(getString(R.string.chat_notifications_mute_1_hour));
+                durations.add(3600);
+                options.add(getString(R.string.chat_notifications_mute_8_hours));
+                durations.add(28800);
+                options.add(getString(R.string.chat_notifications_mute_forever));
+                durations.add(-1);
+
+                new MaterialAlertDialogBuilder(requireContext())
+                        .setTitle(R.string.chat_notifications_menu)
+                        .setItems(options.toArray(new String[0]), (dialog, which) ->
+                                messagesManager.setSilenceMode(conversation.getPeerId(), durations.get(which),
+                                        new MessagesManager.SilenceModeCallback() {
+                                            @Override public void onSuccess() {
+                                                if (isAdded()) Toast.makeText(requireContext(),
+                                                        durations.get(which) == 0 ? R.string.chat_notifications_enabled
+                                                                : R.string.chat_notifications_muted,
+                                                        Toast.LENGTH_SHORT).show();
+                                            }
+                                            @Override public void onError(String error) {
+                                                if (isAdded()) Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
+                                            }
+                                        }))
+                        .show();
+            }
+
+            @Override
+            public void onError(String error) {
+                if (isAdded()) Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void confirmDeleteConversation(Conversation conversation) {
+        new MaterialAlertDialogBuilder(requireContext())
+                .setMessage(getString(R.string.chat_delete_conversation_confirm, conversation.getTitle()))
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.delete, (dialog, which) -> messagesManager.deleteConversation(
+                        conversation.getPeerId(), new org.nikanikoo.flux.data.managers.api.OpenVKApi.ApiCallback() {
+                            @Override public void onSuccess(org.json.JSONObject response) {
+                                if (!isAdded()) return;
+                                conversations.remove(conversation);
+                                cacheConversations();
+                                if (adapter != null) adapter.updateConversations(conversations);
+                            }
+                            @Override public void onError(String error) {
+                                if (isAdded()) Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
+                            }
+                        }))
+                .show();
+    }
+
+    private void loadFriendsForNewConversation() {
+        FriendsManager.getInstance(requireContext()).getFriends(org.nikanikoo.flux.Constants.Api.FRIENDS_PER_PAGE, 0, new FriendsManager.FriendsCallback() {
+            @Override
+            public void onSuccess(List<Friend> friends) {
+                if (!isAdded()) return;
+                if (friends.isEmpty()) {
+                    Toast.makeText(requireContext(), R.string.no_friends_available, Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                showFriendPicker(friends);
+            }
+
+            @Override
+            public void onError(String error) {
+                if (isAdded()) Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void showFriendPicker(List<Friend> friends) {
+        Set<Integer> selectedIds = new HashSet<>();
+        List<Friend> allFriends = new ArrayList<>(friends);
+        sortFriendsAlphabetically(allFriends);
+
+        LinearLayout content = new LinearLayout(requireContext());
+        content.setOrientation(LinearLayout.VERTICAL);
+        int horizontalPadding = dp(20);
+        content.setPadding(horizontalPadding, dp(8), horizontalPadding, dp(8));
+        TextView selectedCount = new TextView(requireContext());
+        selectedCount.setText(getString(R.string.new_conversation_selected_count, 0));
+        selectedCount.setPadding(0, dp(4), 0, dp(8));
+        content.addView(selectedCount);
+
+        RecyclerView friendList = new RecyclerView(requireContext());
+        friendList.setLayoutManager(new LinearLayoutManager(requireContext()));
+        ConversationFriendPickerAdapter[] pickerAdapterRef = new ConversationFriendPickerAdapter[1];
+        ConversationFriendPickerAdapter pickerAdapter = new ConversationFriendPickerAdapter(
+                requireContext(), selectedIds, friend -> {
+                    if (!selectedIds.add(friend.getId())) selectedIds.remove(friend.getId());
+                    if (pickerAdapterRef[0] != null) pickerAdapterRef[0].notifyDataSetChanged();
+                    selectedCount.setText(getString(R.string.new_conversation_selected_count, selectedIds.size()));
+                });
+        pickerAdapterRef[0] = pickerAdapter;
+        pickerAdapter.setFriends(allFriends);
+        friendList.setAdapter(pickerAdapter);
+        content.addView(friendList, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(420)));
+
+        TextView loading = new TextView(requireContext());
+        loading.setText(R.string.friends_list_loading);
+        loading.setGravity(Gravity.CENTER);
+        loading.setPadding(0, dp(8), 0, dp(8));
+        content.addView(loading);
+
+        MaterialButton cancel = new MaterialButton(requireContext());
+        cancel.setText(R.string.cancel);
+        MaterialButton proceed = new MaterialButton(requireContext());
+        proceed.setText(R.string.continue_action);
+        LinearLayout buttons = new LinearLayout(requireContext());
+        buttons.setGravity(Gravity.END | Gravity.CENTER_VERTICAL);
+        buttons.addView(cancel);
+        buttons.addView(proceed);
+        content.addView(buttons);
+
+        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.new_conversation)
+                .setView(content)
+                .create();
+        cancel.setOnClickListener(v -> dialog.dismiss());
+        proceed.setOnClickListener(v -> {
+            if (selectedIds.isEmpty()) {
+                Toast.makeText(requireContext(), R.string.select_at_least_one_friend, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            List<Friend> chosen = new ArrayList<>();
+            for (Friend friend : allFriends) if (selectedIds.contains(friend.getId())) chosen.add(friend);
+            dialog.dismiss();
+            if (chosen.size() == 1) openConversation(chosen.get(0).getId(), chosen.get(0).getFullName());
+            else createGroupConversation(chosen);
+        });
+        dialog.show();
+        loadFriendPickerPage(allFriends, pickerAdapter, loading, dialog,
+                org.nikanikoo.flux.Constants.Api.FRIENDS_PER_PAGE);
+    }
+
+    private void sortFriendsAlphabetically(List<Friend> friends) {
+        java.text.Collator collator = java.text.Collator.getInstance(java.util.Locale.getDefault());
+        friends.sort((left, right) -> collator.compare(left.getFullName(), right.getFullName()));
+    }
+
+    private void loadFriendPickerPage(List<Friend> allFriends, ConversationFriendPickerAdapter adapter,
+                                     TextView loading, androidx.appcompat.app.AlertDialog dialog, int offset) {
+        FriendsManager.getInstance(requireContext()).getFriends(
+                org.nikanikoo.flux.Constants.Api.FRIENDS_PER_PAGE, offset, new FriendsManager.FriendsCallback() {
+                    @Override public void onSuccess(List<Friend> page) {
+                        if (!dialog.isShowing() || !isAdded()) return;
+                        Set<Integer> knownIds = new HashSet<>();
+                        for (Friend friend : allFriends) knownIds.add(friend.getId());
+                        for (Friend friend : page) if (knownIds.add(friend.getId())) allFriends.add(friend);
+                        sortFriendsAlphabetically(allFriends);
+                        adapter.setFriends(allFriends);
+                        if (page.size() == org.nikanikoo.flux.Constants.Api.FRIENDS_PER_PAGE) {
+                            loadFriendPickerPage(allFriends, adapter, loading, dialog,
+                                    offset + org.nikanikoo.flux.Constants.Api.FRIENDS_PER_PAGE);
+                        } else {
+                            loading.setVisibility(View.GONE);
+                        }
+                    }
+                    @Override public void onError(String error) {
+                        if (!dialog.isShowing() || !isAdded()) return;
+                        loading.setVisibility(View.GONE);
+                        Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
+                    }
+                });
+    }
+
+    private void createGroupConversation(List<Friend> friends) {
+        StringBuilder userIds = new StringBuilder();
+        for (Friend friend : friends) {
+            if (userIds.length() > 0) userIds.append(',');
+            userIds.append(friend.getId());
+        }
+        org.nikanikoo.flux.security.AccountManager.Account account =
+                org.nikanikoo.flux.security.AccountManager.getInstance(requireContext()).getCurrentAccount();
+        int currentUserId = 0;
+        if (account != null && account.userId != null) {
+            try { currentUserId = Integer.parseInt(account.userId); } catch (NumberFormatException ignored) { }
+        }
+        if (currentUserId <= 0) {
+            Toast.makeText(requireContext(), R.string.chat_return_error, Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        messagesManager.createChat(String.valueOf(currentUserId), new org.nikanikoo.flux.data.managers.api.OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(org.json.JSONObject response) {
+                if (!isAdded()) return;
+                int chatId = response.optInt("response", 0);
+                if (chatId <= 0) {
+                    Toast.makeText(requireContext(), R.string.chat_create_error, Toast.LENGTH_LONG).show();
+                    return;
+                }
+                int peerId = 2000000000 + chatId;
+                messagesManager.addChatUsers(peerId, userIds.toString(), new org.nikanikoo.flux.data.managers.api.OpenVKApi.ApiCallback() {
+                    @Override public void onSuccess(org.json.JSONObject inviteResponse) {
+                        if (isAdded()) showNewGroupDetailsDialog(chatId);
+                    }
+
+                    @Override public void onError(String error) {
+                        messagesManager.deleteConversation(peerId, new org.nikanikoo.flux.data.managers.api.OpenVKApi.ApiCallback() {
+                            @Override public void onSuccess(org.json.JSONObject cleanupResponse) {
+                                if (isAdded()) {
+                                    refreshConversations();
+                                    Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
+                                }
+                            }
+                            @Override public void onError(String cleanupError) {
+                                if (isAdded()) Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
+                            }
+                        });
+                    }
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                if (isAdded()) Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void showNewGroupDetailsDialog(int chatId) {
+        LinearLayout content = new LinearLayout(requireContext());
+        content.setOrientation(LinearLayout.VERTICAL);
+        int horizontalPadding = dp(24);
+        content.setPadding(horizontalPadding, dp(8), horizontalPadding, 0);
+
+        EditText titleInput = new EditText(requireContext());
+        titleInput.setSingleLine(true);
+        titleInput.setHint(R.string.chat_rename_hint);
+        content.addView(titleInput, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        Button photoButton = new Button(requireContext());
+        photoButton.setText(R.string.chat_change_photo_action);
+        photoButton.setOnClickListener(v -> {
+            pendingGroupPhotoChatId = chatId;
+            groupPhotoPicker.launch("image/*");
+        });
+        content.addView(photoButton);
+
+        int peerId = 2000000000 + chatId;
+        String defaultTitle = getString(R.string.chat_title_default);
+        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(requireContext())
+                .setTitle(R.string.chat_title_default)
+                .setView(content)
+                .setNegativeButton(R.string.cancel, (dialog, which) -> openConversation(peerId, defaultTitle))
+                .setPositiveButton(R.string.continue_action, (dialog, which) -> {
+                    String title = titleInput.getText().toString().trim();
+                    if (title.isEmpty()) {
+                        openConversation(peerId, defaultTitle);
+                        return;
+                    }
+                    messagesManager.editChat(chatId, title, new org.nikanikoo.flux.data.managers.api.OpenVKApi.ApiCallback() {
+                        @Override public void onSuccess(org.json.JSONObject response) {
+                            if (isAdded()) requireActivity().runOnUiThread(() -> openConversation(peerId, title));
+                        }
+                        @Override public void onError(String error) {
+                            if (isAdded()) requireActivity().runOnUiThread(() -> {
+                                Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
+                                openConversation(peerId, defaultTitle);
+                            });
+                        }
+                    });
+                });
+        builder.setOnCancelListener(dialog -> openConversation(peerId, defaultTitle)).show();
+    }
+
+    private void onGroupPhotoPicked(Uri uri) {
+        int chatId = pendingGroupPhotoChatId;
+        pendingGroupPhotoChatId = 0;
+        if (uri == null || chatId <= 0) return;
+        org.nikanikoo.flux.data.managers.PhotoUploadManager.getInstance(requireContext())
+                .uploadChatPhoto(uri, chatId, new org.nikanikoo.flux.data.managers.api.OpenVKApi.ApiCallback() {
+                    @Override public void onSuccess(org.json.JSONObject response) {
+                        if (isAdded()) requireActivity().runOnUiThread(() ->
+                                Toast.makeText(requireContext(), R.string.chat_action_success, Toast.LENGTH_SHORT).show());
+                    }
+                    @Override public void onError(String error) {
+                        if (isAdded()) requireActivity().runOnUiThread(() ->
+                                Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show());
+                    }
+                });
+    }
+
+    private int dp(int value) {
+        return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
+    }
+
+    private void openConversation(int peerId, String title) {
+        Intent intent = new Intent(requireContext(), ChatActivity.class);
+        intent.putExtra(ChatActivity.EXTRA_PEER_ID, peerId);
+        intent.putExtra(ChatActivity.EXTRA_PEER_NAME, title);
+        intent.putExtra(ChatActivity.EXTRA_FROM_ID, peerId);
         startActivity(intent);
     }
     

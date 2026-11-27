@@ -4,6 +4,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.MenuItem;
 import android.view.View;
 
@@ -20,6 +22,7 @@ import com.google.android.material.navigation.NavigationView;
 
 import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.data.managers.NotificationsManager;
+import org.nikanikoo.flux.data.managers.MessagesManager;
 import org.nikanikoo.flux.data.managers.ProfileManager;
 import org.nikanikoo.flux.data.managers.api.OpenVKApi;
 import org.nikanikoo.flux.data.models.Post;
@@ -43,6 +46,7 @@ import org.nikanikoo.flux.utils.ValidationUtils;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Главная Activity приложения.
@@ -55,6 +59,7 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
     private static int sCachedMessages = -1;
     private static int sCachedNotifications = -1;
     private static int sCachedFriends = -1;
+    private static String sBadgeCacheAccountId;
 
     // Controllers
     private NavigationController navigationController;
@@ -73,6 +78,9 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
     private int currentCustomColor = -1;
     private boolean currentBottomNavEnabled = false;
     private boolean isSyncingBottomNav = false;
+    private int badgeRequestGeneration;
+    private final Handler badgeUpdateHandler = new Handler(Looper.getMainLooper());
+    private final Runnable debouncedBadgeUpdate = this::updateAllBadges;
 
     private final OnBackPressedCallback backPressedCallback = new OnBackPressedCallback(true) {
         @Override
@@ -372,14 +380,15 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
                     MessageNotificationManager.getInstance(MainActivity.this)
                             .showMessageNotification(messageId, fromId, peerId, text, timestamp);
                 }
-                updateMessagesListIfVisible(peerId, text, timestamp, isOut);
+                updateMessagesListIfVisible(messageId, peerId, text, timestamp, isOut);
                 onNotificationBadgeUpdate();
             }
 
             @Override
-            public void onMessageRead(int peerId, int localId) {
-                updateChatIfVisible(peerId);
-                updateMessagesListOnRead(peerId);
+            public void onMessageRead(int peerId, int localId, boolean outgoingMessagesRead) {
+                if (!outgoingMessagesRead) {
+                    updateMessagesListOnRead(peerId);
+                }
                 onNotificationBadgeUpdate();
             }
 
@@ -393,6 +402,10 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
         longPollManager.setOnlineEventListener((userId, isOnline) -> {
             updateUserOnlineStatus(userId, isOnline);
         });
+
+        longPollManager.setNotificationSettingsEventListener((peerId, sound, disabledUntil) ->
+                MessagesManager.getInstance(MainActivity.this)
+                        .updatePushSettingsFromLongPoll(peerId, sound, disabledUntil));
 
         LongPollService.start(this);
     }
@@ -502,6 +515,13 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
             recreate();
             return;
         }
+
+        if (navigationController != null && profileManager != null) {
+            org.nikanikoo.flux.data.models.UserProfile cachedProfile = profileManager.getCachedProfileSync();
+            if (cachedProfile != null) navigationController.updateUserInfo(cachedProfile);
+        }
+
+        loadBadgeCacheForCurrentAccount();
         
         if (longPollManager != null) {
             longPollManager.start();
@@ -807,6 +827,10 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
             }
         }
     }
+
+    public void setToolbarSubtitle(String subtitle) {
+        if (getSupportActionBar() != null) getSupportActionBar().setSubtitle(subtitle);
+    }
     
     public void setToolbarTitleClickable(String title, View.OnClickListener clickListener) {
         if (getSupportActionBar() != null) {
@@ -843,14 +867,24 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
      * Обновить все бейджи уведомлений
      */
     public void updateAllBadges() {
+        final int requestGeneration = ++badgeRequestGeneration;
+        final String accountId = accountManager != null ? accountManager.getCurrentAccountId() : null;
         OpenVKApi api = OpenVKApi.getInstance(this);
         api.getCounters(new OpenVKApi.CountersCallback() {
             @Override
             public void onSuccess(int messages, int notifications, int friends) {
-                sCachedMessages = messages;
-                sCachedNotifications = notifications;
-                sCachedFriends = friends;
                 runOnUiThread(() -> {
+                    String currentAccountId = accountManager != null
+                            ? accountManager.getCurrentAccountId() : null;
+                    if (requestGeneration != badgeRequestGeneration
+                            || !Objects.equals(accountId, currentAccountId)) return;
+
+                    sBadgeCacheAccountId = accountId;
+                    sCachedMessages = messages;
+                    sCachedNotifications = notifications;
+                    sCachedFriends = friends;
+                    saveBadgeCache(accountId, messages, notifications, friends);
+
                     NavigationView navigationView = findViewById(R.id.drawer_view);
                     View navigationRailView = findViewById(R.id.navigation_rail);
                     
@@ -903,6 +937,29 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
             updateBottomBadge(R.id.drawer_friends, friends);
         }
     }
+
+    private void loadBadgeCacheForCurrentAccount() {
+        String accountId = accountManager != null ? accountManager.getCurrentAccountId() : null;
+        if (Objects.equals(sBadgeCacheAccountId, accountId)) return;
+        sBadgeCacheAccountId = accountId;
+        if (accountId == null) {
+            sCachedMessages = sCachedNotifications = sCachedFriends = -1;
+            return;
+        }
+        android.content.SharedPreferences preferences = getSharedPreferences("navigation_badges", MODE_PRIVATE);
+        sCachedMessages = preferences.getInt(accountId + "_messages", -1);
+        sCachedNotifications = preferences.getInt(accountId + "_notifications", -1);
+        sCachedFriends = preferences.getInt(accountId + "_friends", -1);
+    }
+
+    private void saveBadgeCache(String accountId, int messages, int notifications, int friends) {
+        if (accountId == null) return;
+        getSharedPreferences("navigation_badges", MODE_PRIVATE).edit()
+                .putInt(accountId + "_messages", messages)
+                .putInt(accountId + "_notifications", notifications)
+                .putInt(accountId + "_friends", friends)
+                .apply();
+    }
     
     private void updateDrawerBadge(NavigationView navigationView, int itemId, int count, String defaultTitle) {
         MenuItem item = navigationView.getMenu().findItem(itemId);
@@ -937,16 +994,17 @@ public class MainActivity extends AppCompatActivity implements NotificationBadge
     
     @Override
     public void onNotificationBadgeUpdate() {
-        updateAllBadges();
+        badgeUpdateHandler.removeCallbacks(debouncedBadgeUpdate);
+        badgeUpdateHandler.postDelayed(debouncedBadgeUpdate, 250);
     }
     
     // ==================== Helper Methods ====================
     
-    private void updateMessagesListIfVisible(int peerId, String text, long timestamp, boolean isOut) {
+    private void updateMessagesListIfVisible(int messageId, int peerId, String text, long timestamp, boolean isOut) {
         androidx.fragment.app.Fragment currentFragment = 
                 getSupportFragmentManager().findFragmentById(R.id.fragment_container);
         if (currentFragment instanceof MessagesListFragment) {
-            ((MessagesListFragment) currentFragment).onNewMessageReceived(peerId, text, timestamp, isOut);
+            ((MessagesListFragment) currentFragment).onNewMessageReceived(messageId, peerId, text, timestamp, isOut);
         }
     }
 

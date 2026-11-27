@@ -8,8 +8,11 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+import com.google.android.material.imageview.ShapeableImageView;
+import com.google.android.material.shape.ShapeAppearanceModel;
 import com.squareup.picasso.Picasso;
 
+import org.nikanikoo.flux.data.managers.MessagesManager;
 import org.nikanikoo.flux.data.models.Conversation;
 import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.utils.ValidationUtils;
@@ -23,19 +26,36 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
     private List<Conversation> conversations;
     private Context context;
     private OnConversationClickListener listener;
+    private final MessagesManager messagesManager;
+    private final android.os.Handler pushSettingsHandler =
+            new android.os.Handler(android.os.Looper.getMainLooper());
+    private final MessagesManager.PushSettingsChangeListener pushSettingsChangeListener;
 
-    private final java.util.Set<Integer> typingUserIds = new java.util.HashSet<>();
+    private final java.util.Map<Integer, String> typingUsersByPeerId = new java.util.HashMap<>();
     private final android.os.Handler typingHandler = new android.os.Handler(android.os.Looper.getMainLooper());
     private final java.util.Map<Integer, Runnable> typingRunnables = new java.util.HashMap<>();
 
     public interface OnConversationClickListener {
         void onConversationClick(Conversation conversation);
         void onAvatarClick(int userId, String userName);
+        void onConversationLongClick(Conversation conversation);
     }
 
     public ConversationsAdapter(Context context, List<Conversation> conversations) {
         this.context = context;
         this.conversations = conversations;
+        this.messagesManager = MessagesManager.getInstance(context);
+        this.pushSettingsChangeListener = (peerId, settings) -> pushSettingsHandler.post(() -> {
+            for (int i = 0; i < this.conversations.size(); i++) {
+                Conversation conversation = this.conversations.get(i);
+                if (conversation.getPeerId() == peerId) {
+                    conversation.setNotificationsEnabled(settings.areNotificationsEnabled());
+                    notifyItemChanged(i);
+                    break;
+                }
+            }
+        });
+        messagesManager.addPushSettingsChangeListener(pushSettingsChangeListener);
     }
 
     public void setOnConversationClickListener(OnConversationClickListener listener) {
@@ -52,12 +72,45 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
     @Override
     public void onBindViewHolder(@NonNull ConversationViewHolder holder, int position) {
         Conversation conversation = conversations.get(position);
+
+        if (holder.avatarImage instanceof ShapeableImageView) {
+            boolean roundAvatars = context.getSharedPreferences("appearance_settings", Context.MODE_PRIVATE)
+                    .getBoolean(org.nikanikoo.flux.ui.fragments.settings.AppearanceSettingsFragment.KEY_ROUND_AVATARS, true);
+            float radius = dp(roundAvatars ? 28 : 8);
+            ((ShapeableImageView) holder.avatarImage).setShapeAppearanceModel(
+                    ShapeAppearanceModel.builder().setAllCornerSizes(radius).build());
+        }
         
         holder.titleText.setText(conversation.getTitle());
+        holder.favoritesIndicator.setVisibility(
+                context.getString(R.string.chat_favorites).contentEquals(conversation.getTitle())
+                        ? View.VISIBLE : View.GONE);
+        Boolean notificationsEnabled = conversation.areNotificationsEnabled();
+        holder.notificationsMutedIndicator.setVisibility(Boolean.FALSE.equals(notificationsEnabled)
+                ? View.VISIBLE : View.GONE);
+        int peerId = conversation.getPeerId();
+        messagesManager.getPushSettings(peerId, new MessagesManager.PushSettingsCallback() {
+            @Override
+            public void onSuccess(MessagesManager.PushSettings settings) {
+                boolean enabled = settings.areNotificationsEnabled();
+                int currentPosition = holder.getBindingAdapterPosition();
+                if (currentPosition == RecyclerView.NO_POSITION) return;
+                Conversation boundConversation = conversations.get(currentPosition);
+                if (boundConversation.getPeerId() != peerId) return;
+                boundConversation.setNotificationsEnabled(enabled);
+                holder.notificationsMutedIndicator.setVisibility(enabled ? View.GONE : View.VISIBLE);
+            }
+
+            @Override
+            public void onError(String error) {
+                // Keep the mute indicator hidden when the server state is unknown.
+            }
+        });
         
         android.util.TypedValue typedValue = new android.util.TypedValue();
-        if (typingUserIds.contains(conversation.getPeerId())) {
-            holder.lastMessageText.setText(context.getString(R.string.chat_typing));
+        String typingText = typingUsersByPeerId.get(conversation.getPeerId());
+        if (typingText != null) {
+            holder.lastMessageText.setText(typingText);
             holder.lastMessageText.getContext().getTheme().resolveAttribute(androidx.appcompat.R.attr.colorPrimary, typedValue, true);
             holder.lastMessageText.setTextColor(typedValue.data);
         } else {
@@ -76,6 +129,8 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
         // Показать количество непрочитанных
         if (conversation.getUnreadCount() > 0) {
             holder.unreadBadge.setVisibility(View.VISIBLE);
+            holder.unreadBadge.setText(conversation.getUnreadCount() > 99
+                    ? "99+" : String.valueOf(conversation.getUnreadCount()));
         } else {
             holder.unreadBadge.setVisibility(View.GONE);
         }
@@ -113,11 +168,20 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
                 listener.onConversationClick(conversation);
             }
         });
+        holder.itemView.setOnLongClickListener(v -> {
+            if (listener == null) return false;
+            listener.onConversationLongClick(conversation);
+            return true;
+        });
     }
 
     @Override
     public int getItemCount() {
         return conversations.size();
+    }
+
+    private int dp(int value) {
+        return (int) (value * context.getResources().getDisplayMetrics().density + 0.5f);
     }
 
     public void updateConversations(List<Conversation> newConversations) {
@@ -170,33 +234,33 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
         }
     }
 
-    public void setUserTyping(int userId, boolean isTyping) {
-        Runnable existing = typingRunnables.remove(userId);
+    public void setUserTyping(int peerId, String typingText) {
+        Runnable existing = typingRunnables.remove(peerId);
         if (existing != null) {
             typingHandler.removeCallbacks(existing);
         }
 
-        if (isTyping) {
-            typingUserIds.add(userId);
+        if (typingText != null) {
+            typingUsersByPeerId.put(peerId, typingText);
             
             Runnable clearRunnable = () -> {
-                typingUserIds.remove(userId);
-                typingRunnables.remove(userId);
+                typingUsersByPeerId.remove(peerId);
+                typingRunnables.remove(peerId);
                 for (int i = 0; i < conversations.size(); i++) {
-                    if (conversations.get(i).getPeerId() == userId) {
+                    if (conversations.get(i).getPeerId() == peerId) {
                         notifyItemChanged(i);
                         break;
                     }
                 }
             };
-            typingRunnables.put(userId, clearRunnable);
+            typingRunnables.put(peerId, clearRunnable);
             typingHandler.postDelayed(clearRunnable, 6000);
         } else {
-            typingUserIds.remove(userId);
+            typingUsersByPeerId.remove(peerId);
         }
 
         for (int i = 0; i < conversations.size(); i++) {
-            if (conversations.get(i).getPeerId() == userId) {
+            if (conversations.get(i).getPeerId() == peerId) {
                 notifyItemChanged(i);
                 break;
             }
@@ -206,27 +270,33 @@ public class ConversationsAdapter extends RecyclerView.Adapter<ConversationsAdap
     public void cleanup() {
         typingHandler.removeCallbacksAndMessages(null);
         typingRunnables.clear();
-        typingUserIds.clear();
+        typingUsersByPeerId.clear();
+        messagesManager.removePushSettingsChangeListener(pushSettingsChangeListener);
+        pushSettingsHandler.removeCallbacksAndMessages(null);
     }
 
     static class ConversationViewHolder extends RecyclerView.ViewHolder {
         ImageView avatarImage;
         TextView titleText;
+        ImageView notificationsMutedIndicator;
         TextView lastMessageText;
         TextView timeText;
-        View unreadBadge;
+        TextView unreadBadge;
         View onlineIndicator;
         ImageView peerVerified;
+        ImageView favoritesIndicator;
 
         ConversationViewHolder(@NonNull View itemView) {
             super(itemView);
             avatarImage = itemView.findViewById(R.id.avatar_image);
             titleText = itemView.findViewById(R.id.title_text);
+            notificationsMutedIndicator = itemView.findViewById(R.id.notifications_muted_indicator);
             lastMessageText = itemView.findViewById(R.id.last_message_text);
             timeText = itemView.findViewById(R.id.time_text);
             unreadBadge = itemView.findViewById(R.id.unread_badge);
             onlineIndicator = itemView.findViewById(R.id.online_indicator);
             peerVerified = itemView.findViewById(R.id.peer_verified);
+            favoritesIndicator = itemView.findViewById(R.id.favorites_indicator);
         }
     }
 }

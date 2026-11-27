@@ -80,6 +80,14 @@
             android:textSize="14sp" />
 
         <!-- Изображение комментария -->
+        <LinearLayout
+            android:id="@+id/comment_sticker_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:layout_marginBottom="8dp" />
+
         <ImageView
             android:id="@+id/comment_image"
             android:layout_width="match_parent"

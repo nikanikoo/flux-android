@@ -1,24 +1,59 @@
 package org.nikanikoo.flux.data.managers;
 
 import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkRequest;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.nikanikoo.flux.data.managers.api.OpenVKApi;
 import org.nikanikoo.flux.data.models.Conversation;
+import org.nikanikoo.flux.data.models.Audio;
 import org.nikanikoo.flux.data.models.Message;
+import org.nikanikoo.flux.data.models.MessageAttachment;
+import org.nikanikoo.flux.data.models.MessageReference;
+import org.nikanikoo.flux.security.AccountManager;
+import org.nikanikoo.flux.R;
+import org.nikanikoo.flux.utils.ImageUtils;
 import org.nikanikoo.flux.utils.AsyncTaskHelper;
 import org.nikanikoo.flux.utils.Logger;
+import org.nikanikoo.flux.utils.AttachmentProcessor;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MessagesManager extends BaseManager<MessagesManager> {
     private static final String TAG = "MessagesManager";
+    private static final long PUSH_SETTINGS_CACHE_TTL_MS = 30_000L;
+    private final Map<Integer, CachedPushSettings> pushSettingsCache = new ConcurrentHashMap<>();
+    private final Map<Integer, List<PushSettingsCallback>> pendingPushSettings = new HashMap<>();
+    private final Object pushSettingsLock = new Object();
+    private final Object outboxLock = new Object();
+    private final AtomicBoolean flushingOutbox = new AtomicBoolean(false);
+    private final List<PushSettingsChangeListener> pushSettingsChangeListeners =
+            Collections.synchronizedList(new ArrayList<>());
 
     private MessagesManager(Context context) {
         super(context);
+        ConnectivityManager connectivityManager = (ConnectivityManager)
+                this.context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (connectivityManager != null) {
+            try {
+                connectivityManager.registerNetworkCallback(
+                        new NetworkRequest.Builder().addCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET).build(),
+                        new ConnectivityManager.NetworkCallback() {
+                            @Override public void onAvailable(Network network) { flushPendingMessages(); }
+                        });
+            } catch (Exception e) {
+                Logger.w(TAG, "Could not monitor network changes for the message outbox", e);
+            }
+        }
     }
 
     public static synchronized MessagesManager getInstance(Context context) {
@@ -39,6 +74,218 @@ public class MessagesManager extends BaseManager<MessagesManager> {
         void onSuccess(int messageId);
         void onError(String error);
     }
+
+    public interface MessageActionCallback {
+        void onSuccess();
+        void onError(String error);
+    }
+
+    public interface PinnedMessageCallback {
+        void onSuccess(int messageId, String preview);
+        void onError(String error);
+    }
+
+    public interface UnreadCountCallback {
+        void onSuccess(int unreadCount);
+        void onError(String error);
+    }
+
+    public static final class PushSettings {
+        private final long disabledUntil;
+        private final boolean disabledForever;
+        private final boolean soundEnabled;
+
+        public PushSettings(long disabledUntil, boolean disabledForever, boolean soundEnabled) {
+            this.disabledUntil = disabledUntil;
+            this.disabledForever = disabledForever;
+            this.soundEnabled = soundEnabled;
+        }
+
+        public long getDisabledUntil() { return disabledUntil; }
+        public boolean isSoundEnabled() { return soundEnabled; }
+
+        public boolean areNotificationsEnabled() {
+            if (disabledForever || disabledUntil == -1) return false;
+            if (disabledUntil > 0) {
+                return disabledUntil <= System.currentTimeMillis() / 1000L;
+            }
+            return soundEnabled;
+        }
+    }
+
+    public interface PushSettingsCallback {
+        void onSuccess(PushSettings settings);
+        void onError(String error);
+    }
+
+    public interface PushSettingsChangeListener {
+        void onPushSettingsChanged(int peerId, PushSettings settings);
+    }
+
+    public interface SilenceModeCallback {
+        void onSuccess();
+        void onError(String error);
+    }
+
+    private static final class CachedPushSettings {
+        final PushSettings settings;
+        final long cachedAt;
+
+        CachedPushSettings(PushSettings settings, long cachedAt) {
+            this.settings = settings;
+            this.cachedAt = cachedAt;
+        }
+    }
+
+    public void getPushSettings(int peerId, PushSettingsCallback callback) {
+        requestPushSettings(peerId, false, callback);
+    }
+
+    public void addPushSettingsChangeListener(PushSettingsChangeListener listener) {
+        if (listener == null) return;
+        synchronized (pushSettingsChangeListeners) {
+            if (!pushSettingsChangeListeners.contains(listener)) {
+                pushSettingsChangeListeners.add(listener);
+            }
+        }
+    }
+
+    public void removePushSettingsChangeListener(PushSettingsChangeListener listener) {
+        if (listener == null) return;
+        synchronized (pushSettingsChangeListeners) {
+            pushSettingsChangeListeners.remove(listener);
+        }
+    }
+
+    private void notifyPushSettingsChanged(int peerId, PushSettings settings) {
+        List<PushSettingsChangeListener> listeners;
+        synchronized (pushSettingsChangeListeners) {
+            listeners = new ArrayList<>(pushSettingsChangeListeners);
+        }
+        for (PushSettingsChangeListener listener : listeners) {
+            listener.onPushSettingsChanged(peerId, settings);
+        }
+    }
+
+    public void refreshPushSettings(int peerId, PushSettingsCallback callback) {
+        requestPushSettings(peerId, true, callback);
+    }
+
+    private void requestPushSettings(int peerId, boolean forceRefresh, PushSettingsCallback callback) {
+        if (peerId == 0) {
+            if (callback != null) callback.onError("Не указан чат");
+            return;
+        }
+
+        final long requestStartedAt = System.currentTimeMillis();
+        synchronized (pushSettingsLock) {
+            CachedPushSettings cached = pushSettingsCache.get(peerId);
+            if (!forceRefresh && cached != null
+                    && System.currentTimeMillis() - cached.cachedAt < PUSH_SETTINGS_CACHE_TTL_MS) {
+                if (callback != null) callback.onSuccess(cached.settings);
+                return;
+            }
+
+            List<PushSettingsCallback> waiting = pendingPushSettings.get(peerId);
+            if (waiting != null) {
+                if (callback != null) waiting.add(callback);
+                return;
+            }
+            waiting = new ArrayList<>();
+            if (callback != null) waiting.add(callback);
+            pendingPushSettings.put(peerId, waiting);
+        }
+
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_id", String.valueOf(peerId));
+        api.callMethod("account.getPushSettings", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                JSONObject data = response.optJSONObject("response");
+                if (data == null) {
+                    finishPushSettingsRequest(peerId, null, "Не удалось прочитать настройки уведомлений");
+                    return;
+                }
+
+                long disabledUntil = data.optLong("disabled_until", 0L);
+                boolean soundEnabled = readBooleanSetting(data.opt("sound"), true);
+                boolean disabledForever = readBooleanSetting(data.opt("disabled_forever"), false);
+                PushSettings settings = new PushSettings(disabledUntil, disabledForever, soundEnabled);
+                synchronized (pushSettingsLock) {
+                    CachedPushSettings newer = pushSettingsCache.get(peerId);
+                    if (newer != null && newer.cachedAt > requestStartedAt) {
+                        settings = newer.settings;
+                    } else {
+                        pushSettingsCache.put(peerId,
+                                new CachedPushSettings(settings, System.currentTimeMillis()));
+                    }
+                }
+                notifyPushSettingsChanged(peerId, settings);
+                finishPushSettingsRequest(peerId, settings, null);
+            }
+
+            @Override
+            public void onError(String error) {
+                finishPushSettingsRequest(peerId, null, error);
+            }
+        });
+    }
+
+    private void finishPushSettingsRequest(int peerId, PushSettings settings, String error) {
+        List<PushSettingsCallback> callbacks;
+        synchronized (pushSettingsLock) {
+            callbacks = pendingPushSettings.remove(peerId);
+        }
+        if (callbacks == null) return;
+        for (PushSettingsCallback callback : callbacks) {
+            if (settings != null) callback.onSuccess(settings);
+            else callback.onError(error != null ? error : "Не удалось загрузить настройки уведомлений");
+        }
+    }
+
+    public void setSilenceMode(int peerId, int durationSeconds, SilenceModeCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_id", String.valueOf(peerId));
+        params.put("time", String.valueOf(durationSeconds));
+        params.put("sound", durationSeconds == 0 ? "1" : "0");
+
+        api.callMethod("account.setSilenceMode", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                long disabledUntil = durationSeconds == -1 ? -1L
+                        : durationSeconds == 0 ? 0L
+                        : System.currentTimeMillis() / 1000L + durationSeconds;
+                PushSettings settings = new PushSettings(disabledUntil, durationSeconds == -1,
+                        durationSeconds == 0);
+                pushSettingsCache.put(peerId, new CachedPushSettings(settings, System.currentTimeMillis()));
+                notifyPushSettingsChanged(peerId, settings);
+                if (callback != null) callback.onSuccess();
+            }
+
+            @Override
+            public void onError(String error) {
+                if (callback != null) callback.onError(error);
+            }
+        });
+    }
+
+    public void updatePushSettingsFromLongPoll(int peerId, int sound, long disabledUntil) {
+        if (peerId == 0) return;
+        PushSettings settings = new PushSettings(disabledUntil, disabledUntil == -1, sound != 0);
+        pushSettingsCache.put(peerId, new CachedPushSettings(settings, System.currentTimeMillis()));
+        notifyPushSettingsChanged(peerId, settings);
+    }
+
+    private static boolean readBooleanSetting(Object value, boolean fallback) {
+        if (value instanceof Boolean) return (Boolean) value;
+        if (value instanceof Number) return ((Number) value).intValue() != 0;
+        if (value instanceof String) {
+            String stringValue = ((String) value).trim();
+            if ("0".equals(stringValue) || "false".equalsIgnoreCase(stringValue)) return false;
+            if ("1".equals(stringValue) || "true".equalsIgnoreCase(stringValue)) return true;
+        }
+        return fallback;
+    }
     
     public interface UserInfoCallback {
         void onSuccess(String userName, String userPhoto);
@@ -47,6 +294,7 @@ public class MessagesManager extends BaseManager<MessagesManager> {
 
     // Получение списка диалогов
     public void getConversations(int count, int offset, ConversationsCallback callback) {
+        flushPendingMessages();
         Map<String, String> params = new HashMap<>();
         params.put("count", String.valueOf(count));
         params.put("offset", String.valueOf(offset));
@@ -56,13 +304,14 @@ public class MessagesManager extends BaseManager<MessagesManager> {
         api.callMethod("messages.getConversations", params, new OpenVKApi.ApiCallback() {
             @Override
             public void onSuccess(JSONObject response) {
+                cacheOfflineResponse(conversationsCacheKey(count, offset), response);
                 // Parse conversations in background thread to avoid UI blocking
                 AsyncTaskHelper.executeAsync(() -> {
                     return parseConversationsResponse(response);
                 }, new AsyncTaskHelper.AsyncCallback<List<Conversation>>() {
                     @Override
                     public void onSuccess(List<Conversation> conversations) {
-                        callback.onSuccess(conversations);
+                        callback.onSuccess(mergePendingConversations(conversations));
                     }
                     
                     @Override
@@ -76,23 +325,41 @@ public class MessagesManager extends BaseManager<MessagesManager> {
             @Override
             public void onError(String error) {
                 Logger.e(TAG, "Ошибка получения диалогов: " + error);
-                callback.onError(error);
+                JSONObject cached = getOfflineResponse(conversationsCacheKey(count, offset));
+                if (cached == null) {
+                    callback.onError(error);
+                    return;
+                }
+                AsyncTaskHelper.executeAsync(() -> parseConversationsResponse(cached),
+                        new AsyncTaskHelper.AsyncCallback<List<Conversation>>() {
+                    @Override public void onSuccess(List<Conversation> conversations) {
+                        callback.onSuccess(mergePendingConversations(conversations));
+                    }
+                    @Override public void onError(String parseError) { callback.onError(error); }
+                });
             }
         });
     }
 
     // Получение истории сообщений
     public void getHistory(int peerId, int count, int offset, MessagesCallback callback) {
+        getHistory(peerId, count, offset, 0, callback);
+    }
+
+    public void getHistory(int peerId, int count, int offset, int startMessageId, MessagesCallback callback) {
+        flushPendingMessages();
         Map<String, String> params = new HashMap<>();
         params.put("peer_id", String.valueOf(peerId));
         params.put("count", String.valueOf(count));
         params.put("offset", String.valueOf(offset));
+        if (startMessageId > 0) params.put("start_message_id", String.valueOf(startMessageId));
         params.put("extended", "1");
         params.put("fields", "photo_50,verified");
 
         api.callMethod("messages.getHistory", params, new OpenVKApi.ApiCallback() {
             @Override
             public void onSuccess(JSONObject response) {
+                cacheOfflineResponse(historyCacheKey(peerId, count, offset, startMessageId), response);
                 // Parse messages in background thread to avoid UI blocking
                 final int finalPeerId = peerId;
                 AsyncTaskHelper.executeAsync(() -> {
@@ -100,7 +367,7 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                 }, new AsyncTaskHelper.AsyncCallback<List<Message>>() {
                     @Override
                     public void onSuccess(List<Message> messages) {
-                        callback.onSuccess(messages);
+                        callback.onSuccess(mergePendingMessages(peerId, messages));
                     }
                     
                     @Override
@@ -114,7 +381,341 @@ public class MessagesManager extends BaseManager<MessagesManager> {
             @Override
             public void onError(String error) {
                 Logger.e(TAG, "Error loading messages: " + error);
-                callback.onError("Не удалось загрузить сообщения");
+                JSONObject cached = getOfflineResponse(historyCacheKey(peerId, count, offset, startMessageId));
+                if (cached == null) {
+                    List<Message> pending = mergePendingMessages(peerId, new ArrayList<>());
+                    if (!pending.isEmpty()) {
+                        callback.onSuccess(pending);
+                        return;
+                    }
+                    callback.onError("Не удалось загрузить сообщения");
+                    return;
+                }
+                final int finalPeerId = peerId;
+                AsyncTaskHelper.executeAsync(() -> parseMessagesResponse(cached, finalPeerId),
+                        new AsyncTaskHelper.AsyncCallback<List<Message>>() {
+                    @Override public void onSuccess(List<Message> messages) {
+                        callback.onSuccess(mergePendingMessages(peerId, messages));
+                    }
+                    @Override public void onError(String parseError) {
+                        callback.onError("Не удалось загрузить сообщения");
+                    }
+                });
+            }
+        });
+    }
+
+    private String offlineCachePrefix() {
+        AccountManager.Account account = AccountManager.getInstance(context).getCurrentAccount();
+        String accountId = account != null ? account.id : "default";
+        return "account_" + accountId + "_";
+    }
+
+    private String conversationsCacheKey(int count, int offset) {
+        return offlineCachePrefix() + "conversations_" + count + "_" + offset;
+    }
+
+    private String historyCacheKey(int peerId, int count, int offset, int startMessageId) {
+        return offlineCachePrefix() + "history_" + peerId + "_" + count + "_" + offset + "_" + startMessageId;
+    }
+
+    private void cacheOfflineResponse(String key, JSONObject response) {
+        context.getSharedPreferences("messages_offline_cache", Context.MODE_PRIVATE)
+                .edit().putString(key, response.toString()).apply();
+    }
+
+    private JSONObject getOfflineResponse(String key) {
+        String json = context.getSharedPreferences("messages_offline_cache", Context.MODE_PRIVATE)
+                .getString(key, null);
+        if (json == null || json.isEmpty()) return null;
+        try {
+            return new JSONObject(json);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private String outboxKey() {
+        return offlineCachePrefix() + "pending_outbox";
+    }
+
+    private JSONArray readOutbox() {
+        String value = context.getSharedPreferences("messages_offline_cache", Context.MODE_PRIVATE)
+                .getString(outboxKey(), "[]");
+        try {
+            return new JSONArray(value);
+        } catch (Exception e) {
+            return new JSONArray();
+        }
+    }
+
+    private int enqueuePendingMessage(int peerId, String message, String attachment,
+                                      int replyToMessageId, int stickerId, long randomId) {
+        synchronized (outboxLock) {
+            JSONArray outbox = readOutbox();
+            for (int i = 0; i < outbox.length(); i++) {
+                JSONObject existing = outbox.optJSONObject(i);
+                if (existing != null && existing.optLong("random_id") == randomId) {
+                    return existing.optInt("local_id");
+                }
+            }
+            int localId = -((int) System.nanoTime() & 0x7ffffffe) - 1;
+            JSONObject item = new JSONObject();
+            try {
+                item.put("peer_id", peerId);
+                item.put("message", message == null ? "" : message);
+                item.put("attachment", attachment == null ? "" : attachment);
+                item.put("reply_to", replyToMessageId);
+                item.put("sticker_id", stickerId);
+                item.put("random_id", randomId);
+                item.put("local_id", localId);
+                item.put("date", System.currentTimeMillis() / 1000L);
+                outbox.put(item);
+                context.getSharedPreferences("messages_offline_cache", Context.MODE_PRIVATE)
+                        .edit().putString(outboxKey(), outbox.toString()).apply();
+            } catch (Exception e) {
+                Logger.e(TAG, "Could not save an outgoing message to the offline queue", e);
+            }
+            return localId;
+        }
+    }
+
+    private boolean isNetworkAvailable() {
+        try {
+            ConnectivityManager manager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            android.net.NetworkInfo networkInfo = manager == null ? null : manager.getActiveNetworkInfo();
+            return networkInfo != null && networkInfo.isConnected();
+        } catch (SecurityException e) {
+            return true;
+        }
+    }
+
+    private void flushPendingMessages() {
+        if (!isNetworkAvailable() || !flushingOutbox.compareAndSet(false, true)) return;
+        JSONArray pending = readOutbox();
+        if (pending.length() == 0) {
+            flushingOutbox.set(false);
+            return;
+        }
+        sendQueuedMessageAt(pending, 0);
+    }
+
+    private void sendQueuedMessageAt(JSONArray snapshot, int index) {
+        if (index >= snapshot.length()) {
+            flushingOutbox.set(false);
+            return;
+        }
+        JSONObject item = snapshot.optJSONObject(index);
+        if (item == null) {
+            sendQueuedMessageAt(snapshot, index + 1);
+            return;
+        }
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_id", String.valueOf(item.optInt("peer_id")));
+        params.put("message", item.optString("message", ""));
+        params.put("random_id", String.valueOf(item.optLong("random_id")));
+        String attachment = item.optString("attachment", "");
+        if (!attachment.isEmpty()) params.put("attachment", attachment);
+        int stickerId = item.optInt("sticker_id", 0);
+        if (stickerId > 0) params.put("sticker_id", String.valueOf(stickerId));
+        int replyTo = item.optInt("reply_to", 0);
+        if (replyTo > 0) params.put("reply_to", String.valueOf(replyTo));
+
+        api.callMethod("messages.send", params, new OpenVKApi.ApiCallback() {
+            @Override public void onSuccess(JSONObject response) {
+                removePendingMessage(item.optLong("random_id"));
+                sendQueuedMessageAt(snapshot, index + 1);
+            }
+            @Override public void onError(String error) {
+                Logger.w(TAG, "Queued message will be retried later: " + error);
+                flushingOutbox.set(false);
+            }
+        });
+    }
+
+    private void removePendingMessage(long randomId) {
+        synchronized (outboxLock) {
+            JSONArray current = readOutbox();
+            JSONArray remaining = new JSONArray();
+            for (int i = 0; i < current.length(); i++) {
+                JSONObject item = current.optJSONObject(i);
+                if (item != null && item.optLong("random_id") != randomId) remaining.put(item);
+            }
+            context.getSharedPreferences("messages_offline_cache", Context.MODE_PRIVATE)
+                    .edit().putString(outboxKey(), remaining.toString()).apply();
+        }
+    }
+
+    private List<Message> mergePendingMessages(int peerId, List<Message> messages) {
+        List<Message> result = messages == null ? new ArrayList<>() : messages;
+        JSONArray outbox = readOutbox();
+        List<Message> pending = new ArrayList<>();
+        AccountManager.Account account = AccountManager.getInstance(context).getCurrentAccount();
+        int userId = 0;
+        if (account != null) {
+            try { userId = Integer.parseInt(account.userId); } catch (Exception ignored) { }
+        }
+        for (int i = 0; i < outbox.length(); i++) {
+            JSONObject item = outbox.optJSONObject(i);
+            if (item == null || item.optInt("peer_id") != peerId) continue;
+            int localId = item.optInt("local_id");
+            Message message = new Message(localId, userId, userId, item.optString("message", ""),
+                    item.optLong("date"), true, false);
+            message.setPending(true);
+            String name = account != null ? account.fullName : "";
+            message.setUserName(name);
+            int replyTo = item.optInt("reply_to", 0);
+            if (replyTo > 0) message.setReply(new MessageReference(replyTo, "", ""));
+            int stickerId = item.optInt("sticker_id", 0);
+            List<MessageAttachment> attachments = new ArrayList<>();
+            if (stickerId > 0) {
+                String stickerUrl = api.getBaseUrl() + "/images/stickers/" + stickerId + "/128b.png";
+                attachments.add(new MessageAttachment("sticker", stickerUrl, "", ""));
+            }
+            String attachment = item.optString("attachment", "");
+            if (!attachment.isEmpty()) {
+                attachments.add(new MessageAttachment("pending", "",
+                        context.getString(R.string.message_waiting_for_network), ""));
+            }
+            message.setAttachments(attachments);
+            pending.add(message);
+        }
+        pending.sort((left, right) -> Long.compare(right.getDate(), left.getDate()));
+        result.addAll(0, pending);
+        return result;
+    }
+
+    private List<Conversation> mergePendingConversations(List<Conversation> conversations) {
+        JSONArray outbox = readOutbox();
+        if (outbox.length() == 0) return conversations;
+        Map<Integer, JSONObject> newestByPeer = new HashMap<>();
+        for (int i = 0; i < outbox.length(); i++) {
+            JSONObject item = outbox.optJSONObject(i);
+            if (item == null) continue;
+            int peerId = item.optInt("peer_id");
+            JSONObject previous = newestByPeer.get(peerId);
+            if (previous == null || previous.optLong("date") <= item.optLong("date")) newestByPeer.put(peerId, item);
+        }
+        if (conversations == null) return conversations;
+        for (Conversation conversation : conversations) {
+            JSONObject item = newestByPeer.get(conversation.getPeerId());
+            if (item == null) continue;
+            String preview = item.optString("message", "");
+            if (preview.isEmpty()) preview = context.getString(R.string.message_waiting_to_send);
+            conversation.setLastMessage(preview);
+            conversation.setLastMessageDate(item.optLong("date"));
+        }
+        return conversations;
+    }
+
+    public void getPinnedMessage(int peerId, PinnedMessageCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_ids", String.valueOf(peerId));
+        params.put("extended", "1");
+
+        api.callMethod("messages.getConversationsById", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                AsyncTaskHelper.executeAsync(() -> {
+                    JSONObject responseData = response.optJSONObject("response");
+                    JSONArray items = responseData != null ? responseData.optJSONArray("items") : null;
+                    JSONObject item = items != null && items.length() > 0 ? items.optJSONObject(0) : null;
+                    if (item == null) return new PinnedMessageData(0, "");
+
+                    JSONObject conversation = item.optJSONObject("conversation");
+                    if (conversation == null) conversation = item;
+                    JSONObject chatSettings = conversation.optJSONObject("chat_settings");
+                    JSONObject pinned = chatSettings != null ? chatSettings.optJSONObject("pinned_message") : null;
+                    if (pinned == null) pinned = conversation.optJSONObject("pinned_message");
+                    if (pinned == null) pinned = conversation.optJSONObject("current_pinned_message");
+                    if (pinned == null) return new PinnedMessageData(0, "");
+
+                    int messageId = pinned.optInt("id", pinned.optInt("mid",
+                            pinned.optInt("conversation_message_id", pinned.optInt("local_id", 0))));
+                    String preview = createConversationPreviewContent(pinned);
+                    if (preview.isEmpty()) preview = pinned.optString("text", pinned.optString("body", ""));
+                    return new PinnedMessageData(messageId, preview);
+                }, new AsyncTaskHelper.AsyncCallback<PinnedMessageData>() {
+                    @Override
+                    public void onSuccess(PinnedMessageData data) {
+                        callback.onSuccess(data.messageId, data.preview);
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        callback.onError(error);
+                    }
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    public void getConversationUnreadCount(int peerId, UnreadCountCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_ids", String.valueOf(peerId));
+        params.put("extended", "1");
+        api.callMethod("messages.getConversationsById", params, new OpenVKApi.ApiCallback() {
+            @Override public void onSuccess(JSONObject response) {
+                JSONObject data = response.optJSONObject("response");
+                JSONArray items = data != null ? data.optJSONArray("items") : null;
+                JSONObject item = items != null && items.length() > 0 ? items.optJSONObject(0) : null;
+                JSONObject conversation = item != null ? item.optJSONObject("conversation") : null;
+                if (conversation == null) conversation = item;
+                if (conversation == null) {
+                    callback.onError("Диалог не найден");
+                    return;
+                }
+                callback.onSuccess(Math.max(0, conversation.optInt("unread_count", 0)));
+            }
+            @Override public void onError(String error) { callback.onError(error); }
+        });
+    }
+
+    private static class PinnedMessageData {
+        final int messageId;
+        final String preview;
+
+        PinnedMessageData(int messageId, String preview) {
+            this.messageId = messageId;
+            this.preview = preview;
+        }
+    }
+
+    public void getMessageById(int messageId, int peerId, MessagesCallback callback) {
+        Logger.d(TAG, "LongPoll: requesting message id=" + messageId + ", peerId=" + peerId);
+        Map<String, String> params = new HashMap<>();
+        params.put("message_ids", String.valueOf(messageId));
+        params.put("extended", "1");
+        params.put("fields", "photo_50,verified");
+
+        api.callMethod("messages.getById", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                AsyncTaskHelper.executeAsync(() -> parseMessagesResponse(response, peerId),
+                        new AsyncTaskHelper.AsyncCallback<List<Message>>() {
+                            @Override
+                            public void onSuccess(List<Message> messages) {
+                                Logger.d(TAG, "LongPoll: getById returned " + messages.size() + " messages for id=" + messageId);
+                                callback.onSuccess(messages);
+                            }
+
+                            @Override
+                            public void onError(String error) {
+                                Logger.e(TAG, "LongPoll: failed to parse getById for id=" + messageId + ": " + error);
+                                callback.onError(error);
+                            }
+                        });
+            }
+
+            @Override
+            public void onError(String error) {
+                Logger.e(TAG, "LongPoll: getById API error for id=" + messageId + ": " + error);
+                callback.onError(error);
             }
         });
     }
@@ -139,16 +740,34 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                 
                 Logger.d(TAG, "Обрабатываем сообщение " + i + ": " + item.toString());
             
-                int id = item.getInt("id");
+                int id = item.optInt("id", item.optInt("mid", item.optInt("conversation_message_id", 0)));
                 // Используем peerId из параметров, так как не все сообщения содержат peer_id
                 int messagePeerId = item.optInt("peer_id", peerId);
-                int fromId = item.getInt("from_id");
+                int fromId = item.optInt("from_id", item.optInt("user_id", item.optInt("uid", 0)));
                 String text = item.optString("text", "");
-                long date = item.getLong("date");
+                if (text.isEmpty()) text = item.optString("body", "");
+                long date = item.optLong("date", 0);
                 boolean out = item.optInt("out", 0) == 1;
                 boolean readState = item.optInt("read_state", 0) == 1;
 
                 Message message = new Message(id, messagePeerId, fromId, text, date, out, readState);
+                JSONObject action = item.optJSONObject("action");
+                String actionType = action != null
+                        ? action.optString("type", "")
+                        : item.optString("action", "");
+                message.setActionType(actionType);
+                String actionText = action != null
+                        ? action.optString("text", item.optString("action_text", ""))
+                        : item.optString("action_text", "");
+                message.setActionText(actionText);
+                message.setActionMid(action != null
+                        ? action.optInt("member_id", item.optInt("action_mid", 0))
+                        : item.optInt("action_mid", 0));
+                message.setConversationMessageId(item.optInt("conversation_message_id", item.optInt("local_id", 0)));
+                message.setAttachments(parseAttachments(item.optJSONArray("attachments")));
+                message.setReply(parseReference(item.optJSONObject("reply_message"), profiles,
+                        item.optInt("reply_to", 0)));
+                message.setForwardedMessages(parseReferences(item.optJSONArray("fwd_messages"), profiles));
 
                 // Найдем информацию о пользователе
                 if (profiles != null) {
@@ -176,12 +795,230 @@ public class MessagesManager extends BaseManager<MessagesManager> {
         return messages;
     }
 
+    private List<MessageAttachment> parseAttachments(JSONArray attachments) {
+        List<MessageAttachment> parsed = new ArrayList<>();
+        if (attachments == null) return parsed;
+
+        for (int i = 0; i < attachments.length(); i++) {
+            JSONObject attachment = attachments.optJSONObject(i);
+            if (attachment == null) continue;
+
+            String type = attachment.optString("type", "");
+            if (type.isEmpty()) {
+                for (String candidate : new String[]{"photo", "video", "audio", "doc", "wall", "link", "sticker", "gift", "poll"}) {
+                    if (attachment.optJSONObject(candidate) != null) {
+                        type = candidate;
+                        break;
+                    }
+                }
+            }
+            if (type.isEmpty()) type = "attachment";
+            JSONObject data = attachment.optJSONObject(type);
+            if (data == null) data = attachment;
+
+            String imageUrl = "";
+            String title = "";
+            String subtitle = "";
+            String animationUrl = "";
+            org.nikanikoo.flux.data.models.Video parsedVideo = null;
+            Audio parsedAudio = null;
+            if ("photo".equals(type)) {
+                imageUrl = ImageUtils.extractOptimalImageUrl(data);
+            } else if ("video".equals(type)) {
+                parsedVideo = org.nikanikoo.flux.data.managers.VideoManager.parseVideo(data);
+                if (parsedVideo != null) {
+                    imageUrl = parsedVideo.getImage();
+                    title = parsedVideo.getTitle();
+                    subtitle = parsedVideo.getFormattedDuration();
+                }
+            } else if ("audio".equals(type)) {
+                parsedAudio = AttachmentProcessor.parseAudio(data);
+                if (parsedAudio != null) {
+                    title = parsedAudio.getTitle();
+                    subtitle = parsedAudio.getArtist();
+                } else {
+                    title = data.optString("title", "Audio");
+                    subtitle = data.optString("artist", "");
+                }
+            } else if ("doc".equals(type)) {
+                title = data.optString("title", "Document");
+                subtitle = data.optString("ext", "");
+                JSONObject preview = data.optJSONObject("preview");
+                if (preview != null) {
+                    imageUrl = ImageUtils.extractOptimalImageUrl(preview.optJSONObject("photo"));
+                }
+            } else if ("wall".equals(type)) {
+                title = data.optString("author_name", "Post");
+                subtitle = data.optString("text", "");
+                JSONArray postAttachments = data.optJSONArray("attachments");
+                imageUrl = firstPhotoUrl(postAttachments);
+                if (imageUrl.isEmpty()) {
+                    JSONObject layout = data.optJSONObject("layout");
+                    JSONObject firstTile = layout != null && layout.optJSONArray("tiles") != null
+                            ? layout.optJSONArray("tiles").optJSONObject(0) : null;
+                    JSONObject tilePhoto = firstTile == null ? null : firstTile.optJSONObject("photo");
+                    imageUrl = ImageUtils.extractOptimalImageUrl(tilePhoto);
+                }
+            } else if ("gift".equals(type)) {
+                title = data.optString("message", "");
+                JSONObject giftData = data.optJSONObject("gift");
+                if (giftData == null) giftData = data;
+                imageUrl = giftData.optString("thumb_256", "");
+                if (imageUrl.isEmpty()) imageUrl = giftData.optString("thumb_96", "");
+                if (imageUrl.isEmpty()) imageUrl = giftData.optString("thumb_48", "");
+            } else if ("link".equals(type)) {
+                title = data.optString("title", "");
+                if (title.isEmpty()) title = data.optString("caption", "");
+                subtitle = data.optString("description", "");
+                if (subtitle.isEmpty()) subtitle = data.optString("caption", "");
+            } else if ("sticker".equals(type)) {
+                animationUrl = data.optString("animation_url", "");
+                if (animationUrl.isEmpty()) {
+                    JSONArray animations = data.optJSONArray("animations");
+                    JSONObject animation = animations != null && animations.length() > 0
+                            ? animations.optJSONObject(0) : null;
+                    if (animation != null) animationUrl = animation.optString("url", "");
+                }
+                if (animationUrl.isEmpty() && data.optBoolean("is_animated", false)) {
+                    int packId = data.optInt("product_id", data.optInt("pack_id", 0));
+                    int stickerId = data.optInt("id", data.optInt("sticker_id", 0));
+                    if (packId > 0 && stickerId > 0) {
+                        animationUrl = api.getBaseUrl() + "/sticker/" + packId + "/" + stickerId + "_512.json";
+                    }
+                }
+                imageUrl = data.optString("photo_128", "");
+                if (imageUrl.isEmpty()) imageUrl = data.optString("photo_256", "");
+                if (imageUrl.isEmpty()) imageUrl = data.optString("photo_64", "");
+                if (imageUrl.isEmpty()) {
+                    JSONArray images = data.optJSONArray("images");
+                    if (images != null && images.length() > 0) {
+                        JSONObject image = images.optJSONObject(0);
+                        if (image != null) imageUrl = image.optString("url", "");
+                    }
+                }
+                title = data.optString("emoji", "Sticker");
+            } else {
+                title = type;
+            }
+            String url = "doc".equals(type)
+                    ? data.optString("url", data.optString("private_url", ""))
+                    : "link".equals(type) ? data.optString("url", "") : "";
+            int navigationOwnerId = "doc".equals(type) ? data.optInt("owner_id", 0) : 0;
+            int navigationMediaId = "doc".equals(type) ? data.optInt("id", 0) : 0;
+            String navigationAccessKey = "doc".equals(type) ? data.optString("access_key", null) : null;
+            String targetUrl = "";
+            String attachmentId = "";
+            int attachmentOwnerId = data.optInt("owner_id", 0);
+            int attachmentMediaId = data.optInt("id", 0);
+            String attachmentAccessKey = data.optString("access_key", "");
+            if ("wall".equals(type)) {
+                int ownerId = data.optInt("owner_id", data.optInt("to_id", 0));
+                int postId = data.optInt("id", 0);
+                if (ownerId != 0 && postId != 0) targetUrl = "wall" + ownerId + "_" + postId;
+                navigationOwnerId = ownerId;
+                navigationMediaId = postId;
+            }
+            if ("video".equals(type) && parsedVideo != null) {
+                attachmentOwnerId = parsedVideo.getOwnerId();
+                attachmentMediaId = parsedVideo.getId();
+                attachmentAccessKey = parsedVideo.getAccessKey();
+            }
+            if ("wall".equals(type)) {
+                attachmentId = targetUrl;
+            } else if (attachmentOwnerId != 0 && attachmentMediaId != 0
+                    && ("photo".equals(type) || "video".equals(type) || "audio".equals(type) || "doc".equals(type))) {
+                attachmentId = type + attachmentOwnerId + "_" + attachmentMediaId
+                        + (!attachmentAccessKey.isEmpty() ? "_" + attachmentAccessKey : "");
+            }
+            MessageAttachment messageAttachment = new MessageAttachment(type, imageUrl, title, subtitle,
+                    parsedVideo, url, targetUrl, navigationOwnerId, navigationMediaId,
+                    navigationAccessKey, attachmentId);
+            messageAttachment.setAnimationUrl(animationUrl);
+            messageAttachment.setAudio(parsedAudio);
+            if ("doc".equals(type)) messageAttachment.setFileSize(data.optLong("size", 0));
+            parsed.add(messageAttachment);
+        }
+        return parsed;
+    }
+
+    private String firstPhotoUrl(JSONArray attachments) {
+        if (attachments == null) return "";
+        for (int i = 0; i < attachments.length(); i++) {
+            JSONObject item = attachments.optJSONObject(i);
+            if (item != null && "photo".equals(item.optString("type"))) {
+                String url = ImageUtils.extractOptimalImageUrl(item.optJSONObject("photo"));
+                if (!url.isEmpty()) return url;
+            }
+        }
+        return "";
+    }
+
+    private List<MessageReference> parseReferences(JSONArray refs, JSONArray profiles) {
+        List<MessageReference> result = new ArrayList<>();
+        if (refs == null) return result;
+        for (int i = 0; i < refs.length(); i++) {
+            JSONObject ref = refs.optJSONObject(i);
+            if (ref != null) result.add(parseReference(ref, profiles, 0));
+        }
+        return result;
+    }
+
+    private MessageReference parseReference(JSONObject ref, JSONArray profiles, int fallbackId) {
+        if (ref == null) return fallbackId == 0 ? null : new MessageReference(fallbackId, "", "");
+        int id = ref.optInt("id", ref.optInt("mid", ref.optInt("conversation_message_id", fallbackId)));
+        int senderId = ref.optInt("from_id", ref.optInt("user_id", ref.optInt("uid", 0)));
+        String sender = ref.optString("sender_name", ref.optString("author_name", ""));
+        if (sender.isEmpty() && profiles != null) {
+            for (int i = 0; i < profiles.length(); i++) {
+                JSONObject profile = profiles.optJSONObject(i);
+                if (profile != null && profile.optInt("id", 0) == Math.abs(senderId)) {
+                    sender = (profile.optString("first_name", "") + " " + profile.optString("last_name", "")).trim();
+                    break;
+                }
+            }
+        }
+        String text = ref.optString("text", "");
+        if (text.isEmpty()) text = ref.optString("body", "");
+        return new MessageReference(id, sender, text);
+    }
+
     // Отправка сообщения
     public void sendMessage(int peerId, String message, SendMessageCallback callback) {
+        sendMessage(peerId, message, null, callback);
+    }
+
+    public void sendMessage(int peerId, String message, String attachment, SendMessageCallback callback) {
+        sendMessage(peerId, message, attachment, 0, callback);
+    }
+
+    public void sendMessage(int peerId, String message, String attachment, int replyToMessageId,
+                            SendMessageCallback callback) {
+        sendMessage(peerId, message, attachment, replyToMessageId, 0, callback);
+    }
+
+    public void sendMessage(int peerId, String message, String attachment, int replyToMessageId,
+                            int stickerId, SendMessageCallback callback) {
+        long randomId = System.currentTimeMillis();
+        if (!isNetworkAvailable()) {
+            int localMessageId = enqueuePendingMessage(peerId, message, attachment, replyToMessageId,
+                    stickerId, randomId);
+            callback.onSuccess(localMessageId);
+            return;
+        }
+
         Map<String, String> params = new HashMap<>();
         params.put("peer_id", String.valueOf(peerId));
         params.put("message", message);
-        params.put("random_id", String.valueOf(System.currentTimeMillis()));
+        params.put("random_id", String.valueOf(randomId));
+        if (stickerId > 0) {
+            params.put("sticker_id", String.valueOf(stickerId));
+        }
+        if (attachment != null && !attachment.isEmpty()) {
+            params.put("attachment", attachment);
+        }
+        if (replyToMessageId > 0) {
+            params.put("reply_to", String.valueOf(replyToMessageId));
+        }
 
         api.callMethod("messages.send", params, new OpenVKApi.ApiCallback() {
             @Override
@@ -191,15 +1028,101 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                     callback.onSuccess(messageId);
                 } catch (Exception e) {
                     Logger.e(TAG, "Error parsing send message response", e);
-                    callback.onError("Не удалось отправить сообщение");
+                    callback.onError("Не удалось разобрать ответ при отправке: " + response);
                 }
             }
 
             @Override
             public void onError(String error) {
                 Logger.e(TAG, "Error sending message: " + error);
-                callback.onError("Не удалось отправить сообщение");
+                if (!isNetworkAvailable()) {
+                    int localMessageId = enqueuePendingMessage(peerId, message, attachment, replyToMessageId,
+                            stickerId, randomId);
+                    callback.onSuccess(localMessageId);
+                } else {
+                    callback.onError(error);
+                }
             }
+        });
+    }
+
+    public void editMessage(int peerId, int messageId, String text, String attachments,
+                            MessageActionCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_id", String.valueOf(peerId));
+        params.put("message_id", String.valueOf(messageId));
+        params.put("message", text != null ? text : "");
+        params.put("attachment", attachments != null ? attachments : "");
+        params.put("keep_forward_messages", "1");
+        api.callMethod("messages.edit", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                callback.onSuccess();
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    public void deleteMessage(int peerId, int messageId, boolean deleteForAll,
+                              MessageActionCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_id", String.valueOf(peerId));
+        params.put("message_ids", String.valueOf(messageId));
+        params.put("delete_for_all", deleteForAll ? "1" : "0");
+        api.callMethod("messages.delete", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                callback.onSuccess();
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    public void deleteMessages(int peerId, String messageIds, MessageActionCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_id", String.valueOf(peerId));
+        params.put("message_ids", messageIds);
+        params.put("delete_for_all", "0");
+        api.callMethod("messages.delete", params, new OpenVKApi.ApiCallback() {
+            @Override public void onSuccess(JSONObject response) { callback.onSuccess(); }
+            @Override public void onError(String error) { callback.onError(error); }
+        });
+    }
+
+    public void forwardMessage(int peerId, int messageId, MessageActionCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_id", String.valueOf(peerId));
+        params.put("forward_messages", String.valueOf(messageId));
+        params.put("random_id", String.valueOf(System.currentTimeMillis()));
+        api.callMethod("messages.send", params, new OpenVKApi.ApiCallback() {
+            @Override
+            public void onSuccess(JSONObject response) {
+                callback.onSuccess();
+            }
+
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
+    }
+
+    public void forwardMessages(int peerId, String messageIds, MessageActionCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_id", String.valueOf(peerId));
+        params.put("forward_messages", messageIds);
+        params.put("random_id", String.valueOf(System.currentTimeMillis()));
+        api.callMethod("messages.send", params, new OpenVKApi.ApiCallback() {
+            @Override public void onSuccess(JSONObject response) { callback.onSuccess(); }
+            @Override public void onError(String error) { callback.onError(error); }
         });
     }
 
@@ -207,10 +1130,64 @@ public class MessagesManager extends BaseManager<MessagesManager> {
     public void sendTypingActivity(int peerId, OpenVKApi.ApiCallback callback) {
         Map<String, String> params = new HashMap<>();
         params.put("peer_id", String.valueOf(peerId));
-        params.put("user_id", String.valueOf(peerId));
         params.put("type", "typing");
 
         api.callMethod("messages.setActivity", params, callback);
+    }
+
+    public void getConversationMembers(int peerId, OpenVKApi.ApiCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_id", String.valueOf(peerId));
+        params.put("extended", "1");
+        api.callMethod("messages.getConversationMembers", params, callback);
+    }
+
+    public void addChatUser(int peerId, int userId, OpenVKApi.ApiCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_id", String.valueOf(peerId));
+        params.put("user_id", String.valueOf(userId));
+        api.callMethod("messages.addChatUser", params, callback);
+    }
+
+    public void addChatUsers(int peerId, String userIds, OpenVKApi.ApiCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_id", String.valueOf(peerId));
+        params.put("user_id", userIds);
+        api.callMethod("messages.addChatUser", params, callback);
+    }
+
+    public void createChat(String userIds, OpenVKApi.ApiCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("user_ids", userIds);
+        api.callMethod("messages.createChat", params, callback);
+    }
+
+    public void deleteConversation(int peerId, OpenVKApi.ApiCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_id", String.valueOf(peerId));
+        api.callMethod("messages.deleteConversation", params, callback);
+    }
+
+    public void removeChatUser(int peerId, int userId, OpenVKApi.ApiCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("peer_id", String.valueOf(peerId));
+        params.put("user_id", String.valueOf(userId));
+        api.callMethod("messages.removeChatUser", params, callback);
+    }
+
+    public void editChat(int chatId, String title, OpenVKApi.ApiCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("chat_id", String.valueOf(chatId));
+        params.put("title", title);
+        api.callMethod("messages.editChat", params, callback);
+    }
+
+    public void setChatPhoto(int chatId, String file, String hash, OpenVKApi.ApiCallback callback) {
+        Map<String, String> params = new HashMap<>();
+        params.put("chat_id", String.valueOf(chatId));
+        params.put("file", file);
+        params.put("hash", hash);
+        api.callMethod("messages.setChatPhoto", params, callback);
     }
 
     /**
@@ -237,7 +1214,6 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                 JSONObject peer = conversationObj.getJSONObject("peer");
                 int peerId = peer.getInt("id");
                 String peerTypeStr = peer.getString("type");
-                int localId = peer.getInt("local_id");
                 
                 // Преобразуем строковый тип в числовой
                 int peerType = 0; // по умолчанию пользователь
@@ -298,13 +1274,14 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                         }
                     }
                 } else if (peerType == 2) { // Групповой чат
-                    // Для групповых чатов title может быть в самом объекте conversation
-                    title = conversationObj.optString("chat_settings", "Групповой чат");
-                    if (conversationObj.has("chat_settings")) {
-                        JSONObject chatSettings = conversationObj.optJSONObject("chat_settings");
-                        if (chatSettings != null) {
-                            title = chatSettings.optString("title", "Групповой чат");
-                            photo = chatSettings.optString("photo", "");
+                    JSONObject chatSettings = conversationObj.optJSONObject("chat_settings");
+                    if (chatSettings != null) {
+                        title = chatSettings.optString("title", "Групповой чат");
+                        JSONObject chatPhoto = chatSettings.optJSONObject("photo");
+                        if (chatPhoto != null) {
+                            photo = chatPhoto.optString("photo_50", chatPhoto.optString("photo_200", ""));
+                        } else {
+                            photo = chatSettings.optString("photo_50", "");
                         }
                     }
                 }
@@ -312,7 +1289,7 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                 String lastMessageText = "";
                 long lastMessageDate = 0;
                 if (lastMessage != null) {
-                    lastMessageText = lastMessage.optString("text", "");
+                    lastMessageText = createConversationPreview(lastMessage, peerType == 2, profiles);
                     lastMessageDate = lastMessage.optLong("date", 0);
                 }
 
@@ -328,6 +1305,10 @@ public class MessagesManager extends BaseManager<MessagesManager> {
                 conversation.setPeerPhoto(photo);
                 conversation.setOnline(isOnline);
                 conversation.setPeerVerified(isVerified);
+                conversation.setGroupChat(peerType == 2);
+                JSONObject chatSettings = conversationObj.optJSONObject("chat_settings");
+                String chatState = chatSettings != null ? chatSettings.optString("state", "") : "";
+                conversation.setLeft("left".equals(chatState));
 
                 conversations.add(conversation);
                 Logger.d(TAG, "Добавлен диалог: " + title);
@@ -341,20 +1322,161 @@ public class MessagesManager extends BaseManager<MessagesManager> {
         return conversations;
     }
 
+	/**
+	* Создаёт превью для раздела сообщений
+	* Если это обычный текст - пишется его содержимое, если вложение, то пишется что за вложение
+	* message сообщение, для которого создаётся превью
+	*/
+    private String createConversationPreview(JSONObject message, boolean groupChat, JSONArray profiles) {
+        String preview = createConversationPreviewContent(message);
+        String senderName = groupChat
+                ? message.optString("sender_name", message.optString("author_name", "")) : "";
+        if (groupChat && senderName.isEmpty()) {
+            senderName = findProfileName(profiles,
+                    message.optInt("from_id", message.optInt("user_id", message.optInt("uid", 0))));
+        }
+        return addConversationSenderPrefix(preview, message.optInt("out", 0) == 1, groupChat, senderName);
+    }
+
+    private String createConversationPreviewContent(JSONObject message) {
+        JSONObject action = message.optJSONObject("action");
+        String actionType = action != null
+                ? action.optString("type", "")
+                : message.optString("action_type", message.optString("action", ""));
+        if ("coins_transfer".equals(actionType) && message.optInt("out", 0) == 1) {
+            int amount = action != null
+                    ? action.optInt("member_id", message.optInt("action_mid", 0))
+                    : message.optInt("action_mid", 0);
+            if (amount > 0) return createOutgoingCoinsTransferPreview(amount);
+        }
+
+        String text = message.optString("text", "").trim();
+        if (text.isEmpty()) text = message.optString("body", "").trim();
+        JSONArray attachments = message.optJSONArray("attachments");
+        List<String> attachmentTypes = new ArrayList<>();
+        if (attachments != null) {
+            for (int i = 0; i < attachments.length(); i++) {
+                JSONObject attachment = attachments.optJSONObject(i);
+                if (attachment == null) continue;
+
+                String type = attachment.optString("type", "");
+                if (type.isEmpty()) {
+                    for (String candidate : new String[]{"photo", "video", "audio", "doc", "wall", "sticker", "gift", "poll"}) {
+                        if (attachment.optJSONObject(candidate) != null) {
+                            type = candidate;
+                            break;
+                        }
+                    }
+                }
+                attachmentTypes.add(type);
+            }
+        }
+        return formatConversationPreview(text, attachmentTypes);
+    }
+
+    public String createConversationPreview(Message message) {
+        if (message == null) return "";
+        String preview;
+        if ("coins_transfer".equals(message.getActionType()) && message.isOut() && message.getActionMid() > 0) {
+            preview = createOutgoingCoinsTransferPreview(message.getActionMid());
+        } else {
+            List<String> attachmentTypes = new ArrayList<>();
+            for (MessageAttachment attachment : message.getAttachments()) {
+                if (attachment != null) attachmentTypes.add(attachment.getType());
+            }
+            preview = formatConversationPreview(message.getText(), attachmentTypes);
+        }
+        boolean groupChat = message.getUserId() > 2000000000;
+        return addConversationSenderPrefix(preview, message.isOut(), groupChat, message.getUserName());
+    }
+
+    private String addConversationSenderPrefix(String preview, boolean outgoing, boolean groupChat, String senderName) {
+        if (preview == null || preview.trim().isEmpty()) return preview == null ? "" : preview;
+        if (groupChat) {
+            if (senderName == null || senderName.trim().isEmpty()) return preview;
+            return context.getString(R.string.conversation_preview_sender, senderName.trim(), preview);
+        }
+        // System previews such as coin transfers already include their own "Вы" wording.
+        if (outgoing && !preview.startsWith("Вы ")) {
+            return context.getString(R.string.conversation_preview_sender, context.getString(R.string.conversation_preview_you), preview);
+        }
+        return preview;
+    }
+
+    private String findProfileName(JSONArray profiles, int userId) {
+        if (profiles == null || userId == 0) return "";
+        for (int i = 0; i < profiles.length(); i++) {
+            JSONObject profile = profiles.optJSONObject(i);
+            if (profile != null && profile.optInt("id", 0) == Math.abs(userId)) {
+                return (profile.optString("first_name", "") + " " + profile.optString("last_name", "")).trim();
+            }
+        }
+        return "";
+    }
+
+    private String createOutgoingCoinsTransferPreview(int amount) {
+        String voteWord = context.getResources().getQuantityString(R.plurals.vote_count, amount);
+        return context.getString(R.string.coins_transfer_outgoing, amount, voteWord);
+    }
+
+    private String formatConversationPreview(String text, List<String> attachmentTypes) {
+        text = text == null ? "" : text.trim();
+        if (attachmentTypes == null || attachmentTypes.isEmpty()) return text;
+
+        Map<Integer, Integer> attachmentCounts = new LinkedHashMap<>();
+        for (String type : attachmentTypes) {
+            int labelRes;
+            switch (type == null ? "" : type) {
+                case "photo": labelRes = R.string.conversation_preview_photo; break;
+                case "video": labelRes = R.string.conversation_preview_video; break;
+                case "audio": labelRes = R.string.conversation_preview_audio; break;
+                case "doc": labelRes = R.string.conversation_preview_document; break;
+                case "wall": labelRes = R.string.conversation_preview_post; break;
+                case "sticker": labelRes = R.string.conversation_preview_sticker; break;
+                case "gift": labelRes = R.string.conversation_preview_gift; break;
+                case "poll": labelRes = R.string.conversation_preview_poll; break;
+                default: labelRes = R.string.conversation_preview_attachment; break;
+            }
+            Integer count = attachmentCounts.get(labelRes);
+            attachmentCounts.put(labelRes, count == null ? 1 : count + 1);
+        }
+
+        if (attachmentCounts.isEmpty()) return text;
+
+        List<String> labels = new ArrayList<>();
+        for (Map.Entry<Integer, Integer> entry : attachmentCounts.entrySet()) {
+            String label = context.getString(entry.getKey());
+            int count = entry.getValue();
+            labels.add(count > 1
+                    ? context.getString(R.string.conversation_preview_attachment_count, label, count)
+                    : label);
+        }
+        String attachmentPreview = android.text.TextUtils.join(", ", labels);
+        return text.isEmpty()
+                ? attachmentPreview
+                : context.getString(R.string.conversation_preview_with_text, attachmentPreview, text);
+    }
+
     // Пометить сообщения как прочитанные
-    public void markAsRead(int peerId) {
+    public void markAsRead(int peerId, int startMessageId, OpenVKApi.ApiCallback callback) {
         Map<String, String> params = new HashMap<>();
         params.put("peer_id", String.valueOf(peerId));
+        if (startMessageId > 0) {
+            params.put("start_message_id", String.valueOf(startMessageId));
+        }
 
         api.callMethod("messages.markAsRead", params, new OpenVKApi.ApiCallback() {
             @Override
             public void onSuccess(JSONObject response) {
-                // Успешно помечено как прочитанное
+                Logger.d(TAG, "Marked messages as read for peer " + peerId
+                        + " through message " + startMessageId);
+                if (callback != null) callback.onSuccess(response);
             }
 
             @Override
             public void onError(String error) {
-                // Ошибка пометки как прочитанное
+                Logger.e(TAG, "Could not mark messages as read for peer " + peerId + ": " + error);
+                if (callback != null) callback.onError(error);
             }
         });
     }

@@ -14,6 +14,7 @@ import com.squareup.picasso.Picasso;
 import com.squareup.picasso.Target;
 
 import org.nikanikoo.flux.R;
+import org.nikanikoo.flux.data.managers.MessagesManager;
 import org.nikanikoo.flux.data.managers.api.OpenVKApi;
 import org.nikanikoo.flux.ui.activities.MainActivity;
 import org.nikanikoo.flux.ui.custom.CircularImageTransformation;
@@ -139,6 +140,27 @@ public class MessageNotificationManager {
     }
     
     public void showMessageNotification(int messageId, int fromId, int peerId, String messageText, long timestamp) {
+        MessagesManager.getInstance(context).getPushSettings(peerId, new MessagesManager.PushSettingsCallback() {
+            @Override
+            public void onSuccess(MessagesManager.PushSettings settings) {
+                if (settings.areNotificationsEnabled()) {
+                    showMessageNotificationIfEnabled(messageId, fromId, peerId, messageText, timestamp);
+                } else {
+                    Log.d(TAG, "Muted chat; suppressing message notification for peerId=" + peerId);
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                // Fail closed so an unavailable settings endpoint cannot leak a muted chat notification.
+                Log.w(TAG, "Could not check notification settings for peerId=" + peerId
+                        + "; suppressing notification: " + error);
+            }
+        });
+    }
+
+    private void showMessageNotificationIfEnabled(int messageId, int fromId, int peerId,
+                                                   String messageText, long timestamp) {
         Log.d(TAG, "showMessageNotification called - messageId: " + messageId + ", fromId: " + fromId + 
               ", peerId: " + peerId + ", timestamp: " + timestamp + ", text: " + messageText);
         

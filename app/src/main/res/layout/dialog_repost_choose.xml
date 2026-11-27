@@ -72,8 +72,9 @@
                 android:orientation="horizontal"
                 android:padding="16dp"
                 android:gravity="center_vertical"
-                android:alpha="0.5"
-                android:clickable="false">
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true">
 
                 <ImageView
                     android:layout_width="24dp"
@@ -104,8 +105,9 @@
                 android:orientation="horizontal"
                 android:padding="16dp"
                 android:gravity="center_vertical"
-                android:alpha="0.5"
-                android:clickable="false">
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true">
 
                 <ImageView
                     android:layout_width="24dp"

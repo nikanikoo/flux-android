@@ -4,6 +4,11 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.graphics.Color;
+import android.net.Uri;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -55,7 +60,11 @@ public class PhotoViewerPageFragment extends Fragment {
             
             if (imageUrl != null && !imageUrl.isEmpty()) {
                 Logger.d(TAG, "Loading image: " + imageUrl);
-                loadImage();
+                if (isGifUrl(imageUrl)) {
+                    loadGif(view);
+                } else {
+                    loadImage();
+                }
             }
         } catch (Exception e) {
             Logger.d(TAG, "Error initializing PhotoView: " + e.getMessage());
@@ -124,5 +133,37 @@ public class PhotoViewerPageFragment extends Fragment {
                 .placeholder(R.drawable.ic_image_placeholder)
                 .error(R.drawable.ic_image_error)
                 .into(photoView);
+    }
+
+    private boolean isGifUrl(String url) {
+        return url != null && url.matches("(?i).*\\.gif(?:[?#].*)?$");
+    }
+
+    private void loadGif(View root) {
+        photoView.setVisibility(View.GONE);
+        WebView gifView = root.findViewById(R.id.gifView);
+        gifView.setVisibility(View.VISIBLE);
+        gifView.setBackgroundColor(Color.BLACK);
+        WebSettings settings = gifView.getSettings();
+        settings.setJavaScriptEnabled(false);
+        settings.setDomStorageEnabled(false);
+        settings.setAllowFileAccess(false);
+        settings.setAllowContentAccess(false);
+        settings.setSupportZoom(true);
+        settings.setBuiltInZoomControls(true);
+        settings.setDisplayZoomControls(false);
+        settings.setUseWideViewPort(true);
+        settings.setLoadWithOverviewMode(true);
+        gifView.setWebViewClient(new WebViewClient());
+
+        String escapedUrl = imageUrl.replace("&", "&amp;").replace("\"", "&quot;")
+                .replace("<", "&lt;").replace(">", "&gt;");
+        String html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1,maximum-scale=5'>"
+                + "<style>html,body{margin:0;width:100%;height:100%;background:#000;overflow:hidden}"
+                + "body{display:flex;align-items:center;justify-content:center}img{max-width:100%;max-height:100%;object-fit:contain}</style>"
+                + "</head><body><img src=\"" + escapedUrl + "\"></body></html>";
+        Uri uri = Uri.parse(imageUrl);
+        String baseUrl = uri.getScheme() + "://" + uri.getAuthority() + "/";
+        gifView.loadDataWithBaseURL(baseUrl, html, "text/html", "UTF-8", null);
     }
 }

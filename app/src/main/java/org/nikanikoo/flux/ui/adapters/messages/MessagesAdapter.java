@@ -2,21 +2,53 @@ package org.nikanikoo.flux.ui.adapters.messages;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
+import android.graphics.drawable.GradientDrawable;
 import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.text.util.Linkify;
+import android.text.Layout;
+import android.text.Selection;
+import android.text.Spannable;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
+import android.text.style.ClickableSpan;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.ImageSpan;
+import android.text.style.RelativeSizeSpan;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewConfiguration;
 import android.widget.ImageView;
+import android.widget.FrameLayout;
 import android.widget.TextView;
+import android.widget.LinearLayout;
+import android.webkit.WebView;
+import android.webkit.WebSettings;
+import android.webkit.WebViewClient;
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
+import androidx.core.graphics.drawable.DrawableCompat;
 import androidx.recyclerview.widget.RecyclerView;
 import com.squareup.picasso.Picasso;
+import com.airbnb.lottie.LottieAnimationView;
+import com.airbnb.lottie.LottieDrawable;
+import com.google.android.material.imageview.ShapeableImageView;
+import com.google.android.material.shape.ShapeAppearanceModel;
 
 import org.nikanikoo.flux.FluxApplication;
 import org.nikanikoo.flux.data.models.Message;
+import org.nikanikoo.flux.data.models.MessageAttachment;
+import org.nikanikoo.flux.data.models.MessageReference;
+import org.nikanikoo.flux.data.models.Audio;
+import org.nikanikoo.flux.data.managers.api.OpenVKApi;
 import org.nikanikoo.flux.R;
+import org.nikanikoo.flux.ui.views.AudioAttachmentView;
+import org.nikanikoo.flux.ui.views.VideoAttachmentView;
 import org.nikanikoo.flux.utils.MentionUtils;
 import org.nikanikoo.flux.utils.SafeLinkMovementMethod;
 import org.nikanikoo.flux.utils.ValidationUtils;
@@ -24,22 +56,40 @@ import org.nikanikoo.flux.utils.ValidationUtils;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
     private static final int TYPE_INCOMING = 0;
     private static final int TYPE_OUTGOING = 1;
     private static final int TYPE_DATE_HEADER = 2;
+    private static final int TYPE_CHAT_EVENT = 3;
+    private static final long MESSAGE_GROUPING_INTERVAL_SECONDS = 5 * 60;
 
     private List<Object> items;
     private Context context;
     private OnMessageClickListener listener;
+    private TextView selectedMessageText;
+    private boolean groupChat;
+    private final List<Audio> chatAudioPlaylist = new ArrayList<>();
+    private final Set<Integer> messageIds = new HashSet<>();
+    private final Map<Integer, Message> selectedMessages = new LinkedHashMap<>();
 
     public interface OnMessageClickListener {
         void onAvatarClick(int userId, String userName);
+        void onReplyClick(int messageId);
+        void onMessageOptions(View anchor, Message message);
+        void onReplySwipe(Message message);
+        void onWallPostClick(MessageAttachment attachment);
+        void onFailedMessageClick(Message message);
+        void onSelectedMessagesChanged(List<Message> messages);
     }
 
     public MessagesAdapter(Context context, List<Message> messages) {
@@ -54,11 +104,21 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         this.listener = listener;
     }
 
+    public void setGroupChat(boolean groupChat) {
+        this.groupChat = groupChat;
+    }
+
+    public void clearSelectedMessageText() {
+        clearTrackedSelection();
+    }
+
     @Override
     public int getItemViewType(int position) {
         Object item = items.get(position);
         if (item instanceof Message) {
-            return ((Message) item).isOut() ? TYPE_OUTGOING : TYPE_INCOMING;
+            Message message = (Message) item;
+            if (message.isChatSystemEvent()) return TYPE_CHAT_EVENT;
+            return message.isOut() ? TYPE_OUTGOING : TYPE_INCOMING;
         } else if (item instanceof DateHeader) {
             return TYPE_DATE_HEADER;
         }
@@ -74,6 +134,9 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         } else if (viewType == TYPE_INCOMING) {
             View view = LayoutInflater.from(context).inflate(R.layout.item_message_incoming, parent, false);
             return new IncomingMessageViewHolder(view);
+        } else if (viewType == TYPE_CHAT_EVENT) {
+            View view = LayoutInflater.from(context).inflate(R.layout.item_chat_event, parent, false);
+            return new ChatEventViewHolder(view);
         } else {
             View view = LayoutInflater.from(context).inflate(R.layout.item_date_header, parent, false);
             return new DateHeaderViewHolder(view);
@@ -85,68 +148,101 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         Object item = items.get(position);
 
         if (holder instanceof OutgoingMessageViewHolder) {
-            bindOutgoingMessage((OutgoingMessageViewHolder) holder, (Message) item);
+            bindOutgoingMessage((OutgoingMessageViewHolder) holder, (Message) item,
+                    isContinuation(position, (Message) item), position);
         } else if (holder instanceof IncomingMessageViewHolder) {
-            bindIncomingMessage((IncomingMessageViewHolder) holder, (Message) item);
+            bindIncomingMessage((IncomingMessageViewHolder) holder, (Message) item,
+                    isContinuation(position, (Message) item), position);
+        } else if (holder instanceof ChatEventViewHolder) {
+            bindChatEvent((ChatEventViewHolder) holder, (Message) item);
         } else if (holder instanceof DateHeaderViewHolder) {
             bindDateHeader((DateHeaderViewHolder) holder, (DateHeader) item);
         }
     }
 
-    private void bindOutgoingMessage(OutgoingMessageViewHolder holder, Message message) {
+    private void bindOutgoingMessage(OutgoingMessageViewHolder holder, Message message, boolean continuation,
+                                     int position) {
+        applyMessageSpacing(holder.itemView, continuation);
+        applyMediaBubbleStyle(holder.bubble, message, R.drawable.message_bubble_outgoing,
+                continuation, continuesWithNext(position, message));
         String sanitizedText = ValidationUtils.SanitizeText(message.getText());
-        holder.messageText.setText(MentionUtils.formatMentions(sanitizedText, (id, name, isGroup) -> {
+        CharSequence formattedText = MentionUtils.formatMentions(sanitizedText, (id, name, isGroup) -> {
             if (listener != null) {
                 listener.onAvatarClick(isGroup ? -id : id, name);
             }
-        },true));
+        },true);
+        boolean hasText = sanitizedText != null && !sanitizedText.trim().isEmpty();
+        holder.messageText.setVisibility(hasText ? View.VISIBLE : View.GONE);
+        holder.messageText.setText(formattedText);
+        holder.timeText.setText(formatMessageTime(message));
+        holder.metadataFallback.setVisibility(View.VISIBLE);
+        boolean showStatus = message.isReadState() || message.isPending() || message.isSendFailed();
+        holder.readStatus.setVisibility(showStatus ? View.VISIBLE : View.GONE);
+        if (message.isSendFailed()) {
+            holder.readStatus.setImageResource(android.R.drawable.stat_notify_error);
+            android.util.TypedValue errorColor = new android.util.TypedValue();
+            context.getTheme().resolveAttribute(android.R.attr.colorError, errorColor, true);
+            holder.readStatus.setColorFilter(errorColor.data);
+            holder.readStatus.setOnClickListener(v -> {
+                if (listener != null) listener.onFailedMessageClick(message);
+            });
+        } else {
+            holder.readStatus.setColorFilter(null);
+            holder.readStatus.setOnClickListener(null);
+            if (message.isPending()) holder.readStatus.setImageResource(android.R.drawable.ic_popup_sync);
+            else holder.readStatus.setImageResource(android.R.drawable.ic_menu_view);
+        }
         Linkify.addLinks(holder.messageText, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES);
         holder.messageText.setMovementMethod(SafeLinkMovementMethod.getInstance());
         
         // Устанавливаем цвет ссылок таким же, как у обычного текста
         holder.messageText.setLinkTextColor(holder.messageText.getCurrentTextColor());
+        bindSenderName(holder.senderName, message, continuation);
+        adjustSenderSpacingForWallPost(holder.senderName, message, hasText);
+        bindMessageOptions(holder.itemView, holder.bubble, holder.messageText, message);
+        bindReferences(holder.replyPreview, message);
+        bindAttachments(holder.attachments, message.getAttachments(), holder.messageText.getCurrentTextColor());
         
-        // Форматирование времени
-        Date date = new Date(message.getDate() * 1000);
-        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
-        holder.timeText.setText(sdf.format(date));
-        
-        // Показать статус прочтения
-        if (message.isReadState()) {
-            holder.readStatus.setVisibility(View.VISIBLE);
-        } else {
-            holder.readStatus.setVisibility(View.GONE);
-        }
     }
 
-    private void bindIncomingMessage(IncomingMessageViewHolder holder, Message message) {
+    private void bindIncomingMessage(IncomingMessageViewHolder holder, Message message, boolean continuation,
+                                     int position) {
+        applyMessageSpacing(holder.itemView, continuation);
+        applyMediaBubbleStyle(holder.bubble, message, R.drawable.message_bubble_incoming,
+                continuation, continuesWithNext(position, message));
         String sanitizedText = ValidationUtils.SanitizeText(message.getText());
-        holder.messageText.setText(MentionUtils.formatMentions(sanitizedText, (id, name, isGroup) -> {
+        CharSequence formattedText = MentionUtils.formatMentions(sanitizedText, (id, name, isGroup) -> {
             if (listener != null) {
                 listener.onAvatarClick(isGroup ? -id : id, name);
             }
-        }, true));
+        }, true);
+        boolean hasText = sanitizedText != null && !sanitizedText.trim().isEmpty();
+        holder.messageText.setVisibility(hasText ? View.VISIBLE : View.GONE);
+        holder.messageText.setText(formattedText);
+        holder.timeText.setText(formatMessageTime(message));
+        holder.timeText.setVisibility(View.VISIBLE);
         Linkify.addLinks(holder.messageText, Linkify.WEB_URLS | Linkify.EMAIL_ADDRESSES);
         holder.messageText.setMovementMethod(SafeLinkMovementMethod.getInstance());
         
         // Устанавливаем цвет ссылок таким же, как у обычного текста
         holder.messageText.setLinkTextColor(holder.messageText.getCurrentTextColor());
-        
-        // Форматирование времени
-        Date date = new Date(message.getDate() * 1000);
-        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
-        holder.timeText.setText(sdf.format(date));
+        bindSenderName(holder.senderName, message, continuation);
+        adjustSenderSpacingForWallPost(holder.senderName, message, hasText);
+        bindMessageOptions(holder.itemView, holder.bubble, holder.messageText, message);
+        bindReferences(holder.replyPreview, message);
+        bindAttachments(holder.attachments, message.getAttachments(), holder.messageText.getCurrentTextColor());
         
         // Загрузить аватар отправителя
-        if (message.getUserPhoto() != null && !message.getUserPhoto().isEmpty()) {
+        if (!continuation && message.getUserPhoto() != null && !message.getUserPhoto().isEmpty()) {
             Picasso.get()
                     .load(message.getUserPhoto())
                     .placeholder(R.drawable.camera_200)
                     .error(R.drawable.camera_200)
                     .into(holder.avatarImage);
-        } else {
+        } else if (!continuation) {
             holder.avatarImage.setImageResource(R.drawable.camera_200);
         }
+        holder.avatarImage.setVisibility(continuation ? View.INVISIBLE : View.VISIBLE);
         
         // Обработчик клика на аватарку
         holder.avatarImage.setOnClickListener(v -> {
@@ -156,8 +252,836 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         });
     }
 
+    private void adjustSenderSpacingForWallPost(TextView senderName, Message message, boolean hasText) {
+        boolean hasWallPost = message.getAttachments() != null
+                && message.getAttachments().stream().anyMatch(a -> "wall".equals(a.getType()));
+        ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) senderName.getLayoutParams();
+        params.bottomMargin = !hasText && hasWallPost ? 0 : dp(4);
+        senderName.setLayoutParams(params);
+    }
+
+    private String formatMessageTime(Message message) {
+        return new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(message.getDate() * 1000));
+    }
+
+    private void bindSenderName(TextView senderNameView, Message message, boolean continuation) {
+        if (continuation) {
+            senderNameView.setCompoundDrawables(null, null, null, null);
+            senderNameView.setVisibility(View.GONE);
+            return;
+        }
+        if (!groupChat) {
+            senderNameView.setCompoundDrawables(null, null, null, null);
+            senderNameView.setVisibility(View.GONE);
+            return;
+        }
+
+        String senderName = message.getUserName();
+        if (senderName == null || senderName.trim().isEmpty()) {
+            senderName = context.getString(message.isOut() ? R.string.you : R.string.chat_unknown_user);
+        }
+        senderNameView.setText(senderName);
+        if (message.isUserVerified()) {
+            android.graphics.drawable.Drawable badge = ContextCompat.getDrawable(context, R.drawable.ic_verified);
+            if (badge != null) {
+                badge = DrawableCompat.wrap(badge.mutate());
+                DrawableCompat.setTint(badge, senderNameView.getCurrentTextColor());
+                badge.setBounds(0, 0, dp(16), dp(16));
+            }
+            senderNameView.setCompoundDrawablePadding(dp(4));
+            senderNameView.setCompoundDrawables(null, null, badge, null);
+        } else {
+            senderNameView.setCompoundDrawables(null, null, null, null);
+        }
+        senderNameView.setVisibility(View.VISIBLE);
+    }
+
+    private boolean isContinuation(int position, Message message) {
+        if (position <= 0) return false;
+        Object previousItem = items.get(position - 1);
+        if (!(previousItem instanceof Message)) return false;
+        Message previous = (Message) previousItem;
+        long gap = message.getDate() - previous.getDate();
+        return !previous.isChatSystemEvent()
+                && previous.isOut() == message.isOut()
+                && previous.getFromId() == message.getFromId()
+                && gap >= 0 && gap <= MESSAGE_GROUPING_INTERVAL_SECONDS;
+    }
+
+    private boolean continuesWithNext(int position, Message message) {
+        if (message.isChatSystemEvent() || position + 1 >= items.size()) return false;
+        Object nextItem = items.get(position + 1);
+        if (!(nextItem instanceof Message)) return false;
+        Message next = (Message) nextItem;
+        long gap = next.getDate() - message.getDate();
+        return !next.isChatSystemEvent()
+                && next.isOut() == message.isOut()
+                && next.getFromId() == message.getFromId()
+                && gap >= 0 && gap <= MESSAGE_GROUPING_INTERVAL_SECONDS;
+    }
+
+    private void applyMessageSpacing(View itemView, boolean continuation) {
+        int side = dp(12);
+        int vertical = dp(continuation ? 1 : 4);
+        itemView.setPadding(side, vertical, side, vertical);
+    }
+
+    private void applyMediaBubbleStyle(LinearLayout bubble, Message message, int normalBackground,
+                                      boolean continuation, boolean continuesWithNext) {
+        boolean mediaOnly = message.getText() == null || message.getText().trim().isEmpty();
+        mediaOnly &= message.getReply() == null && message.getForwardedMessages().isEmpty();
+        List<MessageAttachment> attachments = message.getAttachments();
+        mediaOnly &= attachments != null && !attachments.isEmpty();
+        if (mediaOnly) {
+            for (MessageAttachment attachment : attachments) {
+                String type = attachment.getType();
+                if (!"sticker".equals(type) && !"photo".equals(type) && !"video".equals(type)
+                        && !attachment.isGifDocument()) {
+                    mediaOnly = false;
+                    break;
+                }
+            }
+        }
+
+        if (mediaOnly) {
+            bubble.setBackground(null);
+            bubble.setPadding(0, 0, 0, 0);
+            bubble.setMinimumWidth(0);
+            bubble.setElevation(0f);
+        } else {
+            android.graphics.drawable.Drawable drawable = ContextCompat.getDrawable(context, normalBackground);
+            if (drawable instanceof GradientDrawable) {
+                GradientDrawable groupedBackground = (GradientDrawable) drawable.mutate();
+                float regular = dp(20);
+                float joined = dp(6);
+                float tail = dp(4);
+                float topLeft = regular;
+                float topRight = regular;
+                float bottomRight = regular;
+                float bottomLeft = regular;
+                if (message.isOut()) {
+                    if (continuation) topRight = joined;
+                    if (continuesWithNext) bottomRight = joined;
+                    else bottomRight = tail;
+                } else {
+                    if (continuation) topLeft = joined;
+                    if (continuesWithNext) bottomLeft = joined;
+                    else bottomLeft = tail;
+                }
+                groupedBackground.setCornerRadii(new float[] {
+                        topLeft, topLeft, topRight, topRight,
+                        bottomRight, bottomRight, bottomLeft, bottomLeft
+                });
+                bubble.setBackground(groupedBackground);
+            } else {
+                bubble.setBackgroundResource(normalBackground);
+            }
+            int padding = dp(16);
+            bubble.setPadding(padding, padding, padding, padding);
+            bubble.setMinimumWidth(dp(200));
+            bubble.setElevation(dp(2));
+        }
+    }
+
+    private void bindMessageOptions(View row, View bubble, TextView messageText, Message message) {
+        bubble.setTag(message);
+        applySelectionStyle(row, selectedMessages.containsKey(message.getId()));
+        View.OnClickListener openOptions = v -> {
+            if (message.isPending()) return;
+            if (!selectedMessages.isEmpty()) {
+                toggleMessageSelection(message);
+                return;
+            }
+            clearTrackedSelection();
+            clearTextSelection(messageText);
+            if (listener != null) {
+                listener.onMessageOptions(bubble, message);
+            }
+        };
+        bubble.setOnClickListener(openOptions);
+        messageText.setOnClickListener(openOptions);
+        View.OnLongClickListener selectMessage = v -> {
+            if (message.isPending() || message.isSendFailed()) return true;
+            toggleMessageSelection(message);
+            return true;
+        };
+        bubble.setOnLongClickListener(selectMessage);
+        messageText.setOnLongClickListener(selectMessage);
+        messageText.setOnTouchListener(new View.OnTouchListener() {
+            private float downX;
+            private float downY;
+            private long downTime;
+
+            @Override
+            public boolean onTouch(View view, MotionEvent event) {
+                // Track selection as it changes, rather than waiting until ACTION_UP.
+                // RecyclerView's touch listener may clear it as soon as the next tap starts.
+                if ((event.getActionMasked() == MotionEvent.ACTION_MOVE
+                        || event.getActionMasked() == MotionEvent.ACTION_UP)
+                        && hasTextSelection(messageText)) {
+                    selectedMessageText = messageText;
+                }
+
+                if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                    downX = event.getX();
+                    downY = event.getY();
+                    downTime = event.getEventTime();
+                    return false;
+                }
+
+                if (event.getActionMasked() == MotionEvent.ACTION_UP) {
+                    float dx = event.getX() - downX;
+                    float dy = event.getY() - downY;
+                    int touchSlop = ViewConfiguration.get(view.getContext()).getScaledTouchSlop();
+                    boolean shortTap = event.getEventTime() - downTime
+                            < ViewConfiguration.getLongPressTimeout()
+                            && dx * dx + dy * dy < touchSlop * touchSlop;
+
+                    if (shortTap) {
+                        boolean hadSelection = hasTextSelection(messageText);
+                        if (!hadSelection && hasClickableSpanAt(messageText, event.getX(), event.getY())) {
+                            return false;
+                        }
+                        clearTrackedSelection();
+                        clearTextSelection(messageText);
+                        view.setPressed(false);
+                        view.cancelLongPress();
+                        view.performClick();
+                        return true;
+                    }
+
+                    // Let the TextView finish its long-press selection before remembering it.
+                    messageText.post(() -> {
+                        if (hasTextSelection(messageText)) selectedMessageText = messageText;
+                    });
+                }
+                return false;
+            }
+        });
+    }
+
+    private void toggleMessageSelection(Message message) {
+        if (selectedMessages.containsKey(message.getId())) selectedMessages.remove(message.getId());
+        else selectedMessages.put(message.getId(), message);
+        int position = findMessagePosition(message.getId());
+        if (position != RecyclerView.NO_POSITION) notifyItemChanged(position);
+        if (listener != null) listener.onSelectedMessagesChanged(new ArrayList<>(selectedMessages.values()));
+    }
+
+    private void applySelectionStyle(View row, boolean selected) {
+        if (!selected) {
+            row.setBackgroundColor(Color.TRANSPARENT);
+            return;
+        }
+        int primary = resolveThemeColor(androidx.appcompat.R.attr.colorPrimary,
+                ContextCompat.getColor(context, android.R.color.holo_blue_dark));
+        row.setBackgroundColor(androidx.core.graphics.ColorUtils.setAlphaComponent(primary, 36));
+    }
+
+    public List<Message> getSelectedMessages() {
+        return new ArrayList<>(selectedMessages.values());
+    }
+
+    public void clearMessageSelection() {
+        if (selectedMessages.isEmpty()) return;
+        List<Integer> ids = new ArrayList<>(selectedMessages.keySet());
+        selectedMessages.clear();
+        for (Integer id : ids) {
+            int position = findMessagePosition(id);
+            if (position != RecyclerView.NO_POSITION) notifyItemChanged(position);
+        }
+        if (listener != null) listener.onSelectedMessagesChanged(new ArrayList<>());
+    }
+
+    private boolean hasClickableSpanAt(TextView textView, float touchX, float touchY) {
+        if (!(textView.getText() instanceof Spannable)) return false;
+        Layout layout = textView.getLayout();
+        if (layout == null) return false;
+
+        int x = (int) (touchX - textView.getTotalPaddingLeft() + textView.getScrollX());
+        int y = (int) (touchY - textView.getTotalPaddingTop() + textView.getScrollY());
+        if (x < 0 || y < 0 || y > layout.getHeight()) return false;
+        int line = layout.getLineForVertical(y);
+        int offset = layout.getOffsetForHorizontal(line, x);
+        ClickableSpan[] spans = ((Spannable) textView.getText())
+                .getSpans(offset, offset, ClickableSpan.class);
+        return spans.length > 0;
+    }
+
+    private boolean hasTextSelection(TextView textView) {
+        if (!(textView.getText() instanceof Spannable)) return false;
+        Spannable text = (Spannable) textView.getText();
+        int start = Selection.getSelectionStart(text);
+        int end = Selection.getSelectionEnd(text);
+        return start >= 0 && end >= 0 && start != end;
+    }
+
+    private void clearTextSelection(TextView textView) {
+        if (textView != null && textView.getText() instanceof Spannable) {
+            Selection.removeSelection((Spannable) textView.getText());
+            textView.clearFocus();
+            textView.invalidate();
+        }
+        if (selectedMessageText == textView) selectedMessageText = null;
+    }
+
+    private void clearTrackedSelection() {
+        if (selectedMessageText != null) clearTextSelection(selectedMessageText);
+    }
+
+    private void bindAttachments(LinearLayout container, List<MessageAttachment> attachments, int messageTextColor) {
+        releaseWebViews(container);
+        container.removeAllViews();
+        if (attachments == null) return;
+        for (MessageAttachment attachment : attachments) {
+            if ("wall".equals(attachment.getType())) {
+                addWallCard(container, attachment, messageTextColor);
+            } else if ("link".equals(attachment.getType())) {
+                addLinkCard(container, attachment, messageTextColor);
+            } else if ("doc".equals(attachment.getType())) {
+                addDocumentCard(container, attachment, messageTextColor);
+            } else if ("audio".equals(attachment.getType()) && attachment.getAudio() != null) {
+                LinearLayout audioContainer = new LinearLayout(context);
+                audioContainer.setOrientation(LinearLayout.VERTICAL);
+                LinearLayout.LayoutParams audioParams = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                audioParams.topMargin = dp(8);
+                container.addView(audioContainer, audioParams);
+                int playlistPosition = chatAudioPlaylist.indexOf(attachment.getAudio());
+                AudioAttachmentView.addMessageAudioAttachment(context, audioContainer, attachment.getAudio(),
+                        chatAudioPlaylist, playlistPosition);
+            } else if ("gift".equals(attachment.getType())) {
+                addGiftPreview(container, attachment, messageTextColor);
+            } else if ("sticker".equals(attachment.getType())) {
+                addStickerImage(container, attachment);
+            } else if ("video".equals(attachment.getType()) && attachment.getVideo() != null) {
+                VideoAttachmentView videoView = new VideoAttachmentView(context);
+                videoView.setVideo(attachment.getVideo());
+                LinearLayout.LayoutParams videoParams = new LinearLayout.LayoutParams(dp(240),
+                        ViewGroup.LayoutParams.WRAP_CONTENT);
+                videoParams.topMargin = dp(8);
+                container.addView(videoView, videoParams);
+            } else if (attachment.getImageUrl() != null && !attachment.getImageUrl().isEmpty()) {
+                ShapeableImageView image = new ShapeableImageView(context);
+                image.setShapeAppearanceModel(ShapeAppearanceModel.builder()
+                        .setAllCornerSizes(dp(10)).build());
+                LinearLayout.LayoutParams imageParams = new LinearLayout.LayoutParams(dp(220), dp(160));
+                imageParams.topMargin = dp(8);
+                image.setLayoutParams(imageParams);
+                image.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                image.setContentDescription(attachment.getTitle());
+                Picasso.get().load(attachment.getImageUrl())
+                        .placeholder(android.R.drawable.ic_menu_gallery)
+                        .error(android.R.drawable.ic_menu_gallery)
+                        .fit().centerInside().into(image);
+                image.setOnClickListener(v -> {
+                    if ("photo".equals(attachment.getType())) {
+                        org.nikanikoo.flux.ui.activities.PhotoViewerActivity.start(
+                                context, java.util.Collections.singletonList(attachment.getImageUrl()), 0, "");
+                    } else if ("video".equals(attachment.getType()) && attachment.getVideo() != null
+                            && attachment.getVideo().getPlayer() != null
+                            && !attachment.getVideo().getPlayer().isEmpty()) {
+                        org.nikanikoo.flux.ui.activities.VideoPlayerActivity.start(context, attachment.getVideo());
+                    }
+                });
+                container.addView(image);
+            } else {
+                TextView label = new TextView(context);
+                String text = attachment.getTitle();
+                if (attachment.getSubtitle() != null && !attachment.getSubtitle().isEmpty()) {
+                    text += "\n" + attachment.getSubtitle();
+                }
+                label.setText(text);
+                label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+                label.setPadding(dp(10), dp(8), dp(10), dp(8));
+                LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                labelParams.topMargin = dp(8);
+                label.setLayoutParams(labelParams);
+                label.setBackgroundResource(android.R.drawable.dialog_holo_light_frame);
+                container.addView(label);
+            }
+        }
+    }
+
+    /**
+     * Добавление подарка в сообщение
+     * @param container контейнер сообщения
+     * @param attachment подарок
+     */
+    private void addGiftPreview(LinearLayout container, MessageAttachment attachment, int messageTextColor) {
+        LinearLayout giftContent = new LinearLayout(context);
+        giftContent.setOrientation(LinearLayout.VERTICAL);
+        giftContent.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
+        int giftPadding = dp(8);
+        giftContent.setPadding(giftPadding, giftPadding, giftPadding, giftPadding);
+        GradientDrawable giftBackground = new GradientDrawable();
+        giftBackground.setColor(ContextCompat.getColor(context, R.color.gift_card_background));
+        giftBackground.setCornerRadius(dp(14));
+        giftContent.setBackground(giftBackground);
+
+        if (attachment.getImageUrl() != null && !attachment.getImageUrl().isEmpty()) {
+            ImageView image = new ImageView(context);
+            image.setLayoutParams(new LinearLayout.LayoutParams(dp(144), dp(144)));
+            image.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            image.setContentDescription(context.getString(R.string.message_gift_image));
+            Picasso.get().load(attachment.getImageUrl())
+                    .placeholder(android.R.drawable.ic_menu_gallery)
+                    .error(android.R.drawable.ic_menu_gallery)
+                    .fit().centerInside().into(image);
+            giftContent.addView(image);
+        }
+
+        if (attachment.getTitle() != null && !attachment.getTitle().trim().isEmpty()) {
+            TextView comment = new TextView(context);
+            comment.setText(ValidationUtils.SanitizeText(attachment.getTitle().trim()));
+            comment.setTextColor(ContextCompat.getColor(context, R.color.gift_card_text));
+            comment.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+            comment.setGravity(android.view.Gravity.CENTER);
+            LinearLayout.LayoutParams commentParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            commentParams.topMargin = dp(4);
+            giftContent.addView(comment, commentParams);
+        }
+
+        LinearLayout.LayoutParams contentParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        contentParams.topMargin = dp(6);
+        container.addView(giftContent, contentParams);
+    }
+
+    /**
+     * добавление стикера в сообщение
+     * @param container контейнер сообщения
+     * @param imageUrl ссылка на стикер
+     */
+    private void addStickerImage(LinearLayout container, MessageAttachment attachment) {
+        String imageUrl = attachment.getImageUrl();
+        if (imageUrl == null || imageUrl.isEmpty()) return;
+
+        FrameLayout stickerFrame = new FrameLayout(context);
+        LinearLayout.LayoutParams frameParams = new LinearLayout.LayoutParams(dp(128), dp(128));
+        frameParams.topMargin = dp(6);
+        stickerFrame.setLayoutParams(frameParams);
+
+        String animationUrl = attachment.getAnimationUrl();
+        if (animationUrl != null && !animationUrl.isEmpty()) {
+            if (!animationUrl.startsWith("http://") && !animationUrl.startsWith("https://")) {
+                animationUrl = OpenVKApi.getInstance(context).getBaseUrl()
+                        + (animationUrl.startsWith("/") ? animationUrl : "/" + animationUrl);
+            }
+            LottieAnimationView animation = new LottieAnimationView(context);
+            animation.setLayoutParams(new FrameLayout.LayoutParams(dp(128), dp(128)));
+            animation.setCacheComposition(true);
+            animation.setRepeatCount(LottieDrawable.INFINITE);
+            animation.setAnimationFromUrl(animationUrl);
+            animation.playAnimation();
+            stickerFrame.addView(animation);
+        } else {
+            ImageView stickerImage = new ImageView(context);
+            stickerImage.setLayoutParams(new FrameLayout.LayoutParams(dp(128), dp(128)));
+            stickerImage.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            stickerImage.setContentDescription(context.getString(R.string.message_sticker_image));
+            Picasso.get().load(imageUrl)
+                    .placeholder(R.drawable.ic_image_placeholder)
+                    .error(R.drawable.ic_image_error)
+                    .fit().centerInside().into(stickerImage);
+            stickerFrame.addView(stickerImage);
+        }
+        container.addView(stickerFrame, frameParams);
+    }
+
+    private void addDocumentCard(LinearLayout container, MessageAttachment attachment, int messageTextColor) {
+        if (attachment.isGifDocument()) {
+            addAnimatedGif(container, attachment);
+            return;
+        }
+
+        LinearLayout card = new LinearLayout(context);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        int padding = dp(12);
+        card.setPadding(padding, padding, padding, padding);
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(resolveThemeColor(com.google.android.material.R.attr.colorSurfaceContainerLow,
+                ContextCompat.getColor(context, android.R.color.darker_gray)));
+        background.setCornerRadius(dp(14));
+        card.setBackground(background);
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+                dp(260), ViewGroup.LayoutParams.WRAP_CONTENT);
+        cardParams.topMargin = dp(8);
+        container.addView(card, cardParams);
+
+        String extension = attachment.getSubtitle() == null ? "" : attachment.getSubtitle().trim().toUpperCase(Locale.ROOT);
+        if (attachment.getImageUrl() != null && !attachment.getImageUrl().isEmpty()) {
+            ShapeableImageView preview = new ShapeableImageView(context);
+            preview.setShapeAppearanceModel(ShapeAppearanceModel.builder().setAllCornerSizes(dp(9)).build());
+            preview.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            Picasso.get().load(attachment.getImageUrl()).resize(dp(56), dp(56)).centerCrop()
+                    .placeholder(R.drawable.ic_image_placeholder).error(R.drawable.ic_image_placeholder).into(preview);
+            card.addView(preview, new LinearLayout.LayoutParams(dp(56), dp(56)));
+        } else {
+            TextView typeBadge = new TextView(context);
+            typeBadge.setText(extension.isEmpty() ? "FILE" : extension);
+            typeBadge.setTextColor(resolveThemeColor(androidx.appcompat.R.attr.colorPrimary,
+                    ContextCompat.getColor(context, android.R.color.holo_blue_dark)));
+            typeBadge.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
+            typeBadge.setTypeface(null, android.graphics.Typeface.BOLD);
+            typeBadge.setGravity(android.view.Gravity.CENTER);
+            GradientDrawable badgeBackground = new GradientDrawable();
+            badgeBackground.setColor(resolveThemeColor(com.google.android.material.R.attr.colorSurfaceContainerHigh,
+                    ContextCompat.getColor(context, android.R.color.darker_gray)));
+            badgeBackground.setCornerRadius(dp(10));
+            typeBadge.setBackground(badgeBackground);
+            card.addView(typeBadge, new LinearLayout.LayoutParams(dp(56), dp(56)));
+        }
+
+        LinearLayout labels = new LinearLayout(context);
+        labels.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams labelsParams = new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        labelsParams.leftMargin = dp(12);
+        card.addView(labels, labelsParams);
+
+        TextView name = new TextView(context);
+        name.setText(attachment.getTitle() == null || attachment.getTitle().trim().isEmpty()
+                ? context.getString(R.string.message_document_default_name) : attachment.getTitle().trim());
+        name.setTextColor(messageTextColor);
+        name.setTypeface(null, android.graphics.Typeface.BOLD);
+        name.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        name.setMaxLines(2);
+        name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        labels.addView(name);
+
+        String fileInfo = extension;
+        if (attachment.getFileSize() > 0) {
+            String size = android.text.format.Formatter.formatShortFileSize(context, attachment.getFileSize());
+            fileInfo = fileInfo.isEmpty() ? size : fileInfo + " · " + size;
+        }
+        if (fileInfo.isEmpty() && attachment.getImageUrl() != null && !attachment.getImageUrl().isEmpty()) {
+            fileInfo = context.getString(R.string.message_document_preview);
+        }
+        TextView details = new TextView(context);
+        details.setText(fileInfo.isEmpty() ? context.getString(R.string.message_document_file) : fileInfo);
+        details.setTextColor(resolveThemeColor(androidx.appcompat.R.attr.colorPrimary,
+                ContextCompat.getColor(context, android.R.color.holo_blue_dark)));
+        details.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        LinearLayout.LayoutParams detailsParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        detailsParams.topMargin = dp(3);
+        labels.addView(details, detailsParams);
+
+        card.setOnClickListener(v -> {
+            if (attachment.isGifDocument()) {
+                org.nikanikoo.flux.ui.activities.PhotoViewerActivity.startGif(
+                        context, attachment.getUrl(), attachment.getTitle(),
+                        attachment.getOwnerId(), attachment.getId(), attachment.getAccessKey());
+            } else {
+                openUrl(attachment.getUrl());
+            }
+        });
+    }
+
+    private void addAnimatedGif(LinearLayout container, MessageAttachment attachment) {
+        String url = attachment.getUrl();
+        if (url == null || url.trim().isEmpty()) {
+            addDocumentCardFallback(container, attachment);
+            return;
+        }
+        WebView gif = new WebView(context);
+        gif.setBackgroundColor(Color.TRANSPARENT);
+        gif.setWebViewClient(new WebViewClient());
+        gif.setVerticalScrollBarEnabled(false);
+        gif.setHorizontalScrollBarEnabled(false);
+        gif.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        gif.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        WebSettings settings = gif.getSettings();
+        settings.setJavaScriptEnabled(false);
+        settings.setDomStorageEnabled(false);
+        settings.setAllowFileAccess(false);
+        settings.setAllowContentAccess(false);
+        settings.setSupportZoom(false);
+        settings.setUseWideViewPort(true);
+        settings.setLoadWithOverviewMode(true);
+
+        int width = dp(240);
+        int height = dp(180);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(width, height);
+        params.topMargin = dp(6);
+        container.addView(gif, params);
+
+        String escapedUrl = url.replace("&", "&amp;").replace("\"", "&quot;")
+                .replace("<", "&lt;").replace(">", "&gt;");
+        String html = "<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>"
+                + "<style>html,body{margin:0;width:100%;height:100%;background:transparent;overflow:hidden}"
+                + "body{display:flex;align-items:center;justify-content:center}img{max-width:100%;max-height:100%;object-fit:contain}</style>"
+                + "</head><body><img src=\"" + escapedUrl + "\"></body></html>";
+        android.net.Uri uri = android.net.Uri.parse(url);
+        String baseUrl = uri.getScheme() != null && uri.getAuthority() != null
+                ? uri.getScheme() + "://" + uri.getAuthority() + "/" : null;
+        gif.loadDataWithBaseURL(baseUrl, html, "text/html", "UTF-8", null);
+        gif.setOnTouchListener((view, event) -> {
+            if (event.getAction() == android.view.MotionEvent.ACTION_UP) {
+                org.nikanikoo.flux.ui.activities.PhotoViewerActivity.startGif(
+                        context, url, attachment.getTitle(), attachment.getOwnerId(),
+                        attachment.getId(), attachment.getAccessKey());
+                view.performClick();
+                return true;
+            }
+            return true;
+        });
+    }
+
+    private void addDocumentCardFallback(LinearLayout container, MessageAttachment attachment) {
+        TextView label = new TextView(context);
+        label.setText(attachment.getTitle());
+        label.setTextColor(resolveThemeColor(com.google.android.material.R.attr.colorOnSurface,
+                ContextCompat.getColor(context, android.R.color.black)));
+        label.setPadding(dp(12), dp(8), dp(12), dp(8));
+        container.addView(label);
+    }
+
+    private void releaseWebViews(View view) {
+        if (view instanceof WebView) {
+            WebView webView = (WebView) view;
+            if (webView.getParent() instanceof ViewGroup) {
+                ((ViewGroup) webView.getParent()).removeView(webView);
+            }
+            webView.stopLoading();
+            webView.loadUrl("about:blank");
+            webView.destroy();
+            return;
+        }
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = group.getChildCount() - 1; i >= 0; i--) releaseWebViews(group.getChildAt(i));
+        }
+    }
+
+    private void addLinkCard(LinearLayout container, MessageAttachment attachment, int messageTextColor) {
+        LinearLayout card = new LinearLayout(context);
+        card.setOrientation(LinearLayout.VERTICAL);
+        int padding = dp(10);
+        card.setPadding(padding, padding, padding, padding);
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(0x1F000000);
+        background.setCornerRadius(dp(10));
+        card.setBackground(background);
+        card.setClickable(true);
+        card.setFocusable(true);
+
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        cardParams.topMargin = dp(8);
+        container.addView(card, cardParams);
+
+        String url = normalizeWebUrl(attachment.getUrl());
+        String titleText = attachment.getTitle();
+        if (titleText == null || titleText.trim().isEmpty()) {
+            titleText = context.getString(R.string.message_link_default_title);
+        }
+
+        TextView title = new TextView(context);
+        title.setText(ValidationUtils.SanitizeText(titleText));
+        title.setTextColor(messageTextColor);
+        title.setTypeface(null, android.graphics.Typeface.BOLD);
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        card.addView(title);
+
+        if (!url.isEmpty()) {
+            TextView urlView = new TextView(context);
+            urlView.setText(url);
+            urlView.setTextColor(messageTextColor);
+            urlView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+            urlView.setPaintFlags(urlView.getPaintFlags() | android.graphics.Paint.UNDERLINE_TEXT_FLAG);
+            urlView.setClickable(true);
+            urlView.setFocusable(true);
+            urlView.setOnClickListener(v -> SafeLinkMovementMethod.handleLinkClick(context, url));
+            LinearLayout.LayoutParams urlParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            urlParams.topMargin = dp(4);
+            card.addView(urlView, urlParams);
+        }
+
+        String description = attachment.getSubtitle();
+        if (description != null && !description.trim().isEmpty()
+                && !description.equals(attachment.getTitle())) {
+            TextView descriptionView = new TextView(context);
+            descriptionView.setText(ValidationUtils.SanitizeText(description));
+            descriptionView.setTextColor(messageTextColor);
+            descriptionView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+            descriptionView.setMaxLines(3);
+            descriptionView.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            LinearLayout.LayoutParams descriptionParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            descriptionParams.topMargin = dp(4);
+            card.addView(descriptionView, descriptionParams);
+        }
+
+        if (!url.isEmpty()) {
+            card.setOnClickListener(v -> SafeLinkMovementMethod.handleLinkClick(context, url));
+        }
+    }
+
+    private String normalizeWebUrl(String value) {
+        if (value == null) return "";
+        String url = value.trim();
+        if (url.isEmpty()) return "";
+        if (url.regionMatches(true, 0, "https://", 0, 8)
+                || url.regionMatches(true, 0, "http://", 0, 7)) {
+            return url;
+        }
+        return "https://" + url;
+    }
+
+    private void bindReferences(TextView view, Message message) {
+        StringBuilder text = new StringBuilder();
+        MessageReference reply = message.getReply();
+        if (reply != null) {
+            appendReference(text, "Ответ", reply);
+        }
+        for (MessageReference forwarded : message.getForwardedMessages()) {
+            appendReference(text, "Переслано", forwarded);
+        }
+        if (text.length() == 0) {
+            view.setVisibility(View.GONE);
+            view.setOnClickListener(null);
+        } else {
+            view.setText(text.toString().trim());
+            view.setVisibility(View.VISIBLE);
+            if (reply != null && reply.getId() > 0) {
+                view.setOnClickListener(v -> {
+                    if (listener != null) listener.onReplyClick(reply.getId());
+                });
+            } else {
+                view.setOnClickListener(null);
+            }
+        }
+    }
+
+    private void appendReference(StringBuilder text, String kind, MessageReference reference) {
+        text.append(kind);
+        if (reference.getSender() != null && !reference.getSender().isEmpty()) {
+            text.append(" · ").append(reference.getSender());
+        }
+        text.append('\n');
+        String snippet = reference.getText();
+        text.append(snippet == null || snippet.isEmpty() ? "Сообщение" : snippet).append('\n');
+    }
+
+    /**
+     * Добавление карточки с постом в сообщение
+     * @param container контейнер вложений в сообщении
+     * @param attachment пост
+     */
+    private void addWallCard(LinearLayout container, MessageAttachment attachment, int messageTextColor) {
+        LinearLayout card = new LinearLayout(context);
+        card.setOrientation(LinearLayout.VERTICAL);
+        int padding = dp(10);
+        card.setPadding(padding, padding, padding, padding);
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(0x1F000000);
+        background.setCornerRadius(dp(10));
+        card.setBackground(background);
+        LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        cardParams.topMargin = dp(2);
+        card.setLayoutParams(cardParams);
+
+        TextView author = new TextView(context);
+        author.setText(attachment.getTitle().isEmpty() ? "Запись" : attachment.getTitle());
+        author.setTypeface(null, android.graphics.Typeface.BOLD);
+        author.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        author.setTextColor(messageTextColor);
+        card.addView(author);
+
+        if (attachment.getSubtitle() != null && !attachment.getSubtitle().isEmpty()) {
+            TextView body = new TextView(context);
+            body.setText(attachment.getSubtitle());
+            body.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+            body.setTextColor(messageTextColor);
+            body.setMaxLines(5);
+            body.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            LinearLayout.LayoutParams bodyParams = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            bodyParams.topMargin = dp(4);
+            card.addView(body, bodyParams);
+        }
+
+        if (attachment.getImageUrl() != null && !attachment.getImageUrl().isEmpty()) {
+            ShapeableImageView preview = new ShapeableImageView(context);
+            preview.setShapeAppearanceModel(ShapeAppearanceModel.builder()
+                    .setAllCornerSizes(dp(10)).build());
+            preview.setLayoutParams(new LinearLayout.LayoutParams(dp(220), dp(130)));
+            preview.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            Picasso.get().load(attachment.getImageUrl()).fit().centerCrop()
+                    .placeholder(android.R.drawable.ic_menu_gallery)
+                    .error(android.R.drawable.ic_menu_gallery).into(preview);
+            LinearLayout.LayoutParams previewParams = (LinearLayout.LayoutParams) preview.getLayoutParams();
+            previewParams.topMargin = dp(6);
+            card.addView(preview, previewParams);
+        }
+        card.setOnClickListener(v -> {
+            if (listener != null) listener.onWallPostClick(attachment);
+        });
+        container.addView(card);
+    }
+
+    private void openUrl(String pathOrUrl) {
+        if (pathOrUrl == null || pathOrUrl.isEmpty()) return;
+        String url = pathOrUrl;
+        if (!url.startsWith("http://") && !url.startsWith("https://")) {
+            String baseUrl = OpenVKApi.getInstance(context).getBaseUrl();
+            url = baseUrl + (url.startsWith("/") ? url : "/" + url);
+        }
+        try {
+            context.startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+        } catch (Exception ignored) {
+        }
+    }
+
+    private int dp(int value) {
+        return (int) (value * context.getResources().getDisplayMetrics().density + 0.5f);
+    }
+
+    private int resolveThemeColor(int attribute, int fallback) {
+        TypedValue value = new TypedValue();
+        return context.getTheme().resolveAttribute(attribute, value, true) ? value.data : fallback;
+    }
+
+    /**
+     * Показывает заголовок даты
+     * @param holder держатель представления заголовка
+     * @param dateHeader заголовок даты
+     */
     private void bindDateHeader(DateHeaderViewHolder holder, DateHeader dateHeader) {
         holder.dateText.setText(dateHeader.getText());
+    }
+
+    /**
+     * Показывает событие беседы отдельной строкой с именем инициатора и текстом действия.
+     * @param holder держатель представления события
+     * @param message сообщение с данными системного события
+     */
+    private void bindChatEvent(ChatEventViewHolder holder, Message message) {
+        String eventText = message.getText() != null ? message.getText().trim() : "";
+        String actorName = message.getUserName();
+        boolean coinsTransfer = "coins_transfer".equals(message.getActionType());
+        if (coinsTransfer && message.isOut()) {
+            int amount = message.getActionMid();
+            String voteWord = context.getResources().getQuantityString(R.plurals.vote_count, amount);
+            eventText = context.getString(R.string.coins_transfer_outgoing, amount, voteWord);
+        } else if (!coinsTransfer && actorName != null && !actorName.trim().isEmpty()) {
+            eventText = actorName.trim() + (eventText.isEmpty() ? "" : " " + eventText);
+        }
+        if (eventText.isEmpty()) eventText = context.getString(R.string.chat_event_generic);
+        if (coinsTransfer) {
+            String sentMessage = message.getActionText();
+            if (sentMessage != null && !sentMessage.trim().isEmpty()) {
+                eventText += "\n«" + sentMessage.trim() + "»";
+            }
+        }
+        holder.eventText.setText(ValidationUtils.SanitizeText(eventText));
     }
 
     @Override
@@ -165,11 +1089,33 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         return items.size();
     }
 
+    public Message getMessageAtPosition(int position) {
+        if (position < 0 || position >= items.size()) return null;
+        Object item = items.get(position);
+        return item instanceof Message ? (Message) item : null;
+    }
+
     public void setMessages(List<Message> newMessages) {
+        List<Message> mergedMessages = new ArrayList<>();
+        Set<Integer> mergedIds = new HashSet<>();
+        if (newMessages != null) {
+            for (Message message : newMessages) {
+                if (message != null && mergedIds.add(message.getId())) mergedMessages.add(message);
+            }
+        }
+        for (Object item : items) {
+            if (!(item instanceof Message)) continue;
+            Message localMessage = (Message) item;
+            if (!localMessage.isPending() && !localMessage.isSendFailed()) continue;
+            if (mergedIds.add(localMessage.getId())) mergedMessages.add(localMessage);
+        }
+        mergedMessages.sort((left, right) -> Long.compare(left.getDate(), right.getDate()));
         this.items.clear();
-        this.items.addAll(groupMessagesByDate(newMessages));
+        this.items.addAll(groupMessagesByDate(mergedMessages));
+        rebuildMessageIds();
+        rebuildChatAudioPlaylist();
         notifyDataSetChanged();
-        System.out.println("MessagesAdapter: Set " + newMessages.size() + " messages");
+        System.out.println("MessagesAdapter: Set " + mergedMessages.size() + " messages");
     }
 
     public void addMessagesToTop(List<Message> newMessages) {
@@ -177,14 +1123,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             // Дедупликация по ID сообщения
             List<Message> uniqueMessages = new ArrayList<>();
             for (Message newMsg : newMessages) {
-                boolean isDuplicate = false;
-                for (Object existingMsg : this.items) {
-                    if (existingMsg instanceof Message && ((Message) existingMsg).getId() == newMsg.getId()) {
-                        isDuplicate = true;
-                        break;
-                    }
-                }
-                if (!isDuplicate) {
+                if (newMsg != null && messageIds.add(newMsg.getId())) {
                     uniqueMessages.add(newMsg);
                 }
             }
@@ -205,6 +1144,7 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 
                 if (!itemsToInsert.isEmpty()) {
                     this.items.addAll(0, itemsToInsert);
+                    rebuildChatAudioPlaylist();
                     notifyItemRangeInserted(0, itemsToInsert.size());
                     System.out.println("MessagesAdapter: Added " + itemsToInsert.size() + " items to top");
                 }
@@ -249,11 +1189,38 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 }
 
                 this.items.add(message);
+                messageIds.add(message.getId());
+                appendAudioFromMessage(message);
                 notifyItemInserted(position);
                 System.out.println("MessagesAdapter: Added single message with ID " + message.getId());
             } else {
                 System.out.println("MessagesAdapter: Message with ID " + message.getId() + " already exists, skipping");
             }
+        }
+    }
+
+    private void rebuildChatAudioPlaylist() {
+        chatAudioPlaylist.clear();
+        for (Object item : items) {
+            if (item instanceof Message) appendAudioFromMessage((Message) item);
+        }
+    }
+
+    private void appendAudioFromMessage(Message message) {
+        List<MessageAttachment> attachments = message.getAttachments();
+        if (attachments == null) return;
+        for (MessageAttachment attachment : attachments) {
+            if (attachment != null && "audio".equals(attachment.getType())
+                    && attachment.getAudio() != null) {
+                chatAudioPlaylist.add(attachment.getAudio());
+            }
+        }
+    }
+
+    private void rebuildMessageIds() {
+        messageIds.clear();
+        for (Object item : items) {
+            if (item instanceof Message) messageIds.add(((Message) item).getId());
         }
     }
 
@@ -312,27 +1279,45 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     }
 
     static class OutgoingMessageViewHolder extends RecyclerView.ViewHolder {
+        LinearLayout bubble;
+        TextView senderName;
         TextView messageText;
+        TextView replyPreview;
+        LinearLayout attachments;
         TextView timeText;
+        LinearLayout metadataFallback;
         ImageView readStatus;
 
         OutgoingMessageViewHolder(@NonNull View itemView) {
             super(itemView);
+            bubble = itemView.findViewById(R.id.message_bubble);
+            senderName = itemView.findViewById(R.id.sender_name);
             messageText = itemView.findViewById(R.id.message_text);
+            replyPreview = itemView.findViewById(R.id.reply_preview);
+            attachments = itemView.findViewById(R.id.message_attachments);
             timeText = itemView.findViewById(R.id.time_text);
+            metadataFallback = itemView.findViewById(R.id.message_metadata_fallback);
             readStatus = itemView.findViewById(R.id.read_status);
         }
     }
 
     static class IncomingMessageViewHolder extends RecyclerView.ViewHolder {
         ImageView avatarImage;
+        LinearLayout bubble;
+        TextView senderName;
         TextView messageText;
+        TextView replyPreview;
+        LinearLayout attachments;
         TextView timeText;
 
         IncomingMessageViewHolder(@NonNull View itemView) {
             super(itemView);
             avatarImage = itemView.findViewById(R.id.avatar_image);
+            bubble = itemView.findViewById(R.id.message_bubble);
+            senderName = itemView.findViewById(R.id.sender_name);
             messageText = itemView.findViewById(R.id.message_text);
+            replyPreview = itemView.findViewById(R.id.reply_preview);
+            attachments = itemView.findViewById(R.id.message_attachments);
             timeText = itemView.findViewById(R.id.time_text);
         }
     }
@@ -343,6 +1328,15 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         DateHeaderViewHolder(@NonNull View itemView) {
             super(itemView);
             dateText = itemView.findViewById(R.id.date_text);
+        }
+    }
+
+    static class ChatEventViewHolder extends RecyclerView.ViewHolder {
+        TextView eventText;
+
+        ChatEventViewHolder(@NonNull View itemView) {
+            super(itemView);
+            eventText = itemView.findViewById(R.id.chat_event_text);
         }
     }
 
@@ -375,6 +1369,13 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 inHolder.messageText.clearFocus();
             }
         }
+        setLottiePlayback(holder.itemView, false);
+    }
+
+    @Override
+    public void onViewAttachedToWindow(@NonNull RecyclerView.ViewHolder holder) {
+        super.onViewAttachedToWindow(holder);
+        setLottiePlayback(holder.itemView, true);
     }
 
     public void notifyMessageChanged(Message message) {
@@ -384,9 +1385,52 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         }
     }
 
+    public int findMessagePosition(int messageId) {
+        for (int position = 0; position < items.size(); position++) {
+            Object item = items.get(position);
+            if (item instanceof Message && ((Message) item).getId() == messageId) {
+                return position;
+            }
+        }
+        return RecyclerView.NO_POSITION;
+    }
+
+    public void removeMessageById(int messageId) {
+        int position = findMessagePosition(messageId);
+        if (position == RecyclerView.NO_POSITION) return;
+        items.remove(position);
+        messageIds.remove(messageId);
+        notifyItemRemoved(position);
+        if (position > 0 && items.get(position - 1) instanceof DateHeader) {
+            items.remove(position - 1);
+            notifyItemRemoved(position - 1);
+        }
+        rebuildChatAudioPlaylist();
+    }
+
+    public int markOutgoingMessagesReadThrough(int conversationMessageId) {
+        if (conversationMessageId <= 0) return 0;
+        int updated = 0;
+        for (int position = 0; position < items.size(); position++) {
+            Object item = items.get(position);
+            if (item instanceof Message) {
+                Message message = (Message) item;
+                int localId = message.getConversationMessageId();
+                if (message.isOut() && localId > 0 && localId <= conversationMessageId && !message.isReadState()) {
+                    message.setReadState(true);
+                    notifyItemChanged(position);
+                    updated++;
+                }
+            }
+        }
+        return updated;
+    }
+
     @Override
     public void onViewRecycled(@NonNull RecyclerView.ViewHolder holder) {
+        releaseWebViews(holder.itemView);
         super.onViewRecycled(holder);
+        cancelLottieAnimations(holder.itemView);
         if (holder instanceof OutgoingMessageViewHolder) {
             OutgoingMessageViewHolder outHolder = (OutgoingMessageViewHolder) holder;
             if (outHolder.messageText != null) {
@@ -397,6 +1441,26 @@ public class MessagesAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             if (inHolder.messageText != null) {
                 inHolder.messageText.clearFocus();
             }
+        }
+    }
+
+    private void setLottiePlayback(View view, boolean play) {
+        if (view instanceof LottieAnimationView) {
+            LottieAnimationView animation = (LottieAnimationView) view;
+            if (play) animation.playAnimation();
+            else animation.pauseAnimation();
+        } else if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) setLottiePlayback(group.getChildAt(i), play);
+        }
+    }
+
+    private void cancelLottieAnimations(View view) {
+        if (view instanceof LottieAnimationView) {
+            ((LottieAnimationView) view).cancelAnimation();
+        } else if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) cancelLottieAnimations(group.getChildAt(i));
         }
     }
 }

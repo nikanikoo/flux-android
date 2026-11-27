@@ -1,16 +1,30 @@
 package org.nikanikoo.flux.data.models;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Message {
     private int id;
+    private int conversationMessageId;
     private int userId;
     private int fromId;
     private String text;
     private long date;
     private boolean out;
     private boolean readState;
+    private boolean pending;
+    private boolean sendFailed;
+    private String pendingAttachment = "";
+    private int pendingStickerId;
     private String userName;
     private String userPhoto;
     private boolean userVerified;
+    private String actionType;
+    private String actionText;
+    private int actionMid;
+    private List<MessageAttachment> attachments = new ArrayList<>();
+    private MessageReference reply;
+    private List<MessageReference> forwardedMessages = new ArrayList<>();
 
     public Message(int id, int userId, int fromId, String text, long date, boolean out, boolean readState) {
         this.id = id;
@@ -24,19 +38,54 @@ public class Message {
 
     // Getters
     public int getId() { return id; }
+    public int getConversationMessageId() { return conversationMessageId; }
     public int getUserId() { return userId; }
     public int getFromId() { return fromId; }
     public String getText() { return text; }
     public long getDate() { return date; }
     public boolean isOut() { return out; }
     public boolean isReadState() { return readState; }
+    public boolean isPending() { return pending; }
+    public boolean isSendFailed() { return sendFailed; }
+    public String getPendingAttachment() { return pendingAttachment; }
+    public int getPendingStickerId() { return pendingStickerId; }
     public String getUserName() { return userName; }
     public String getUserPhoto() { return userPhoto; }
     public boolean isUserVerified() { return userVerified; }
+    public String getActionType() { return actionType; }
+    public String getActionText() { return actionText; }
+    public int getActionMid() { return actionMid; }
+    public boolean isChatSystemEvent() {
+        return "chat_kick_user".equals(actionType)
+                || "chat_invite_user".equals(actionType)
+                || "chat_invite_user_by_link".equals(actionType)
+                || "chat_pin_message".equals(actionType)
+                || "chat_unpin_message".equals(actionType)
+                || "coins_transfer".equals(actionType);
+    }
+    public List<MessageAttachment> getAttachments() { return attachments; }
+    public MessageReference getReply() { return reply; }
+    public List<MessageReference> getForwardedMessages() { return forwardedMessages; }
 
     // Setters
     public void setUserName(String userName) { this.userName = userName; }
     public void setUserPhoto(String userPhoto) { this.userPhoto = userPhoto; }
     public void setReadState(boolean readState) { this.readState = readState; }
+    public void setPending(boolean pending) { this.pending = pending; }
+    public void setSendFailed(boolean sendFailed) { this.sendFailed = sendFailed; }
+    public void setPendingAttachment(String attachment) { this.pendingAttachment = attachment != null ? attachment : ""; }
+    public void setPendingStickerId(int stickerId) { this.pendingStickerId = stickerId; }
+    public void setId(int id) { this.id = id; }
+    public void setConversationMessageId(int conversationMessageId) { this.conversationMessageId = conversationMessageId; }
     public void setUserVerified(boolean userVerified) { this.userVerified = userVerified; }
+    public void setActionType(String actionType) { this.actionType = actionType; }
+    public void setActionText(String actionText) { this.actionText = actionText; }
+    public void setActionMid(int actionMid) { this.actionMid = actionMid; }
+    public void setAttachments(List<MessageAttachment> attachments) {
+        this.attachments = attachments != null ? attachments : new ArrayList<>();
+    }
+    public void setReply(MessageReference reply) { this.reply = reply; }
+    public void setForwardedMessages(List<MessageReference> messages) {
+        this.forwardedMessages = messages != null ? messages : new ArrayList<>();
+    }
 }

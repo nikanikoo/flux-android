@@ -7,6 +7,7 @@ import android.util.Log;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.nikanikoo.flux.data.managers.api.OpenVKApi;
+import org.nikanikoo.flux.security.AccountManager;
 import org.nikanikoo.flux.utils.Logger;
 
 import java.util.ArrayList;
@@ -28,6 +29,7 @@ public class LongPollManager {
     private static LongPollManager instance;
     
     private final OpenVKApi api;
+    private final Context appContext;
     private final OkHttpClient client;
     private final Handler mainHandler;
     private final ExecutorService executor;
@@ -36,18 +38,52 @@ public class LongPollManager {
     private String server;
     private String key;
     private long ts;
+    private long pts;
+    private static final int LONG_POLL_MODE = 2 + 8 + 32 + 64 + 128 + 256;
 
     private int fastResponseCount = 0;
 
     private final List<OnMessageEventListener> messageEventListeners = 
             java.util.Collections.synchronizedList(new ArrayList<>());
+    private final List<OnOnlineEventListener> onlineEventListeners =
+            java.util.Collections.synchronizedList(new ArrayList<>());
     private volatile OnTypingEventListener typingEventListener;
     private volatile OnOnlineEventListener onlineEventListener;
+    private volatile OnNotificationSettingsEventListener notificationSettingsEventListener;
+    private final List<OnConnectionStateListener> connectionStateListeners =
+            java.util.Collections.synchronizedList(new ArrayList<>());
+    private volatile ConnectionState connectionState = ConnectionState.DISCONNECTED;
+
+    public enum ConnectionState { DISCONNECTED, CONNECTING, CONNECTED, UPDATING }
+
+    public interface OnConnectionStateListener {
+        void onConnectionStateChanged(ConnectionState state);
+    }
+
+    public void addConnectionStateListener(OnConnectionStateListener listener) {
+        if (listener == null) return;
+        connectionStateListeners.add(listener);
+        mainHandler.post(() -> listener.onConnectionStateChanged(connectionState));
+    }
+
+    public void removeConnectionStateListener(OnConnectionStateListener listener) {
+        connectionStateListeners.remove(listener);
+    }
+
+    private void setConnectionState(ConnectionState state) {
+        connectionState = state;
+        synchronized (connectionStateListeners) {
+            for (OnConnectionStateListener listener : new ArrayList<>(connectionStateListeners)) {
+                mainHandler.post(() -> listener.onConnectionStateChanged(state));
+            }
+        }
+    }
 
     private final Map<Integer, Long> processedEvents = new ConcurrentHashMap<>();
     private static final int MAX_PROCESSED_EVENTS = 1000;
     
     private LongPollManager(Context context) {
+        this.appContext = context.getApplicationContext();
         this.api = OpenVKApi.getInstance(context);
         
         // Создаем OkHttpClient с поддержкой SSL для самоподписанных сертификатов
@@ -76,7 +112,7 @@ public class LongPollManager {
 
     public interface OnMessageEventListener {
         void onNewMessage(int messageId, int peerId, long timestamp, String text, int fromId, boolean isOut);
-        void onMessageRead(int peerId, int localId);
+        void onMessageRead(int peerId, int localId, boolean outgoingMessagesRead);
         void onMessageEdit(int messageId, int peerId, String newText);
     }
     
@@ -86,6 +122,10 @@ public class LongPollManager {
     
     public interface OnOnlineEventListener {
         void onUserOnline(int userId, boolean isOnline);
+    }
+
+    public interface OnNotificationSettingsEventListener {
+        void onNotificationSettingsChanged(int peerId, int sound, long disabledUntil);
     }
 
     public void setMessageEventListener(OnMessageEventListener listener) {
@@ -119,8 +159,20 @@ public class LongPollManager {
         this.onlineEventListener = listener;
     }
 
+    public void addOnlineEventListener(OnOnlineEventListener listener) {
+        if (listener != null && !onlineEventListeners.contains(listener)) onlineEventListeners.add(listener);
+    }
+
+    public void removeOnlineEventListener(OnOnlineEventListener listener) {
+        onlineEventListeners.remove(listener);
+    }
+
     public void setTypingEventListener(OnTypingEventListener listener) {
         this.typingEventListener = listener;
+    }
+
+    public void setNotificationSettingsEventListener(OnNotificationSettingsEventListener listener) {
+        this.notificationSettingsEventListener = listener;
     }
 
     public void clearAllListeners() {
@@ -129,6 +181,8 @@ public class LongPollManager {
         }
         typingEventListener = null;
         onlineEventListener = null;
+        onlineEventListeners.clear();
+        notificationSettingsEventListener = null;
     }
 
     public void clearProcessedEventsCache() {
@@ -164,6 +218,7 @@ public class LongPollManager {
         }
         
         Logger.d(TAG, "Запуск LongPoll");
+        setConnectionState(ConnectionState.CONNECTING);
         isRunning.set(true);
         getLongPollServer();
     }
@@ -171,6 +226,7 @@ public class LongPollManager {
     public void stop() {
         Logger.d(TAG, "Остановка LongPoll");
         isRunning.set(false);
+        setConnectionState(ConnectionState.DISCONNECTED);
     }
 
     private void getLongPollServer() {
@@ -199,7 +255,7 @@ public class LongPollManager {
                 try (Response response = client.newCall(request).execute()) {
                     if (response.body() != null) {
                         String responseBody = response.body().string();
-                        Log.d(TAG, "Ответ LongPoll: " + responseBody);
+                        Log.d(TAG, "LongPoll server response received");
                         
                         JSONObject json = new JSONObject(responseBody);
                         if (json.has("response")) {
@@ -211,24 +267,16 @@ public class LongPollManager {
                                 server = scheme + server;
                             }
                             key = responseObj.getString("key");
-                            ts = responseObj.optLong("ts", 0);
+                            if (!responseObj.has("ts")) {
+                                throw new IllegalStateException("LongPoll server response has no ts cursor");
+                            }
+                            ts = responseObj.getLong("ts");
+                            pts = responseObj.optLong("pts", 0);
                             
                             Log.d(TAG, "LongPoll server obtained: " + server);
-                            Log.d(TAG, "LongPoll key: " + key);
-                            Log.d(TAG, "LongPoll initial ts: " + ts);
-                            Log.d(TAG, "Full server response: " + responseObj.toString());
-
-                            long currentTime = System.currentTimeMillis() / 1000;
-                            long timeDiff = currentTime - ts;
-                            Log.d(TAG, "Current unix time: " + currentTime);
-                            Log.d(TAG, "TS difference: " + timeDiff + " seconds (" + (timeDiff/60) + " minutes)");
+                            Log.d(TAG, "LongPoll cursors initialized: ts=" + ts + ", pts=" + pts);
 
                             fastResponseCount = 0;
-                            
-                            if (ts == 0) {
-                                ts = System.currentTimeMillis() / 1000;
-                                Log.d(TAG, "Using current timestamp as fallback: " + ts);
-                            }
 
                             startLongPollLoop();
                         } else if (json.has("error")) {
@@ -276,6 +324,7 @@ public class LongPollManager {
                     Logger.e(TAG, "Error in LongPoll loop", e);
                     
                     if (isRunning.get()) {
+                        setConnectionState(ConnectionState.UPDATING);
                         Log.d(TAG, "Pausing before retry...");
                         // Пауза перед повторной попыткой
                         try {
@@ -302,15 +351,15 @@ public class LongPollManager {
     private void performFirstLongPollRequest() throws Exception {
         Log.d(TAG, "Performing first LongPoll request to sync ts");
         
-        // Попробуем обычный запрос, но с коротким таймаутом
-        String url = server + "?key=" + key + "&act=a_check&wait=1&version=3&ts=" + ts;
+        String url = server + "?key=" + key + "&act=a_check&wait=1&version=3&ts=" + ts
+                + "&pts=" + pts + "&mode=" + LONG_POLL_MODE;
         
         Request request = new Request.Builder()
                 .url(url)
                 .get()
                 .build();
         
-        Log.d(TAG, "First LongPoll request: " + url);
+        Log.d(TAG, "First LongPoll request: ts=" + ts + ", pts=" + pts + ", mode=" + LONG_POLL_MODE);
         long requestStartTime = System.currentTimeMillis();
         
         try (Response response = client.newCall(request).execute()) {
@@ -321,11 +370,12 @@ public class LongPollManager {
             }
             
             String responseBody = response.body().string();
-            Log.d(TAG, "First LongPoll response (duration=" + requestDuration + "ms): " + responseBody);
+            Log.d(TAG, "First LongPoll response received in " + requestDuration + "ms");
             
             // Проверяем на пустой массив []
             if ("[]".equals(responseBody.trim())) {
                 Log.d(TAG, "First request returned empty array - this is normal, ts is synchronized");
+                setConnectionState(ConnectionState.CONNECTED);
                 return;
             }
             
@@ -336,10 +386,9 @@ public class LongPollManager {
                 Log.w(TAG, "First request failed with code: " + failCode);
                 
                 if (failCode == 1 && json.has("ts")) {
-                    // Получаем актуальный ts
-                    long newTs = json.getLong("ts");
-                    Log.d(TAG, "Got actual ts from failed response: " + newTs + " (was " + ts + ")");
-                    ts = newTs;
+                    ts = json.getLong("ts");
+                    pts = json.optLong("pts", pts);
+                    Log.d(TAG, "First request cursor updated: ts=" + ts + ", pts=" + pts);
                 } else if (failCode == 2 || failCode == 3) {
                     Log.w(TAG, "Need new key/server, will restart");
                     throw new Exception("Need new LongPoll key");
@@ -348,9 +397,8 @@ public class LongPollManager {
                 }
             } else if (json.has("ts")) {
                 // Обновляем ts из успешного ответа
-                long newTs = json.getLong("ts");
-                Log.d(TAG, "Got actual ts from successful response: " + newTs + " (was " + ts + ")");
-                ts = newTs;
+                ts = json.getLong("ts");
+                pts = json.optLong("pts", pts);
                 
                 // Обрабатываем события если есть
                 if (json.has("updates")) {
@@ -363,44 +411,26 @@ public class LongPollManager {
                     }
                 }
             } else {
-                Log.w(TAG, "First response doesn't contain ts field: " + responseBody);
+                throw new Exception("First LongPoll response has no ts cursor");
             }
             
-            Log.d(TAG, "First request completed, synchronized ts=" + ts);
+            Log.d(TAG, "First request synchronized: ts=" + ts + ", pts=" + pts);
+        setConnectionState(ConnectionState.CONNECTED);
         }
     }
     
     // Выполнение LongPoll запроса согласно инструкции
     private void performLongPollRequest() throws Exception {
-        // Проверяем, не слишком ли старый ts (больше 1 дня назад)
-        long currentTime = System.currentTimeMillis() / 1000;
-        long timeDiff = currentTime - ts;
-        
-        if (Math.abs(timeDiff) > 86400) { // 24 часа в любую сторону
-            Log.w(TAG, "TS is too far from current time (diff: " + timeDiff + " seconds), using current time");
-            ts = currentTime;
-        } else if (Math.abs(timeDiff) > 60) { // Больше 1 минуты
-            Log.w(TAG, "TS difference is significant (diff: " + timeDiff + " seconds), might cause issues");
-        }
-        
-        // GET запрос как указано в инструкции: %server%?key=%наш ключ%&act=a_check&wait=%время ожидания%&version=3&ts=%ts%
-        // Убираем mode=2 если есть проблемы с быстрыми ответами
-        String url;
-        if (fastResponseCount > 2) {
-            // Без mode параметра
-            url = server + "?key=" + key + "&act=a_check&wait=45&version=3&ts=" + ts;
-            Log.d(TAG, "Using simplified URL due to fast responses");
-        } else {
-            // С mode=2 для получения дополнительных полей (как в VK API)
-            url = server + "?key=" + key + "&act=a_check&wait=45&version=3&ts=" + ts + "&mode=2";
-        }
+        // ts и pts — серверные курсоры, это не Unix-время. Web-клиент также передаёт pts и mode=490.
+        String url = server + "?key=" + key + "&act=a_check&wait=45&version=3&ts=" + ts
+                + "&pts=" + pts + "&mode=" + LONG_POLL_MODE;
         
         Request request = new Request.Builder()
                 .url(url)
                 .get()
                 .build();
         
-        Log.d(TAG, "LongPoll request: " + url + " (ts=" + ts + ", current=" + currentTime + ", diff=" + timeDiff + "s)");
+        Log.d(TAG, "LongPoll request: ts=" + ts + ", pts=" + pts + ", mode=" + LONG_POLL_MODE);
         
         long requestStartTime = System.currentTimeMillis();
         
@@ -412,7 +442,7 @@ public class LongPollManager {
             }
             
             String responseBody = response.body().string();
-            Log.d(TAG, "LongPoll response (ts=" + ts + ", duration=" + requestDuration + "ms): " + responseBody);
+            Log.d(TAG, "LongPoll response received in " + requestDuration + "ms");
             
             // Если запрос выполнился слишком быстро (менее 1 секунды), это подозрительно
             if (requestDuration < 1000) {
@@ -431,14 +461,7 @@ public class LongPollManager {
             
             // Проверяем на пустой массив []
             if ("[]".equals(responseBody.trim())) {
-                Log.d(TAG, "Empty response array, continuing with same ts=" + ts);
-                
-                // При быстрых ответах обновляем ts на текущее время
-                if (requestDuration < 1000) {
-                    long newTs = currentTime;
-                    Log.w(TAG, "Fast empty response, updating ts from " + ts + " to " + newTs);
-                    ts = newTs;
-                }
+                Log.d(TAG, "Empty response array, keeping ts=" + ts + ", pts=" + pts);
                 
                 // Если запрос был очень быстрым, добавляем небольшую паузу
                 if (requestDuration < 1000) {
@@ -460,10 +483,9 @@ public class LongPollManager {
                 Log.w(TAG, "LongPoll failed with code: " + failCode);
                 
                 if (failCode == 1) {
-                    // Обновляем ts
-                    long newTs = json.optLong("ts", ts);
-                    Log.d(TAG, "Failed code 1: Updating ts from " + ts + " to " + newTs);
-                    ts = newTs;
+                    ts = json.optLong("ts", ts);
+                    pts = json.optLong("pts", pts);
+                    Log.d(TAG, "LongPoll cursor refreshed: ts=" + ts + ", pts=" + pts);
                 } else if (failCode == 2 || failCode == 3) {
                     // Нужно получить новый ключ
                     Log.w(TAG, "Failed code " + failCode + ": Need new LongPoll key, restarting...");
@@ -474,26 +496,21 @@ public class LongPollManager {
             
             // Обновляем ts
             if (json.has("ts")) {
-                long newTs = json.getLong("ts");
-                Log.d(TAG, "Success: Updating ts from " + ts + " to " + newTs);
-                ts = newTs;
+                ts = json.getLong("ts");
             } else {
                 Log.w(TAG, "Warning: Response doesn't contain ts field");
             }
+            pts = json.optLong("pts", pts);
             
             // Обрабатываем события
             if (json.has("updates")) {
                 JSONArray updates = json.getJSONArray("updates");
-                Log.d(TAG, "Processing " + updates.length() + " updates");
+                Log.d(TAG, "Processing " + updates.length() + " updates (ts=" + ts + ", pts=" + pts + ")");
                 processUpdates(updates);
             } else {
                 Log.d(TAG, "No updates in response");
             }
             
-            // Если ts был 0 и мы получили новый ts, логируем это
-            if (ts > 0) {
-                Log.d(TAG, "LongPoll is now synchronized with ts=" + ts);
-            }
         }
     }
     
@@ -511,24 +528,46 @@ public class LongPollManager {
                         processNewMessage(update);
                         break;
                     case 6: // Прочитано входящее сообщение
+                        processMessageRead(update, false);
+                        break;
                     case 7: // Прочитано исходящее сообщение
-                        processMessageRead(update);
+                        processMessageRead(update, true);
                         break;
                     case 5: // Редактирование сообщения
                         processMessageEdit(update);
                         break;
-                    case 61: // Пользователь печатает
-                        processUserTyping(update);
+                    case 61: // Пользователь печатает в личном чате
+                    case 62: // Пользователь печатает в беседе
+                    case 63: // Обновление списка печатающих пользователей
+                    case 64: // Обновление списка записывающих аудиосообщение
+                        processUserTyping(update, eventType);
                         break;
                     case 8: // Пользователь онлайн
                     case 9: // Пользователь оффлайн
                         processUserOnline(update, eventType == 8);
+                        break;
+                    case 114: // Изменение настроек уведомлений чата
+                        processNotificationSettings(update);
                         break;
                 }
                 
             } catch (Exception e) {
                 Logger.e(TAG, "Error processing update " + i, e);
             }
+        }
+    }
+
+    private void processNotificationSettings(JSONArray update) {
+        try {
+            int peerId = update.getInt(1);
+            int sound = update.getInt(2);
+            long disabledUntil = update.getLong(3);
+            OnNotificationSettingsEventListener listener = notificationSettingsEventListener;
+            if (listener != null) {
+                listener.onNotificationSettingsChanged(peerId, sound, disabledUntil);
+            }
+        } catch (Exception e) {
+            Logger.e(TAG, "Error processing notification settings event", e);
         }
     }
     
@@ -538,8 +577,20 @@ public class LongPollManager {
             int messageId = update.getInt(1);
             int flags = update.getInt(2);
             int peerId = update.getInt(3);
+            // OpenVK adds the actual conversation peer at index 9; index 3 can be the sender for chats.
+            int conversationPeerId = update.optInt(9, 0);
+            if (conversationPeerId > 2000000000) {
+                peerId = conversationPeerId;
+            }
             long timestamp = update.getLong(4);
             String text = update.getString(5);
+            Object textOrExtra = update.opt(6);
+            if (textOrExtra instanceof String && !((String) textOrExtra).isEmpty()) {
+                // Web client reads message text from index 6 (index 5 is the subject).
+                text = (String) textOrExtra;
+            } else if (textOrExtra instanceof JSONObject) {
+                text = ((JSONObject) textOrExtra).optString("text", text);
+            }
             
             // Проверяем дедупликацию на уровне LongPoll
             if (processedEvents.containsKey(messageId)) {
@@ -570,39 +621,24 @@ public class LongPollManager {
             }
             
             // Дополнительные поля - могут быть массивом или объектом
-            int fromId = peerId; // По умолчанию from_id = peer_id
-            
-            // Пытаемся получить from_id из позиции 9 (если есть)
-            if (update.length() > 9) {
-                try {
-                    fromId = update.getInt(9);
-                } catch (Exception e) {
-                    Log.w(TAG, "Could not get from_id from position 9, using peer_id");
-                }
-            }
-            
-            // Если from_id не получен, пытаемся из позиции 6 (если это объект)
-            if (fromId == peerId && update.length() > 6) {
-                try {
-                    Object extraField = update.get(6);
-                    if (extraField instanceof JSONObject) {
-                        JSONObject extra = (JSONObject) extraField;
-                        fromId = extra.optInt("from", peerId);
-                    }
-                } catch (Exception e) {
-                    Log.d(TAG, "Position 6 is not JSONObject, using peer_id as from_id");
-                }
-            }
-            
-            // Определяем, исходящее ли сообщение
-            boolean isOut = (flags & 2) != 0;
+            JSONObject extra = update.optJSONObject(6);
+            JSONObject attachments = update.optJSONObject(7);
+            int currentUserId = getCurrentUserId();
+            int defaultFromId = (flags & 2) != 0 && currentUserId > 0 ? currentUserId : peerId;
+            int fromId = attachments != null
+                    ? attachments.optInt("from", extra != null ? extra.optInt("from", defaultFromId) : defaultFromId)
+                    : (extra != null ? extra.optInt("from", defaultFromId) : defaultFromId);
+            if (fromId <= 0) fromId = defaultFromId;
+
+            // OpenVK может присылать флаг 256 вместо стандартного флага исходящего сообщения.
+            boolean isOut = (flags & 2) != 0 || (currentUserId > 0 && fromId == currentUserId);
             
             Log.d(TAG, "New message parsed:");
             Log.d(TAG, "  ID: " + messageId);
             Log.d(TAG, "  Flags: " + flags);
             Log.d(TAG, "  Peer ID: " + peerId);
             Log.d(TAG, "  From ID: " + fromId);
-            Log.d(TAG, "  Text: " + text);
+            Log.d(TAG, "  Text length: " + text.length());
             Log.d(TAG, "  Timestamp: " + timestamp);
             Log.d(TAG, "  Is outgoing: " + isOut);
             
@@ -627,22 +663,34 @@ public class LongPollManager {
             Logger.e(TAG, "Update array: " + update.toString());
         }
     }
+
+    private int getCurrentUserId() {
+        AccountManager.Account account = AccountManager.getInstance(appContext).getCurrentAccount();
+        if (account == null || account.userId == null) return 0;
+        try {
+            return Integer.parseInt(account.userId);
+        } catch (NumberFormatException ignored) {
+            return 0;
+        }
+    }
     
     // Обработка прочтения сообщения
-    private void processMessageRead(JSONArray update) {
+    private void processMessageRead(JSONArray update, boolean outgoingMessagesRead) {
         try {
             int peerId = update.getInt(1);
             int localId = update.getInt(2);
             
-            Log.d(TAG, "Message read: peer " + peerId + ", local " + localId);
+            Log.d(TAG, "Message read: peer=" + peerId + ", localId=" + localId
+                    + ", outgoingMessagesRead=" + outgoingMessagesRead);
             
             if (!messageEventListeners.isEmpty()) {
                 final int finalPeerId = peerId;
                 final int finalLocalId = localId;
+                final boolean finalOutgoingMessagesRead = outgoingMessagesRead;
                 
                 mainHandler.post(() -> {
                     for (OnMessageEventListener listener : messageEventListeners) {
-                        listener.onMessageRead(finalPeerId, finalLocalId);
+                        listener.onMessageRead(finalPeerId, finalLocalId, finalOutgoingMessagesRead);
                     }
                 });
             }
@@ -679,22 +727,52 @@ public class LongPollManager {
     }
     
     // Обработка печатания
-    private void processUserTyping(JSONArray update) {
+    private void processUserTyping(JSONArray update, int eventType) {
         try {
-            int peerId = update.getInt(1);
-            int userId = peerId; // В личных сообщениях peerId и userId совпадают
-            
-            Log.d(TAG, "User typing: " + userId + " in " + peerId);
-            
-            if (typingEventListener != null) {
+            int peerId;
+            List<Integer> userIds = new ArrayList<>();
+
+            if (eventType == 61) {
+                int userId = update.getInt(1);
+                peerId = userId;
+                userIds.add(userId);
+            } else if (eventType == 62) {
+                int userId = update.getInt(1);
+                int chatId = update.getInt(2);
+                peerId = chatId < 2_000_000_000 ? 2_000_000_000 + chatId : chatId;
+                userIds.add(userId);
+            } else {
+                JSONArray users;
+                if (update.opt(1) instanceof JSONArray) {
+                    users = update.optJSONArray(1);
+                    peerId = update.getInt(2);
+                } else {
+                    peerId = update.getInt(1);
+                    users = update.optJSONArray(2);
+                    if (users == null) {
+                        users = new JSONArray();
+                        int userId = update.optInt(2, 0);
+                        if (userId > 0) users.put(userId);
+                    }
+                }
+
+                if (update.optInt(3, users.length()) == 0) return;
+                for (int i = 0; i < users.length(); i++) {
+                    int userId = users.optInt(i, 0);
+                    if (userId > 0) userIds.add(userId);
+                }
+            }
+
+            if (typingEventListener == null) return;
+            for (int userId : userIds) {
+                Log.d(TAG, "User typing: " + userId + " in " + peerId + " (event " + eventType + ")");
                 final int finalPeerId = peerId;
                 final int finalUserId = userId;
-                
-                mainHandler.post(() -> 
-                    typingEventListener.onUserTyping(finalPeerId, finalUserId)
-                );
+                mainHandler.post(() -> {
+                    OnTypingEventListener listener = typingEventListener;
+                    if (listener != null) listener.onUserTyping(finalPeerId, finalUserId);
+                });
             }
-            
         } catch (Exception e) {
             Logger.e(TAG, "Error processing user typing", e);
         }
@@ -707,14 +785,17 @@ public class LongPollManager {
             
             Log.d(TAG, "User " + (isOnline ? "online" : "offline") + ": " + userId);
             
-            if (onlineEventListener != null) {
-                final int finalUserId = userId;
-                final boolean finalIsOnline = isOnline;
-                
-                mainHandler.post(() -> 
-                    onlineEventListener.onUserOnline(finalUserId, finalIsOnline)
-                );
-            }
+            final int finalUserId = userId;
+            final boolean finalIsOnline = isOnline;
+            mainHandler.post(() -> {
+                OnOnlineEventListener legacyListener = onlineEventListener;
+                if (legacyListener != null) legacyListener.onUserOnline(finalUserId, finalIsOnline);
+                synchronized (onlineEventListeners) {
+                    for (OnOnlineEventListener listener : new ArrayList<>(onlineEventListeners)) {
+                        listener.onUserOnline(finalUserId, finalIsOnline);
+                    }
+                }
+            });
             
         } catch (Exception e) {
             Logger.e(TAG, "Error processing user online", e);
@@ -723,6 +804,7 @@ public class LongPollManager {
     
     // Планирование повторной попытки
     private void scheduleRetry(long delayMs) {
+        if (isRunning.get()) setConnectionState(ConnectionState.UPDATING);
         if (isRunning.get()) {
             mainHandler.postDelayed(this::getLongPollServer, delayMs);
         }
@@ -783,8 +865,8 @@ public class LongPollManager {
                     
                     try (Response response = client.newCall(request).execute()) {
                         if (response.body() != null) {
-                            String responseBody = response.body().string();
-                            Log.d(TAG, "TEST: Variant " + (i+1) + " response: " + responseBody);
+                            response.body().close();
+                            Log.d(TAG, "TEST: Variant " + (i+1) + " response received");
                         }
                     } catch (Exception e) {
                         Logger.e(TAG, "TEST: Variant " + (i+1) + " error: " + e.getMessage());

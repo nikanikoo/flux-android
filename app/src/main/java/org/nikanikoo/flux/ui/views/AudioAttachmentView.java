@@ -1,7 +1,6 @@
 package org.nikanikoo.flux.ui.views;
 
 import android.content.Context;
-import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ImageView;
@@ -12,10 +11,10 @@ import com.google.android.material.card.MaterialCardView;
 
 import org.nikanikoo.flux.R;
 import org.nikanikoo.flux.data.models.Audio;
-import org.nikanikoo.flux.services.AudioPlayerService;
 import org.nikanikoo.flux.utils.AlbumArtFetcher;
 
 import java.util.List;
+import java.util.Collections;
 
 /**
  * Helper class for displaying audio attachments in posts and comments
@@ -80,8 +79,7 @@ public class AudioAttachmentView {
                 if (listener != null) {
                     listener.onAudioPlay(audio);
                 } else {
-                    // Start player service with playlist
-                    startAudioPlayer(context, audios, position);
+                    AudioPlayerHelper.playOrToggleTrack(context, audios, position);
                 }
             });
 
@@ -89,14 +87,47 @@ public class AudioAttachmentView {
         }
     }
 
-    /**
-     * Start audio player with playlist
-     */
-    private static void startAudioPlayer(Context context, List<Audio> playlist, int startPosition) {
-        Intent serviceIntent = new Intent(context, AudioPlayerService.class);
-        context.startService(serviceIntent);
+    public static void addMessageAudioAttachment(Context context, LinearLayout container, Audio audio) {
+        addMessageAudioAttachment(context, container, audio, Collections.singletonList(audio), 0);
+    }
 
-        AudioPlayerHelper.setPlaylist(context, playlist, startPosition);
+    public static void addMessageAudioAttachment(Context context, LinearLayout container, Audio audio,
+                                                 List<Audio> playlist, int startPosition) {
+        if (audio == null) return;
+        container.removeAllViews();
+        container.setVisibility(View.VISIBLE);
+
+        View audioView = LayoutInflater.from(context).inflate(R.layout.item_audio, container, false);
+        MaterialCardView audioCard = audioView.findViewById(R.id.audio_card);
+        ImageView audioCover = audioView.findViewById(R.id.audio_cover);
+        ImageView coverPlaceholder = audioView.findViewById(R.id.audio_cover_placeholder);
+        TextView artistText = audioView.findViewById(R.id.audio_artist);
+        TextView titleText = audioView.findViewById(R.id.audio_title);
+        View downloadedIndicator = audioView.findViewById(R.id.audio_downloaded_indicator);
+        View moreButton = audioView.findViewById(R.id.audio_more_button);
+
+        artistText.setText(audio.getArtist());
+        titleText.setText(audio.getTitle());
+        downloadedIndicator.setVisibility(View.GONE);
+        moreButton.setVisibility(View.GONE);
+        audioCover.setImageDrawable(null);
+        if (coverPlaceholder != null) coverPlaceholder.setVisibility(View.VISIBLE);
+        new AlbumArtFetcher(context).loadAlbumArt(audio.getArtist(), audio.getTitle(), audioCover, 0,
+                new AlbumArtFetcher.AlbumArtCallback() {
+                    @Override public void onSuccess(String imageUrl) {
+                        if (coverPlaceholder != null) coverPlaceholder.setVisibility(View.GONE);
+                    }
+                    @Override public void onError(String error) {
+                        if (coverPlaceholder != null) coverPlaceholder.setVisibility(View.VISIBLE);
+                    }
+                });
+        List<Audio> playbackQueue = playlist != null && !playlist.isEmpty()
+                ? playlist : Collections.singletonList(audio);
+        int queuePosition = startPosition >= 0 && startPosition < playbackQueue.size()
+                ? startPosition : 0;
+        audioCard.setOnClickListener(v -> AudioPlayerHelper.playOrToggleTrack(
+                context, playbackQueue, queuePosition));
+        container.addView(audioView);
     }
 
     /**

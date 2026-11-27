@@ -92,12 +92,18 @@ public class CommentsManager extends BaseManager<CommentsManager> {
     }
 
     public void createComment(int ownerId, int postId, String message, Uri imageUri, CreateCommentCallback callback) {
+        createComment(ownerId, postId, message, imageUri, 0, null, callback);
+    }
+
+    public void createComment(int ownerId, int postId, String message, Uri imageUri,
+                              int stickerId, String stickerImageUrl, CreateCommentCallback callback) {
         if (imageUri != null) {
             PhotoUploadManager photoUploadManager = PhotoUploadManager.getInstance(context);
             photoUploadManager.uploadWallPhoto(imageUri, new PhotoUploadManager.PhotoUploadCallback() {
                 @Override
                 public void onSuccess(String attachment) {
-                    createCommentInternal(ownerId, postId, message, attachment, callback);
+                    createCommentInternal(ownerId, postId, message, attachment,
+                            stickerId, stickerImageUrl, callback);
                 }
                 
                 @Override
@@ -106,7 +112,7 @@ public class CommentsManager extends BaseManager<CommentsManager> {
                 }
             });
         } else {
-            createCommentInternal(ownerId, postId, message, null, callback);
+            createCommentInternal(ownerId, postId, message, null, stickerId, stickerImageUrl, callback);
         }
     }
 
@@ -114,7 +120,8 @@ public class CommentsManager extends BaseManager<CommentsManager> {
         createComment(ownerId, postId, message, null, callback);
     }
 
-    private void createCommentInternal(int ownerId, int postId, String message, String attachment, CreateCommentCallback callback) {
+    private void createCommentInternal(int ownerId, int postId, String message, String attachment,
+                                       int stickerId, String stickerImageUrl, CreateCommentCallback callback) {
         Map<String, String> params = new HashMap<>();
         params.put("owner_id", String.valueOf(ownerId));
         params.put("post_id", String.valueOf(postId));
@@ -122,6 +129,9 @@ public class CommentsManager extends BaseManager<CommentsManager> {
         
         if (attachment != null) {
             params.put("attachments", attachment);
+        }
+        if (stickerId > 0) {
+            params.put("sticker_id", String.valueOf(stickerId));
         }
 
         Logger.d("CommentsManager", "Создание комментария в " + ownerId + "_" + postId);
@@ -148,6 +158,9 @@ public class CommentsManager extends BaseManager<CommentsManager> {
                             if (attachment != null) {
                                 comment.setImageUrl("");
                             }
+                            if (stickerId > 0 && stickerImageUrl != null && !stickerImageUrl.isEmpty()) {
+                                comment.setStickerImageUrls(java.util.Collections.singletonList(stickerImageUrl));
+                            }
                             
                             Logger.d("CommentsManager", "Комментарий успешно создан по ID: " + commentId);
                             callback.onSuccess(comment);
@@ -160,6 +173,9 @@ public class CommentsManager extends BaseManager<CommentsManager> {
                             
                             if (attachment != null) {
                                 comment.setImageUrl("");
+                            }
+                            if (stickerId > 0 && stickerImageUrl != null && !stickerImageUrl.isEmpty()) {
+                                comment.setStickerImageUrls(java.util.Collections.singletonList(stickerImageUrl));
                             }
                             
                             callback.onSuccess(comment);
@@ -358,9 +374,29 @@ public class CommentsManager extends BaseManager<CommentsManager> {
 
                 String imageUrl = "";
                 String unsupportedElements = "";
+                List<String> stickerImageUrls = new ArrayList<>();
                 if (item.has("attachments")) {
                     JSONArray attachments = item.getJSONArray("attachments");
                     AttachmentProcessor.AttachmentResult result = AttachmentProcessor.processAttachments(attachments);
+
+                    for (int attachmentIndex = 0; attachmentIndex < attachments.length(); attachmentIndex++) {
+                        JSONObject attachment = attachments.optJSONObject(attachmentIndex);
+                        if (attachment == null || !"sticker".equals(attachment.optString("type", ""))) continue;
+                        JSONObject sticker = attachment.optJSONObject("sticker");
+                        if (sticker == null) continue;
+
+                        String stickerUrl = sticker.optString("photo_128", "");
+                        if (stickerUrl.isEmpty()) stickerUrl = sticker.optString("photo_256", "");
+                        if (stickerUrl.isEmpty()) stickerUrl = sticker.optString("photo_64", "");
+                        if (stickerUrl.isEmpty()) {
+                            JSONArray images = sticker.optJSONArray("images");
+                            if (images != null && images.length() > 0) {
+                                JSONObject image = images.optJSONObject(0);
+                                if (image != null) stickerUrl = image.optString("url", "");
+                            }
+                        }
+                        if (!stickerUrl.isEmpty()) stickerImageUrls.add(stickerUrl);
+                    }
 
                     if (!result.getImageUrls().isEmpty()) {
                         imageUrl = result.getImageUrls().get(0);
@@ -372,6 +408,7 @@ public class CommentsManager extends BaseManager<CommentsManager> {
                 }
                 
                 comment.setImageUrl(imageUrl);
+                comment.setStickerImageUrls(stickerImageUrls);
                 comment.setUnsupportedElementsText(unsupportedElements);
                 
                 comments.add(comment);

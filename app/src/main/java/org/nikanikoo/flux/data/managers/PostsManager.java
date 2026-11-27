@@ -885,11 +885,19 @@ public class PostsManager extends BaseManager<PostsManager> {
     }
 
     public void repostPost(String object, String message, RepostCallback callback) {
+        repostPost(object, message, 0, false, false, callback);
+    }
+
+    public void repostPost(String object, String message, int groupId, boolean asGroup,
+                           boolean signed, RepostCallback callback) {
         Map<String, String> params = new HashMap<>();
         params.put("object", object);
         if (message != null && !message.isEmpty()) {
             params.put("message", message);
         }
+        if (groupId > 0) params.put("group_id", String.valueOf(groupId));
+        if (asGroup) params.put("as_group", "1");
+        if (signed) params.put("signed", "1");
 
         Logger.d(TAG, "Репост поста: object=" + object + ", message=" + message);
 

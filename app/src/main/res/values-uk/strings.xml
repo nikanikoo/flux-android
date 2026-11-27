@@ -179,12 +179,38 @@
 
     <!-- Messages -->
     <string name="messages_title">Повідомлення</string>
+    <string name="stickers_default_pack">Стікери</string>
+    <string name="new_conversation_selected_count">Вибрано: %1$d</string>
+    <string name="friends_list_loading">Завантажуємо друзів…</string>
+    <string name="message_document_default_name">Документ</string>
+    <string name="message_document_preview">Попередній перегляд</string>
+    <string name="message_document_file">Файл</string>
+    <string name="selected_messages_count">Вибрано: %1$d</string>
+    <string name="delete_selected_messages_confirm">Видалити вибрані повідомлення (%1$d)?</string>
+    <string name="messages_deleted">Повідомлення видалено</string>
+    <string name="chat_leave_action">Вийти з бесіди</string>
+    <string name="chat_return_action">Повернутися до бесіди</string>
+    <string name="chat_leave_confirm">Вийти з бесіди «%1$s»?</string>
+    <string name="chat_return_confirm">Повернутися до бесіди «%1$s»?</string>
+    <string name="chat_return_error">Не вдалося визначити ваш обліковий запис</string>
+    <string name="messages_connecting">Підключення...</string>
+    <string name="messages_updating">Оновлення...</string>
     <string name="messages_loading_error">Помилка завантаження діалогів:\u0020</string>
     <string name="chat_title">Чат</string>
+    <string name="chat_notifications_menu">Сповіщення чату</string>
+    <string name="chat_notifications_enabled">Сповіщення увімкнено</string>
+    <string name="chat_notifications_muted">Сповіщення вимкнено</string>
+    <string name="chat_notifications_enable">Увімкнути сповіщення</string>
+    <string name="chat_notifications_mute_1_hour">Вимкнути на 1 годину</string>
+    <string name="chat_notifications_mute_8_hours">Вимкнути на 8 годин</string>
+    <string name="chat_notifications_mute_forever">Вимкнути назавжди</string>
+    <string name="chat_notifications_update_error">Не вдалося змінити сповіщення: %1$s</string>
     <string name="chat_message_hint">Введіть повідомлення</string>
     <string name="chat_send">Надіслати</string>
     <string name="chat_loading_error">Помилка завантаження повідомлень:\u0020</string>
     <string name="chat_send_error">Помилка надсилання:\u0020</string>
+    <string name="message_send_failed">Не вдалося надіслати повідомлення</string>
+    <string name="message_send_retry">Надіслати повторно</string>
     <string name="message_incoming">Вхідне повідомлення</string>
     <string name="message_outgoing">Вихідне повідомлення</string>
     <string name="message_time">%s</string>
@@ -448,6 +474,14 @@
     <string name="profile_gender">Стать:</string>
     <string name="profile_date_registered">Дата реєстрації:</string>
     <string name="profile_status_offline">Не в мережі</string>
+    <string name="chat_last_seen">Був/була в мережі %1$s</string>
+    <string name="chat_last_seen_now">Був/була в мережі щойно</string>
+    <plurals name="chat_members_count">
+        <item quantity="one">%d учасник</item>
+        <item quantity="few">%d учасники</item>
+        <item quantity="many">%d учасників</item>
+        <item quantity="other">%d учасника</item>
+    </plurals>
     <string name="profile_last_activity">Остання активність:</string>
     <string name="profile_city">Місто:</string>
     <string name="profile_email">Мрія:</string>

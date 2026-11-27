@@ -22,6 +22,7 @@ import org.nikanikoo.flux.data.managers.PhotosManager;
 import org.nikanikoo.flux.data.managers.ProfileManager;
 import org.nikanikoo.flux.data.models.Album;
 import org.nikanikoo.flux.data.models.UserProfile;
+import org.nikanikoo.flux.ui.activities.ChatActivity;
 import org.nikanikoo.flux.ui.activities.MainActivity;
 import org.nikanikoo.flux.ui.adapters.photos.AlbumsAdapter;
 import org.nikanikoo.flux.ui.custom.EndlessScrollListener;
@@ -105,13 +106,8 @@ public class PhotosFragment extends BaseFragment implements AlbumsAdapter.OnAlbu
     @Override
     public void onResume() {
         super.onResume();
-        if (getActivity() instanceof MainActivity) {
-            if (ownerTitle != null && !ownerTitle.isEmpty()) {
-                ((MainActivity) getActivity()).setToolbarTitle(ownerTitle);
-            } else {
-                ((MainActivity) getActivity()).setToolbarTitle(getString(R.string.nav_photos));
-            }
-        }
+        setHostToolbarTitle(ownerTitle != null && !ownerTitle.isEmpty()
+                ? ownerTitle : getString(R.string.nav_photos));
     }
 
     private void initViews(View view) {
@@ -402,20 +398,26 @@ public class PhotosFragment extends BaseFragment implements AlbumsAdapter.OnAlbu
 
     @Override
     public void onAlbumClick(Album album) {
+        if (getActivity() == null) return;
+        AlbumPhotosFragment fragment = AlbumPhotosFragment.newInstance(
+                album.getId(),
+                album.getOwnerId(),
+                album.getTitle(),
+                album.canUpload()
+        );
+        getActivity().getSupportFragmentManager()
+                .beginTransaction()
+                .replace(getId(), fragment)
+                .addToBackStack("album_photos")
+                .commit();
+        setHostToolbarTitle(album.getTitle());
+    }
+
+    private void setHostToolbarTitle(String title) {
         if (getActivity() instanceof MainActivity) {
-            MainActivity activity = (MainActivity) getActivity();
-            AlbumPhotosFragment fragment = AlbumPhotosFragment.newInstance(
-                    album.getId(),
-                    album.getOwnerId(),
-                    album.getTitle(),
-                    album.canUpload()
-            );
-            activity.getSupportFragmentManager()
-                    .beginTransaction()
-                    .replace(R.id.fragment_container, fragment)
-                    .addToBackStack("album_photos")
-                    .commit();
-            activity.setToolbarTitle(album.getTitle());
+            ((MainActivity) getActivity()).setToolbarTitle(title);
+        } else if (getActivity() instanceof ChatActivity) {
+            ((ChatActivity) getActivity()).setToolbarTitle(title);
         }
     }
 }

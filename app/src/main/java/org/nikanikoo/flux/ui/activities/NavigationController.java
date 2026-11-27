@@ -385,12 +385,15 @@ public class NavigationController implements NavigationView.OnNavigationItemSele
         }
         
         if (drawerAvatar != null && profile.getPhoto200() != null) {
-            Picasso.get()
+            com.squareup.picasso.RequestCreator avatarRequest = Picasso.get()
                     .load(profile.getPhoto200())
                     .placeholder(R.drawable.camera_200)
-                    .error(R.drawable.camera_200)
-                    .transform(new org.nikanikoo.flux.ui.custom.CircularImageTransformation())
-                    .into(drawerAvatar);
+                    .error(R.drawable.camera_200);
+            if (activity.getSharedPreferences("appearance_settings", Context.MODE_PRIVATE)
+                    .getBoolean(org.nikanikoo.flux.ui.fragments.settings.AppearanceSettingsFragment.KEY_ROUND_AVATARS, true)) {
+                avatarRequest.transform(new org.nikanikoo.flux.ui.custom.CircularImageTransformation());
+            }
+            avatarRequest.into(drawerAvatar);
         }
     }
     

@@ -400,6 +400,43 @@
 
     <!-- Поле ввода комментария -->
     <LinearLayout
+        android:id="@+id/pending_sticker_preview"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="12dp"
+        android:background="?attr/colorSurfaceVariant"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/pending_sticker_image"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:scaleType="fitCenter"
+            android:contentDescription="@string/comment_sticker_image" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp"
+            android:text="@string/sticker_attachment_ready"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="14sp" />
+
+        <ImageView
+            android:id="@+id/remove_pending_sticker"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:padding="8dp"
+            android:src="@drawable/ic_close"
+            android:contentDescription="@string/remove_sticker_attachment"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+    </LinearLayout>
+
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
@@ -418,6 +455,18 @@
             android:clickable="true"
             android:focusable="true"
             android:layout_gravity="bottom" />
+
+        <ImageView
+            android:id="@+id/btn_attach_sticker"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:src="@drawable/ic_sticker"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:padding="8dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:layout_gravity="bottom"
+            app:tint="?attr/colorOnSurfaceVariant" />
 
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="0dp"

@@ -47,14 +47,23 @@ public class GroupsManager extends BaseManager<GroupsManager> {
 
     // Получение списка групп пользователя
     public void getGroups(int count, int offset, GroupsCallback callback) {
+        getGroups(count, offset, "groups", callback);
+    }
+
+    public void getAdminGroups(GroupsCallback callback) {
+        getGroups(100, 0, "admin", callback);
+    }
+
+    private void getGroups(int count, int offset, String filter, GroupsCallback callback) {
         Logger.d(TAG, "Starting getGroups request...");
         
         // Ограничиваем количество для предотвращения OutOfMemory
-        int safeCount = Math.min(count, Constants.Api.FRIENDS_PER_PAGE);
+        int safeCount = Math.min(count, "admin".equals(filter) ? 100 : Constants.Api.FRIENDS_PER_PAGE);
         
         Map<String, String> params = new HashMap<>();
         params.put("count", String.valueOf(safeCount));
         params.put("offset", String.valueOf(offset));
+        params.put("filter", filter);
         params.put("fields", "photo_50,photo_100,photo_200,description,members_count,is_closed,is_admin,is_member,can_post,type,activity,status,verified,website,city,country");
         params.put("extended", "1");
 

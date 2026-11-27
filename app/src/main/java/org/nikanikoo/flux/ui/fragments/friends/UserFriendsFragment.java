@@ -276,7 +276,7 @@ public class UserFriendsFragment extends Fragment implements FriendsAdapter.OnFr
         
         if (getParentFragmentManager() != null) {
             getParentFragmentManager().beginTransaction()
-                    .replace(R.id.fragment_container, profileFragment)
+                    .replace(getId(), profileFragment)
                     .addToBackStack("friend_profile")
                     .commit();
         }
@@ -288,7 +288,7 @@ public class UserFriendsFragment extends Fragment implements FriendsAdapter.OnFr
         
         if (getParentFragmentManager() != null) {
             getParentFragmentManager().beginTransaction()
-                    .replace(R.id.fragment_container, chatFragment)
+                    .replace(getId(), chatFragment)
                     .addToBackStack("friend_chat")
                     .commit();
         }

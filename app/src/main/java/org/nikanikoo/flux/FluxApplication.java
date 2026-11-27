@@ -12,6 +12,7 @@ import org.nikanikoo.flux.utils.CacheManager;
 import org.nikanikoo.flux.utils.AsyncTaskHelper;
 import org.nikanikoo.flux.utils.Logger;
 import org.nikanikoo.flux.utils.SSLHelper;
+import org.nikanikoo.flux.utils.AvatarShapeManager;
 
 import java.io.File;
 import java.util.concurrent.ExecutorService;
@@ -38,6 +39,7 @@ public class FluxApplication extends Application {
         Notification.setAppContext(this);
         Group.setAppContext(this);
         CacheManager.setApplicationContext(this);
+        AvatarShapeManager.register(this);
         clearOrphanedTempFiles();
         configurePicasso();
     }

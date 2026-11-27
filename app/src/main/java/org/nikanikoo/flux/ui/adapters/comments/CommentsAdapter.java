@@ -125,6 +125,7 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
                 clickListener.onAuthorClick(id, name, isGroup);
             }
         }));
+        bindStickerImages(holder.stickerContainer, comment.getStickerImageUrls());
 
         holder.likeCount.setText(String.valueOf(comment.getLikesCount()));
         
@@ -254,6 +255,30 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
         return comments.size();
     }
 
+    private void bindStickerImages(LinearLayout container, List<String> imageUrls) {
+        container.removeAllViews();
+        if (imageUrls == null || imageUrls.isEmpty()) {
+            container.setVisibility(View.GONE);
+            return;
+        }
+
+        container.setVisibility(View.VISIBLE);
+        int size = (int) (128 * context.getResources().getDisplayMetrics().density + 0.5f);
+        for (String imageUrl : imageUrls) {
+            if (imageUrl == null || imageUrl.isEmpty()) continue;
+            ImageView sticker = new ImageView(context);
+            sticker.setLayoutParams(new LinearLayout.LayoutParams(size, size));
+            sticker.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            sticker.setContentDescription(context.getString(R.string.comment_sticker_image));
+            Picasso.get().load(imageUrl)
+                    .placeholder(R.drawable.ic_image_placeholder)
+                    .error(R.drawable.ic_image_error)
+                    .fit().centerInside().into(sticker);
+            container.addView(sticker);
+        }
+        if (container.getChildCount() == 0) container.setVisibility(View.GONE);
+    }
+
     private void updateLikeState(CommentViewHolder holder, Comment comment) {
         holder.likeCount.setText(String.valueOf(comment.getLikesCount()));
         
@@ -273,6 +298,7 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
         TextView authorName;
         TextView timestamp;
         TextView content;
+        LinearLayout stickerContainer;
         ImageView commentImage;
         LinearLayout audioContainer;
         LinearLayout videoContainer;
@@ -291,6 +317,7 @@ public class CommentsAdapter extends RecyclerView.Adapter<CommentsAdapter.Commen
             authorName = itemView.findViewById(R.id.comment_author_name);
             timestamp = itemView.findViewById(R.id.comment_timestamp);
             content = itemView.findViewById(R.id.comment_content);
+            stickerContainer = itemView.findViewById(R.id.comment_sticker_container);
             commentImage = itemView.findViewById(R.id.comment_image);
             audioContainer = itemView.findViewById(R.id.comment_audio_container);
             videoContainer = itemView.findViewById(R.id.comment_video_container);

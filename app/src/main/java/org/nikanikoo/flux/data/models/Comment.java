@@ -16,6 +16,7 @@ public class Comment {
     private String imageUrl;
     private List<Audio> audioAttachments;
     private List<Video> videoAttachments;
+    private List<String> stickerImageUrls = new ArrayList<>();
     private String unsupportedElementsText;
     private boolean authorVerified;
     private boolean isGroup;
@@ -45,6 +46,7 @@ public class Comment {
     public String getImageUrl() { return imageUrl; }
     public List<Audio> getAudioAttachments() { return audioAttachments; }
     public List<Video> getVideoAttachments() { return videoAttachments; }
+    public List<String> getStickerImageUrls() { return stickerImageUrls; }
     public String getUnsupportedElementsText() { return unsupportedElementsText; }
     public boolean isAuthorVerified() { return authorVerified; }
     public boolean isGroup() { return isGroup; }
@@ -73,6 +75,9 @@ public class Comment {
     }
     public void setVideoAttachments(List<Video> videoAttachments) { 
         this.videoAttachments = videoAttachments != null ? videoAttachments : new ArrayList<>();
+    }
+    public void setStickerImageUrls(List<String> stickerImageUrls) {
+        this.stickerImageUrls = stickerImageUrls != null ? stickerImageUrls : new ArrayList<>();
     }
     public void addVideoAttachment(Video video) {
         if (video != null) {
